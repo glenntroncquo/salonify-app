@@ -201,13 +201,20 @@ function getOffsetForDate(date: Date) {
 export default function CalendarScreen() {
   const { width, height } = useWindowDimensions();
   const gridWidth = width - 32;
-  const calendarHeight = Math.max(320, height - 420);
-  const weekRowHeight = Math.floor(calendarHeight / 6);
+  const [headerHeight, setHeaderHeight] = React.useState(0);
+  const [calendarAreaHeight, setCalendarAreaHeight] = React.useState(0);
+  const calendarHeight = Math.max(
+    320,
+    calendarAreaHeight || height - headerHeight - 120
+  );
   const [showModeMenu, setShowModeMenu] = React.useState(false);
   const [viewMode, setViewMode] = React.useState<'month' | 'week' | 'list'>('month');
   const [offsets, setOffsets] = React.useState([-2, -1, 0, 1, 2]);
   const [currentOffset, setCurrentOffset] = React.useState(0);
   const [selectedDateKey, setSelectedDateKey] = React.useState('2026-02-10');
+  const [overflowVisible, setOverflowVisible] = React.useState(false);
+  const [overflowEvents, setOverflowEvents] = React.useState<EventItem[]>([]);
+  const [overflowDateLabel, setOverflowDateLabel] = React.useState('');
   const listRef = React.useRef<FlatList<number>>(null);
   const monthCache = React.useRef(new Map<string, MonthData>()).current;
   const navigation = useNavigation();
@@ -347,13 +354,19 @@ export default function CalendarScreen() {
   );
 
   const renderMonthGrid = React.useCallback(
-    (monthData: MonthData) => (
-      <View style={{ height: calendarHeight }}>
-        {monthData.weeks.map((week) => (
-          <View
-            key={`${monthData.key}-${week.weekNumber}`}
-            style={[styles.weekRow, { height: weekRowHeight }]}>
-            <Text style={styles.weekNumber}>{week.weekNumber}</Text>
+    (monthData: MonthData) => {
+      const weeksToRender = [...monthData.weeks];
+      while (
+        weeksToRender.length > 5 &&
+        !weeksToRender[weeksToRender.length - 1].days.some((day) => day.inMonth)
+      ) {
+        weeksToRender.pop();
+      }
+
+      return (
+        <View style={styles.monthGrid}>
+          {weeksToRender.map((week) => (
+            <View key={`${monthData.key}-${week.weekNumber}`} style={styles.weekRow}>
             {week.days.map((day) => {
               const events = monthData.events[day.dateKey] ?? [];
               const maxVisibleEvents = 3;
@@ -366,7 +379,7 @@ export default function CalendarScreen() {
                   style={styles.dayCell}
                   onPress={() => setSelectedDateKey(day.dateKey)}>
                   <View style={styles.dayHeader}>
-                    <View style={isSelected ? styles.selectedDayCircle : undefined}>
+                    <View style={[styles.dayNumberWrapper, isSelected ? styles.selectedDayCircle : undefined]}>
                       <Text
                         style={[
                           styles.dayNumber,
@@ -383,161 +396,176 @@ export default function CalendarScreen() {
                       <View
                         key={`${day.dateKey}-${eventIndex}`}
                         style={[styles.eventPill, { backgroundColor: event.color }]}>
-                        <Text style={[styles.eventText, { color: event.textColor ?? '#e05668' }]}>
+                        <Text
+                          style={[styles.eventText, { color: event.textColor ?? '#e05668' }]}
+                          numberOfLines={1}>
                           {event.label}
                         </Text>
                       </View>
                     ))}
                     {hiddenCount > 0 ? (
-                      <View style={styles.morePill}>
+                      <Pressable
+                        style={styles.morePill}
+                        onPress={() => {
+                          setOverflowEvents(events);
+                          setOverflowDateLabel(getDayLabel(day.dateKey));
+                          setOverflowVisible(true);
+                        }}>
                         <Text style={styles.moreText}>{`+${hiddenCount}`}</Text>
-                      </View>
+                      </Pressable>
                     ) : null}
                   </View>
                 </Pressable>
               );
             })}
           </View>
-        ))}
-      </View>
-    ),
-    [calendarHeight, selectedDateKey, weekRowHeight]
+          ))}
+        </View>
+      );
+    },
+    [selectedDateKey]
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <View style={styles.container}>
         <View style={styles.scrollContent}>
-          <View style={styles.headerRow}>
-            <View style={styles.monthRow}>
-              <Text style={styles.monthText}>{currentMonth.label}</Text>
-              <MaterialIcons name="keyboard-arrow-down" size={22} color="#9a9a9a" />
+          <View
+            style={styles.headerBlock}
+            onLayout={(event) => setHeaderHeight(event.nativeEvent.layout.height)}>
+            <View style={styles.headerRow}>
+              <View style={styles.monthRow}>
+                <Text style={styles.monthText}>{currentMonth.label}</Text>
+                <MaterialIcons name="keyboard-arrow-down" size={22} color="#9a9a9a" />
+              </View>
+              <View style={styles.headerIcons}>
+                <TouchableOpacity style={styles.iconButton}>
+                  <MaterialIcons name="star-border" size={22} color="#1b1b1b" />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.iconButton}>
+                  <MaterialIcons name="view-agenda" size={22} color="#1b1b1b" />
+                </TouchableOpacity>
+              </View>
             </View>
-            <View style={styles.headerIcons}>
-              <TouchableOpacity style={styles.iconButton}>
-                <MaterialIcons name="star-border" size={22} color="#1b1b1b" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.iconButton}>
-                <MaterialIcons name="view-agenda" size={22} color="#1b1b1b" />
-              </TouchableOpacity>
+
+            <View style={styles.employeeRow}>
+              <Text style={styles.employeeLabel}>Employee</Text>
+              <View style={styles.employeeChip}>
+                <View style={styles.employeeAvatar} />
+                <Text style={styles.employeeName}>All staff</Text>
+                <MaterialIcons name="expand-more" size={18} color="#8b8b8b" />
+              </View>
+            </View>
+
+            <View style={styles.weekHeader}>
+              {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map((label) => (
+                <Text key={label} style={styles.weekdayText}>
+                  {label}
+                </Text>
+              ))}
             </View>
           </View>
 
-          <View style={styles.employeeRow}>
-            <Text style={styles.employeeLabel}>Employee</Text>
-            <View style={styles.employeeChip}>
-              <View style={styles.employeeAvatar} />
-              <Text style={styles.employeeName}>All staff</Text>
-              <MaterialIcons name="expand-more" size={18} color="#8b8b8b" />
-            </View>
-          </View>
+          <View
+            style={styles.calendarArea}
+            onLayout={(event) => setCalendarAreaHeight(event.nativeEvent.layout.height)}>
+            {viewMode === 'month' ? (
+              <FlatList
+                ref={listRef}
+                data={offsets}
+                keyExtractor={(item) => `month-${item}`}
+                horizontal
+                pagingEnabled
+                initialScrollIndex={offsets.indexOf(0)}
+                showsHorizontalScrollIndicator={false}
+                style={[styles.monthPager, { height: calendarHeight }]}
+                getItemLayout={(_, index) => ({
+                  length: gridWidth,
+                  offset: gridWidth * index,
+                  index,
+                })}
+                onMomentumScrollEnd={(event) => {
+                  const index = Math.round(event.nativeEvent.contentOffset.x / gridWidth);
+                  handleMonthChange(index);
+                }}
+                renderItem={({ item }) => (
+                  <View style={{ width: gridWidth, height: calendarHeight }}>
+                    {renderMonthGrid(fetchMonthData(item))}
+                  </View>
+                )}
+              />
+            ) : null}
 
-          <View style={styles.weekHeader}>
-            <View style={styles.weekNumberSpacer} />
-            {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map((label) => (
-              <Text key={label} style={styles.weekdayText}>
-                {label}
-              </Text>
-            ))}
-          </View>
-
-          {viewMode === 'month' ? (
-            <FlatList
-              ref={listRef}
-              data={offsets}
-              keyExtractor={(item) => `month-${item}`}
-              horizontal
-              pagingEnabled
-              initialScrollIndex={offsets.indexOf(0)}
-              showsHorizontalScrollIndicator={false}
-              style={{ height: calendarHeight }}
-              getItemLayout={(_, index) => ({
-                length: gridWidth,
-                offset: gridWidth * index,
-                index,
-              })}
-              onMomentumScrollEnd={(event) => {
-                const index = Math.round(event.nativeEvent.contentOffset.x / gridWidth);
-                handleMonthChange(index);
-              }}
-              renderItem={({ item }) => (
-                <View style={{ width: gridWidth, height: calendarHeight }}>
-                  {renderMonthGrid(fetchMonthData(item))}
-                </View>
-              )}
-            />
-          ) : null}
-
-          {viewMode === 'week' && selectedWeek ? (
-            <View>
-              <View style={[styles.weekRow, { height: weekRowHeight }]}>
-                <Text style={styles.weekNumber}>{selectedWeek.weekNumber}</Text>
-                {selectedWeek.days.map((day) => {
-                  const isSelected = selectedDateKey === day.dateKey;
-                  return (
-                    <Pressable
-                      key={day.dateKey}
-                      style={styles.dayCell}
-                      onPress={() => setSelectedDateKey(day.dateKey)}>
-                      <View style={styles.dayHeader}>
-                        <View style={isSelected ? styles.selectedDayCircle : undefined}>
-                          <Text
-                            style={[
-                              styles.dayNumber,
-                              !day.inMonth && styles.dayNumberMuted,
-                              day.isSunday && styles.dayNumberSunday,
-                              isSelected && styles.dayNumberSelected,
-                            ]}>
-                            {day.date}
-                          </Text>
+            {viewMode === 'week' && selectedWeek ? (
+              <View style={styles.weekArea}>
+                <View style={styles.weekRow}>
+                  {selectedWeek.days.map((day) => {
+                    const isSelected = selectedDateKey === day.dateKey;
+                    return (
+                      <Pressable
+                        key={day.dateKey}
+                        style={styles.dayCell}
+                  onPress={() => setSelectedDateKey(day.dateKey)}>
+                  <View style={styles.dayHeader}>
+                    <View style={[styles.dayNumberWrapper, isSelected ? styles.selectedDayCircle : undefined]}>
+                      <Text
+                        style={[
+                          styles.dayNumber,
+                                !day.inMonth && styles.dayNumberMuted,
+                                day.isSunday && styles.dayNumberSunday,
+                                isSelected && styles.dayNumberSelected,
+                              ]}>
+                              {day.date}
+                            </Text>
+                          </View>
                         </View>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <View style={styles.weekList}>
+                  {selectedWeek.days.map((day) => {
+                    const events = currentMonth.events[day.dateKey] ?? [];
+                    if (events.length === 0) return null;
+                    return (
+                      <View key={`week-${day.dateKey}`} style={styles.listDayBlock}>
+                        <Text style={styles.listDayLabel}>{getDayLabel(day.dateKey)}</Text>
+                        {events.map((event, index) => (
+                          <View key={`week-${day.dateKey}-${index}`} style={styles.listRow}>
+                            <View style={[styles.detailDot, { backgroundColor: event.color }]} />
+                            <Text style={styles.listText}>{event.label}</Text>
+                          </View>
+                        ))}
                       </View>
-                    </Pressable>
-                  );
-                })}
-              </View>
-              <View style={styles.weekList}>
-                {selectedWeek.days.map((day) => {
-                  const events = currentMonth.events[day.dateKey] ?? [];
-                  if (events.length === 0) return null;
-                  return (
-                    <View key={`week-${day.dateKey}`} style={styles.listDayBlock}>
-                      <Text style={styles.listDayLabel}>{getDayLabel(day.dateKey)}</Text>
-                      {events.map((event, index) => (
-                        <View key={`week-${day.dateKey}-${index}`} style={styles.listRow}>
-                          <View style={[styles.detailDot, { backgroundColor: event.color }]} />
-                          <Text style={styles.listText}>{event.label}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  );
-                })}
-                {selectedEvents.length === 0 ? (
-                  <Text style={styles.detailEmpty}>No appointments</Text>
-                ) : null}
-              </View>
-            </View>
-          ) : null}
-
-          {viewMode === 'list' ? (
-            <FlatList
-              data={listDays.filter((day) => day.events.length > 0)}
-              keyExtractor={(item) => item.dateKey}
-              contentContainerStyle={styles.listContent}
-              showsVerticalScrollIndicator={false}
-              renderItem={({ item }) => (
-                <View style={styles.listDayBlock}>
-                  <Text style={styles.listDayLabel}>{item.label}</Text>
-                  {item.events.map((event, index) => (
-                    <View key={`${item.dateKey}-${index}`} style={styles.listRow}>
-                      <View style={[styles.detailDot, { backgroundColor: event.color }]} />
-                      <Text style={styles.listText}>{event.label}</Text>
-                    </View>
-                  ))}
+                    );
+                  })}
+                  {selectedEvents.length === 0 ? (
+                    <Text style={styles.detailEmpty}>No appointments</Text>
+                  ) : null}
                 </View>
-              )}
-            />
-          ) : null}
+              </View>
+            ) : null}
+
+            {viewMode === 'list' ? (
+              <FlatList
+                data={listDays.filter((day) => day.events.length > 0)}
+                keyExtractor={(item) => item.dateKey}
+                contentContainerStyle={styles.listContent}
+                showsVerticalScrollIndicator={false}
+                renderItem={({ item }) => (
+                  <View style={styles.listDayBlock}>
+                    <Text style={styles.listDayLabel}>{item.label}</Text>
+                    {item.events.map((event, index) => (
+                      <View key={`${item.dateKey}-${index}`} style={styles.listRow}>
+                        <View style={[styles.detailDot, { backgroundColor: event.color }]} />
+                        <Text style={styles.listText}>{event.label}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              />
+            ) : null}
+          </View>
         </View>
 
         {showModeMenu ? (
@@ -588,6 +616,19 @@ export default function CalendarScreen() {
           <MaterialIcons name="add" size={26} color="#1b1b1b" />
         </TouchableOpacity>
       </View>
+      {overflowVisible ? (
+        <Pressable style={styles.popoverOverlay} onPress={() => setOverflowVisible(false)}>
+          <View style={styles.popoverCard}>
+            <Text style={styles.popoverTitle}>{overflowDateLabel}</Text>
+            {overflowEvents.map((event, index) => (
+              <View key={`${overflowDateLabel}-${index}`} style={styles.popoverRow}>
+                <View style={[styles.detailDot, { backgroundColor: event.color }]} />
+                <Text style={styles.listText}>{event.label}</Text>
+              </View>
+            ))}
+          </View>
+        </Pressable>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -604,7 +645,19 @@ const styles = StyleSheet.create({
   scrollContent: {
     flex: 1,
     paddingHorizontal: 16,
-    paddingBottom: 140,
+    paddingBottom: 0,
+  },
+  headerBlock: {
+    paddingBottom: 8,
+  },
+  calendarArea: {
+    flex: 1,
+  },
+  monthPager: {
+    flex: 1,
+  },
+  monthGrid: {
+    flex: 1,
   },
   headerRow: {
     marginTop: 8,
@@ -674,9 +727,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  weekNumberSpacer: {
-    width: 20,
-  },
   weekdayText: {
     flex: 1,
     textAlign: 'center',
@@ -687,16 +737,11 @@ const styles = StyleSheet.create({
   weekRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginTop: 10,
-    paddingBottom: 14,
+    flex: 1,
+    paddingTop: 6,
+    paddingBottom: 6,
     borderBottomWidth: 1,
     borderBottomColor: '#f2f2f2',
-  },
-  weekNumber: {
-    width: 20,
-    fontSize: 12,
-    color: '#b0b0b0',
-    marginTop: 6,
   },
   dayCell: {
     flex: 1,
@@ -706,6 +751,12 @@ const styles = StyleSheet.create({
   dayHeader: {
     alignItems: 'center',
     marginBottom: 4,
+  },
+  dayNumberWrapper: {
+    width: 26,
+    height: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   dayNumber: {
     fontSize: 13,
@@ -718,8 +769,6 @@ const styles = StyleSheet.create({
     color: '#e04b4b',
   },
   selectedDayCircle: {
-    width: 26,
-    height: 26,
     borderRadius: 13,
     backgroundColor: '#333333',
     alignItems: 'center',
@@ -738,7 +787,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   eventText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
   },
   morePill: {
@@ -766,6 +815,9 @@ const styles = StyleSheet.create({
   weekList: {
     paddingTop: 12,
   },
+  weekArea: {
+    flex: 1,
+  },
   listContent: {
     paddingTop: 12,
     paddingBottom: 140,
@@ -789,6 +841,40 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#1b1b1b',
   },
+  popoverOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  popoverCard: {
+    width: '100%',
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    padding: 16,
+    shadowColor: '#000000',
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
+  },
+  popoverTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1b1b1b',
+    marginBottom: 10,
+  },
+  popoverRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 4,
+  },
   menuOverlay: {
     position: 'absolute',
     left: 0,
@@ -798,7 +884,7 @@ const styles = StyleSheet.create({
   },
   modeMenu: {
     position: 'absolute',
-    bottom: 88,
+    bottom: 16,
     backgroundColor: '#ffffff',
     borderRadius: 18,
     paddingVertical: 10,
@@ -830,7 +916,7 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: 18,
-    bottom: 82,
+    bottom: 16,
     width: 54,
     height: 54,
     borderRadius: 27,
