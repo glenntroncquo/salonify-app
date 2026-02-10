@@ -25,12 +25,21 @@ export default function TabLayout() {
           tabBarButton: (props) => (
             <HapticTab
               {...props}
+              onPress={(event) => {
+                props.onPress?.(event);
+                DeviceEventEmitter.emit('calendarGoToToday');
+              }}
               onLongPress={(event) => {
                 props.onLongPress?.(event);
                 DeviceEventEmitter.emit('calendarModeMenu');
               }}
             />
           ),
+        }}
+        listeners={{
+          tabPress: () => {
+            DeviceEventEmitter.emit('calendarGoToToday');
+          },
         }}
       />
       <Tabs.Screen

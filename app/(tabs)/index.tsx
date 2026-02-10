@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   DeviceEventEmitter,
+  FlatList,
   Pressable,
   StyleSheet,
   Text,
@@ -10,298 +11,216 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useNavigation } from 'expo-router';
 
 type CalendarDay = {
   date: number;
   inMonth: boolean;
   isSunday?: boolean;
+  dateKey: string;
 };
 
-const months = [
-  {
-    label: 'Jan 2026',
-    weeks: [
-      {
-        week: 1,
-        days: [
-          { date: 29, inMonth: false },
-          { date: 30, inMonth: false },
-          { date: 31, inMonth: false },
-          { date: 1, inMonth: true },
-          { date: 2, inMonth: true },
-          { date: 3, inMonth: true },
-          { date: 4, inMonth: true, isSunday: true },
-        ],
-      },
-      {
-        week: 2,
-        days: [
-          { date: 5, inMonth: true },
-          { date: 6, inMonth: true },
-          { date: 7, inMonth: true },
-          { date: 8, inMonth: true },
-          { date: 9, inMonth: true },
-          { date: 10, inMonth: true },
-          { date: 11, inMonth: true, isSunday: true },
-        ],
-      },
-      {
-        week: 3,
-        days: [
-          { date: 12, inMonth: true },
-          { date: 13, inMonth: true },
-          { date: 14, inMonth: true },
-          { date: 15, inMonth: true },
-          { date: 16, inMonth: true },
-          { date: 17, inMonth: true },
-          { date: 18, inMonth: true, isSunday: true },
-        ],
-      },
-      {
-        week: 4,
-        days: [
-          { date: 19, inMonth: true },
-          { date: 20, inMonth: true },
-          { date: 21, inMonth: true },
-          { date: 22, inMonth: true },
-          { date: 23, inMonth: true },
-          { date: 24, inMonth: true },
-          { date: 25, inMonth: true, isSunday: true },
-        ],
-      },
-      {
-        week: 5,
-        days: [
-          { date: 26, inMonth: true },
-          { date: 27, inMonth: true },
-          { date: 28, inMonth: true },
-          { date: 29, inMonth: true },
-          { date: 30, inMonth: true },
-          { date: 31, inMonth: true },
-          { date: 1, inMonth: false, isSunday: true },
-        ],
-      },
-    ],
-    events: {
-      '2-8': [
-        { label: 'Klant haar/', color: '#ffd4dc', textColor: '#e05668' },
-        { label: 'Extensions', color: '#ffd4dc', textColor: '#e05668' },
-        { label: 'Kleuring', color: '#ffe8b5', textColor: '#c98200' },
-        { label: 'Cristal: Lo', color: '#d4ecff', textColor: '#2e7dd1' },
-      ],
-      '3-14': [{ label: 'Afspraak T', color: '#ffd4dc', textColor: '#e05668' }],
-      '4-22': [
-        { label: 'Balayage', color: '#ffd4dc', textColor: '#e05668' },
-        { label: 'Keratine', color: '#ffd4dc', textColor: '#e05668' },
-        { label: 'Klant haar/', color: '#ffd4dc', textColor: '#e05668' },
-        { label: 'Klant haar/', color: '#ffd4dc', textColor: '#e05668' },
-      ],
-    },
-  },
-  {
-    label: 'Feb 2026',
-    weeks: [
-      {
-        week: 5,
-        days: [
-          { date: 26, inMonth: false },
-          { date: 27, inMonth: false },
-          { date: 28, inMonth: false },
-          { date: 29, inMonth: false },
-          { date: 30, inMonth: false },
-          { date: 31, inMonth: false },
-          { date: 1, inMonth: true, isSunday: true },
-        ],
-      },
-      {
-        week: 6,
-        days: [
-          { date: 2, inMonth: true },
-          { date: 3, inMonth: true },
-          { date: 4, inMonth: true },
-          { date: 5, inMonth: true },
-          { date: 6, inMonth: true },
-          { date: 7, inMonth: true },
-          { date: 8, inMonth: true, isSunday: true },
-        ],
-      },
-      {
-        week: 7,
-        days: [
-          { date: 9, inMonth: true },
-          { date: 10, inMonth: true },
-          { date: 11, inMonth: true },
-          { date: 12, inMonth: true },
-          { date: 13, inMonth: true },
-          { date: 14, inMonth: true },
-          { date: 15, inMonth: true, isSunday: true },
-        ],
-      },
-      {
-        week: 8,
-        days: [
-          { date: 16, inMonth: true },
-          { date: 17, inMonth: true },
-          { date: 18, inMonth: true },
-          { date: 19, inMonth: true },
-          { date: 20, inMonth: true },
-          { date: 21, inMonth: true },
-          { date: 22, inMonth: true, isSunday: true },
-        ],
-      },
-      {
-        week: 9,
-        days: [
-          { date: 23, inMonth: true },
-          { date: 24, inMonth: true },
-          { date: 25, inMonth: true },
-          { date: 26, inMonth: true },
-          { date: 27, inMonth: true },
-          { date: 28, inMonth: true },
-          { date: 1, inMonth: false, isSunday: true },
-        ],
-      },
-    ],
-    events: {
-      '5-29': [
-        { label: 'Klant haar/', color: '#ffd4dc', textColor: '#e05668' },
-        { label: 'Cristal: Ari', color: '#d4ecff', textColor: '#2e7dd1' },
-        { label: 'Kleuring m', color: '#ffe8b5', textColor: '#c98200' },
-        { label: 'Afspraak T', color: '#ffd4dc', textColor: '#e05668' },
-        { label: 'Cristal: All', color: '#d4ecff', textColor: '#2e7dd1' },
-      ],
-      '5-30': [{ label: 'Kleuring Fl', color: '#ffe8b5', textColor: '#c98200' }],
-      '5-31': [{ label: 'Klant haar/', color: '#ffd4dc', textColor: '#e05668' }],
-      '5-1': [{ label: 'Klant haar/', color: '#ffd4dc', textColor: '#e05668' }],
-      '6-7': [
-        { label: 'Klant haar/', color: '#ffd4dc', textColor: '#e05668' },
-        { label: 'Keratine +', color: '#ffd4dc', textColor: '#e05668' },
-        { label: 'Balayage J', color: '#ffd4dc', textColor: '#e05668' },
-        { label: 'Kleur', color: '#ffe8b5', textColor: '#c98200' },
-      ],
-      '6-11': [{ label: 'Extensions', color: '#ffd4dc', textColor: '#e05668' }],
-      '6-13': [
-        { label: 'Lien knipp', color: '#c9f4dd', textColor: '#1a8f5a' },
-        { label: 'Keratine ha', color: '#ffd4dc', textColor: '#e05668' },
-        { label: 'Zoë inste', color: '#ffd4dc', textColor: '#e05668' },
-      ],
-      '6-14': [
-        { label: 'Valentijnsc', color: '#bfbfbf', textColor: '#ffffff' },
-        { label: 'Carmella', color: '#ffd4dc', textColor: '#e05668' },
-      ],
-      '6-16': [
-        { label: 'Klant haar/', color: '#ffd4dc', textColor: '#e05668' },
-        { label: 'Klant haar/', color: '#ffd4dc', textColor: '#e05668' },
-      ],
-      '6-18': [{ label: 'Klant haar/', color: '#ffd4dc', textColor: '#e05668' }],
-      '6-27': [
-        { label: 'Klant haar/', color: '#ffd4dc', textColor: '#e05668' },
-        { label: 'Klant haar/', color: '#ffd4dc', textColor: '#e05668' },
-        { label: 'Kleur', color: '#ffe8b5', textColor: '#c98200' },
-        { label: 'Keratine +', color: '#ffd4dc', textColor: '#e05668' },
-      ],
-      '6-28': [{ label: 'Klant haar/', color: '#ffd4dc', textColor: '#e05668' }],
-    },
-  },
-  {
-    label: 'Mar 2026',
-    weeks: [
-      {
-        week: 9,
-        days: [
-          { date: 23, inMonth: false },
-          { date: 24, inMonth: false },
-          { date: 25, inMonth: false },
-          { date: 26, inMonth: false },
-          { date: 27, inMonth: false },
-          { date: 28, inMonth: false },
-          { date: 1, inMonth: true, isSunday: true },
-        ],
-      },
-      {
-        week: 10,
-        days: [
-          { date: 2, inMonth: true },
-          { date: 3, inMonth: true },
-          { date: 4, inMonth: true },
-          { date: 5, inMonth: true },
-          { date: 6, inMonth: true },
-          { date: 7, inMonth: true },
-          { date: 8, inMonth: true, isSunday: true },
-        ],
-      },
-      {
-        week: 11,
-        days: [
-          { date: 9, inMonth: true },
-          { date: 10, inMonth: true },
-          { date: 11, inMonth: true },
-          { date: 12, inMonth: true },
-          { date: 13, inMonth: true },
-          { date: 14, inMonth: true },
-          { date: 15, inMonth: true, isSunday: true },
-        ],
-      },
-      {
-        week: 12,
-        days: [
-          { date: 16, inMonth: true },
-          { date: 17, inMonth: true },
-          { date: 18, inMonth: true },
-          { date: 19, inMonth: true },
-          { date: 20, inMonth: true },
-          { date: 21, inMonth: true },
-          { date: 22, inMonth: true, isSunday: true },
-        ],
-      },
-      {
-        week: 13,
-        days: [
-          { date: 23, inMonth: true },
-          { date: 24, inMonth: true },
-          { date: 25, inMonth: true },
-          { date: 26, inMonth: true },
-          { date: 27, inMonth: true },
-          { date: 28, inMonth: true },
-          { date: 29, inMonth: true, isSunday: true },
-        ],
-      },
-      {
-        week: 14,
-        days: [
-          { date: 30, inMonth: true },
-          { date: 31, inMonth: true },
-          { date: 1, inMonth: false },
-          { date: 2, inMonth: false },
-          { date: 3, inMonth: false },
-          { date: 4, inMonth: false },
-          { date: 5, inMonth: false, isSunday: true },
-        ],
-      },
-    ],
-    events: {
-      '10-3': [{ label: 'Klant haar/', color: '#ffd4dc', textColor: '#e05668' }],
-      '11-11': [
-        { label: 'Keratine +', color: '#ffd4dc', textColor: '#e05668' },
-        { label: 'Kleuring', color: '#ffe8b5', textColor: '#c98200' },
-      ],
-      '12-21': [
-        { label: 'Klant haar/', color: '#ffd4dc', textColor: '#e05668' },
-        { label: 'Cristal: All', color: '#d4ecff', textColor: '#2e7dd1' },
-        { label: 'Afspraak T', color: '#ffd4dc', textColor: '#e05668' },
-        { label: 'Kleur', color: '#ffe8b5', textColor: '#c98200' },
-        { label: 'Balayage J', color: '#ffd4dc', textColor: '#e05668' },
-      ],
-    },
-  },
+type CalendarWeek = {
+  weekNumber: number;
+  days: CalendarDay[];
+};
+
+type EventItem = {
+  label: string;
+  color: string;
+  textColor?: string;
+};
+
+type MonthData = {
+  key: string;
+  label: string;
+  year: number;
+  monthIndex: number;
+  weeks: CalendarWeek[];
+  events: Record<string, EventItem[]>;
+  inMonthKeys: Set<string>;
+  firstDateKey: string;
+};
+
+const BASE_YEAR = 2026;
+const BASE_MONTH_INDEX = 1;
+const MONTH_LABELS = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ];
 
+const EVENT_LABELS = [
+  'Klant haar/',
+  'Keratine +',
+  'Balayage J',
+  'Kleuring',
+  'Extensions',
+  'Cristal: All',
+  'Afspraak T',
+  'Lien knipp',
+  'Zoe inste',
+  'Carmella',
+  'Valentijnsc',
+];
+
+const EVENT_COLORS = [
+  { color: '#ffd4dc', textColor: '#e05668' },
+  { color: '#ffe8b5', textColor: '#c98200' },
+  { color: '#d4ecff', textColor: '#2e7dd1' },
+  { color: '#c9f4dd', textColor: '#1a8f5a' },
+  { color: '#bfbfbf', textColor: '#ffffff' },
+];
+
+function toDateKey(date: Date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function getISOWeekNumber(date: Date) {
+  const tmp = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = tmp.getUTCDay() || 7;
+  tmp.setUTCDate(tmp.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
+  return Math.ceil((((tmp.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+}
+
+function addMonths(baseYear: number, baseMonth: number, offset: number) {
+  const total = baseYear * 12 + baseMonth + offset;
+  const year = Math.floor(total / 12);
+  const monthIndex = total % 12;
+  return { year, monthIndex };
+}
+
+function mulberry32(seed: number) {
+  let t = seed;
+  return function rand() {
+    t += 0x6d2b79f5;
+    let r = Math.imul(t ^ (t >>> 15), t | 1);
+    r ^= r + Math.imul(r ^ (r >>> 7), r | 61);
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function generateMonthData(year: number, monthIndex: number): MonthData {
+  const label = `${MONTH_LABELS[monthIndex]} ${year}`;
+  const firstOfMonth = new Date(year, monthIndex, 1);
+  const firstDayIndex = (firstOfMonth.getDay() + 6) % 7;
+  const startDate = new Date(year, monthIndex, 1 - firstDayIndex);
+  const rand = mulberry32(year * 100 + monthIndex + 1);
+
+  const weeks: CalendarWeek[] = [];
+  const inMonthKeys = new Set<string>();
+  const events: Record<string, EventItem[]> = {};
+  let firstDateKey = '';
+
+  for (let weekIndex = 0; weekIndex < 6; weekIndex += 1) {
+    const weekStart = new Date(startDate);
+    weekStart.setDate(startDate.getDate() + weekIndex * 7);
+    const weekNumber = getISOWeekNumber(weekStart);
+    const days: CalendarDay[] = [];
+
+    for (let dayIndex = 0; dayIndex < 7; dayIndex += 1) {
+      const dayDate = new Date(weekStart);
+      dayDate.setDate(weekStart.getDate() + dayIndex);
+      const inMonth = dayDate.getMonth() === monthIndex;
+      const dateKey = toDateKey(dayDate);
+
+      if (inMonth) {
+        inMonthKeys.add(dateKey);
+        if (!firstDateKey) {
+          firstDateKey = dateKey;
+        }
+      }
+
+      days.push({
+        date: dayDate.getDate(),
+        inMonth,
+        isSunday: dayDate.getDay() === 0,
+        dateKey,
+      });
+    }
+
+    weeks.push({ weekNumber, days });
+  }
+
+  Array.from(inMonthKeys).forEach((dateKey, index) => {
+    const roll = rand();
+    let count = 0;
+    if (roll > 0.55) count = 1;
+    if (roll > 0.72) count = 2;
+    if (roll > 0.85) count = 3;
+    if (roll > 0.95) count = 4;
+
+    if (count > 0) {
+      const items: EventItem[] = [];
+      for (let i = 0; i < count; i += 1) {
+        const label = EVENT_LABELS[(index + i) % EVENT_LABELS.length];
+        const color = EVENT_COLORS[(index + i) % EVENT_COLORS.length];
+        items.push({ label, color: color.color, textColor: color.textColor });
+      }
+      events[dateKey] = items;
+    }
+  });
+
+  return {
+    key: `${year}-${String(monthIndex + 1).padStart(2, '0')}`,
+    label,
+    year,
+    monthIndex,
+    weeks,
+    events,
+    inMonthKeys,
+    firstDateKey,
+  };
+}
+
+function getDayLabel(dateKey: string) {
+  const date = new Date(dateKey);
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  return `${dayNames[date.getDay()]} ${date.getDate()}`;
+}
+
+function getOffsetForDate(date: Date) {
+  const year = date.getFullYear();
+  const monthIndex = date.getMonth();
+  return year * 12 + monthIndex - (BASE_YEAR * 12 + BASE_MONTH_INDEX);
+}
+
 export default function CalendarScreen() {
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
+  const gridWidth = width - 32;
+  const calendarHeight = Math.max(320, height - 420);
+  const weekRowHeight = Math.floor(calendarHeight / 6);
   const [showModeMenu, setShowModeMenu] = React.useState(false);
   const [viewMode, setViewMode] = React.useState<'month' | 'week' | 'list'>('month');
-  const [currentMonthIndex, setCurrentMonthIndex] = React.useState(1);
-  const [selectedDayKey, setSelectedDayKey] = React.useState('7-10');
+  const [offsets, setOffsets] = React.useState([-2, -1, 0, 1, 2]);
+  const [currentOffset, setCurrentOffset] = React.useState(0);
+  const [selectedDateKey, setSelectedDateKey] = React.useState('2026-02-10');
+  const listRef = React.useRef<FlatList<number>>(null);
+  const monthCache = React.useRef(new Map<string, MonthData>()).current;
+  const navigation = useNavigation();
+  const offsetsRef = React.useRef(offsets);
+  const viewModeRef = React.useRef(viewMode);
+
+  React.useEffect(() => {
+    offsetsRef.current = offsets;
+  }, [offsets]);
+
+  React.useEffect(() => {
+    viewModeRef.current = viewMode;
+  }, [viewMode]);
 
   React.useEffect(() => {
     const subscription = DeviceEventEmitter.addListener('calendarModeMenu', () => {
@@ -310,20 +229,180 @@ export default function CalendarScreen() {
     return () => subscription.remove();
   }, []);
 
+  const goToToday = React.useCallback(() => {
+    const today = new Date();
+    const targetOffset = getOffsetForDate(today);
+    const dateKey = toDateKey(today);
+    const currentOffsets = offsetsRef.current;
+    const currentViewMode = viewModeRef.current;
+
+    if (!currentOffsets.includes(targetOffset)) {
+      const nextOffsets = [
+        targetOffset - 2,
+        targetOffset - 1,
+        targetOffset,
+        targetOffset + 1,
+        targetOffset + 2,
+      ];
+      setOffsets(nextOffsets);
+      setCurrentOffset(targetOffset);
+      setSelectedDateKey(dateKey);
+      requestAnimationFrame(() => {
+        listRef.current?.scrollToIndex({ index: 2, animated: false });
+      });
+      return;
+    }
+
+    setCurrentOffset(targetOffset);
+    setSelectedDateKey(dateKey);
+    if (currentViewMode === 'month') {
+      requestAnimationFrame(() => {
+        const index = currentOffsets.indexOf(targetOffset);
+        if (index >= 0) {
+          listRef.current?.scrollToIndex({ index, animated: true });
+        }
+      });
+    }
+  }, []);
+
+  React.useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener('calendarGoToToday', goToToday);
+    return () => subscription.remove();
+  }, [goToToday]);
+
+  React.useEffect(() => {
+    const unsubscribe = navigation.addListener('tabPress', () => {
+      goToToday();
+    });
+    return unsubscribe;
+  }, [goToToday, navigation]);
+
   const menuWidth = 190;
   const calendarTabCenterX = width / 8;
   const menuLeft = Math.max(12, calendarTabCenterX - menuWidth / 2);
 
-  const currentMonth = months[currentMonthIndex];
-  const selectedEvents = currentMonth.events[selectedDayKey] ?? [];
+  const fetchMonthData = React.useCallback(
+    (offset: number) => {
+      const { year, monthIndex } = addMonths(BASE_YEAR, BASE_MONTH_INDEX, offset);
+      const key = `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+      if (!monthCache.has(key)) {
+        const data = generateMonthData(year, monthIndex);
+        monthCache.set(key, data);
+      }
+      return monthCache.get(key)!;
+    },
+    [monthCache]
+  );
 
-  const visibleWeeks =
-    viewMode === 'week'
-      ? currentMonth.weeks.filter((week) =>
-          week.days.some((day) => `${week.week}-${day.date}` === selectedDayKey)
-        )
-      : currentMonth.weeks;
+  const currentMonth = fetchMonthData(currentOffset);
 
+  React.useEffect(() => {
+    const monthData = fetchMonthData(currentOffset);
+    if (!monthData.inMonthKeys.has(selectedDateKey)) {
+      setSelectedDateKey(monthData.firstDateKey);
+    }
+  }, [currentOffset, fetchMonthData, selectedDateKey]);
+
+  const selectedEvents = currentMonth.events[selectedDateKey] ?? [];
+
+  const selectedWeek = React.useMemo(() => {
+    return currentMonth.weeks.find((week) =>
+      week.days.some((day) => day.dateKey === selectedDateKey)
+    );
+  }, [currentMonth, selectedDateKey]);
+
+  const listDays = React.useMemo(() => {
+    return Array.from(currentMonth.inMonthKeys)
+      .sort()
+      .map((dateKey) => ({
+        dateKey,
+        label: getDayLabel(dateKey),
+        events: currentMonth.events[dateKey] ?? [],
+      }));
+  }, [currentMonth]);
+
+  const handleMonthChange = React.useCallback(
+    (index: number) => {
+      const offset = offsets[index];
+      if (offset === undefined) return;
+      setCurrentOffset(offset);
+      fetchMonthData(offset);
+
+      if (index <= 1) {
+        const first = offsets[0];
+        const prepend = [first - 3, first - 2, first - 1];
+        const nextOffsets = [...prepend, ...offsets];
+        setOffsets(nextOffsets);
+        requestAnimationFrame(() => {
+          listRef.current?.scrollToIndex({ index: index + prepend.length, animated: false });
+        });
+      }
+
+      if (index >= offsets.length - 2) {
+        const last = offsets[offsets.length - 1];
+        setOffsets([...offsets, last + 1, last + 2, last + 3]);
+      }
+    },
+    [fetchMonthData, offsets]
+  );
+
+  const renderMonthGrid = React.useCallback(
+    (monthData: MonthData) => (
+      <View style={{ height: calendarHeight }}>
+        {monthData.weeks.map((week) => (
+          <View
+            key={`${monthData.key}-${week.weekNumber}`}
+            style={[styles.weekRow, { height: weekRowHeight }]}>
+            <Text style={styles.weekNumber}>{week.weekNumber}</Text>
+            {week.days.map((day) => {
+              const events = monthData.events[day.dateKey] ?? [];
+              const maxVisibleEvents = 3;
+              const visibleEvents = events.slice(0, maxVisibleEvents);
+              const hiddenCount = Math.max(0, events.length - visibleEvents.length);
+              const isSelected = selectedDateKey === day.dateKey;
+              return (
+                <Pressable
+                  key={day.dateKey}
+                  style={styles.dayCell}
+                  onPress={() => setSelectedDateKey(day.dateKey)}>
+                  <View style={styles.dayHeader}>
+                    <View style={isSelected ? styles.selectedDayCircle : undefined}>
+                      <Text
+                        style={[
+                          styles.dayNumber,
+                          !day.inMonth && styles.dayNumberMuted,
+                          day.isSunday && styles.dayNumberSunday,
+                          isSelected && styles.dayNumberSelected,
+                        ]}>
+                        {day.date}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.eventStack}>
+                    {visibleEvents.map((event, eventIndex) => (
+                      <View
+                        key={`${day.dateKey}-${eventIndex}`}
+                        style={[styles.eventPill, { backgroundColor: event.color }]}>
+                        <Text style={[styles.eventText, { color: event.textColor ?? '#e05668' }]}>
+                          {event.label}
+                        </Text>
+                      </View>
+                    ))}
+                    {hiddenCount > 0 ? (
+                      <View style={styles.morePill}>
+                        <Text style={styles.moreText}>{`+${hiddenCount}`}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+        ))}
+      </View>
+    ),
+    [calendarHeight, selectedDateKey, weekRowHeight]
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -362,22 +441,44 @@ export default function CalendarScreen() {
             ))}
           </View>
 
-          <View>
-            {visibleWeeks.map((week) => (
-              <View key={week.week} style={styles.weekRow}>
-                <Text style={styles.weekNumber}>{week.week}</Text>
-                {week.days.map((day, index) => {
-                  const key = `${week.week}-${day.date}`;
-                  const events = currentMonth.events[key] ?? [];
-                  const maxVisibleEvents = viewMode === 'month' ? 3 : 5;
-                  const visibleEvents = events.slice(0, maxVisibleEvents);
-                  const hiddenCount = Math.max(0, events.length - visibleEvents.length);
-                  const isSelected = selectedDayKey === key;
+          {viewMode === 'month' ? (
+            <FlatList
+              ref={listRef}
+              data={offsets}
+              keyExtractor={(item) => `month-${item}`}
+              horizontal
+              pagingEnabled
+              initialScrollIndex={offsets.indexOf(0)}
+              showsHorizontalScrollIndicator={false}
+              style={{ height: calendarHeight }}
+              getItemLayout={(_, index) => ({
+                length: gridWidth,
+                offset: gridWidth * index,
+                index,
+              })}
+              onMomentumScrollEnd={(event) => {
+                const index = Math.round(event.nativeEvent.contentOffset.x / gridWidth);
+                handleMonthChange(index);
+              }}
+              renderItem={({ item }) => (
+                <View style={{ width: gridWidth, height: calendarHeight }}>
+                  {renderMonthGrid(fetchMonthData(item))}
+                </View>
+              )}
+            />
+          ) : null}
+
+          {viewMode === 'week' && selectedWeek ? (
+            <View>
+              <View style={[styles.weekRow, { height: weekRowHeight }]}>
+                <Text style={styles.weekNumber}>{selectedWeek.weekNumber}</Text>
+                {selectedWeek.days.map((day) => {
+                  const isSelected = selectedDateKey === day.dateKey;
                   return (
                     <Pressable
-                      key={`${week.week}-${index}`}
+                      key={day.dateKey}
                       style={styles.dayCell}
-                      onPress={() => setSelectedDayKey(key)}>
+                      onPress={() => setSelectedDateKey(day.dateKey)}>
                       <View style={styles.dayHeader}>
                         <View style={isSelected ? styles.selectedDayCircle : undefined}>
                           <Text
@@ -391,48 +492,53 @@ export default function CalendarScreen() {
                           </Text>
                         </View>
                       </View>
-                      <View style={styles.eventStack}>
-                        {visibleEvents.map((event, eventIndex) => (
-                          <View
-                            key={`${key}-${eventIndex}`}
-                            style={[styles.eventPill, { backgroundColor: event.color }]}>
-                            <Text
-                              style={[styles.eventText, { color: event.textColor ?? '#e05668' }]}>
-                              {event.label}
-                            </Text>
-                          </View>
-                        ))}
-                        {hiddenCount > 0 ? (
-                          <View style={styles.morePill}>
-                            <Text style={styles.moreText}>{`+${hiddenCount}`}</Text>
-                          </View>
-                        ) : null}
-                      </View>
                     </Pressable>
                   );
                 })}
               </View>
-            ))}
-          </View>
-        </View>
+              <View style={styles.weekList}>
+                {selectedWeek.days.map((day) => {
+                  const events = currentMonth.events[day.dateKey] ?? [];
+                  if (events.length === 0) return null;
+                  return (
+                    <View key={`week-${day.dateKey}`} style={styles.listDayBlock}>
+                      <Text style={styles.listDayLabel}>{getDayLabel(day.dateKey)}</Text>
+                      {events.map((event, index) => (
+                        <View key={`week-${day.dateKey}-${index}`} style={styles.listRow}>
+                          <View style={[styles.detailDot, { backgroundColor: event.color }]} />
+                          <Text style={styles.listText}>{event.label}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  );
+                })}
+                {selectedEvents.length === 0 ? (
+                  <Text style={styles.detailEmpty}>No appointments</Text>
+                ) : null}
+              </View>
+            </View>
+          ) : null}
 
-        {viewMode !== 'month' ? (
-          <View style={styles.detailPanel}>
-            <Text style={styles.detailTitle}>
-              {viewMode === 'week' ? 'Week view (fake data)' : 'List view (fake data)'}
-            </Text>
-            {selectedEvents.length === 0 ? (
-              <Text style={styles.detailEmpty}>No appointments</Text>
-            ) : (
-              selectedEvents.map((event, index) => (
-                <View key={`${selectedDayKey}-detail-${index}`} style={styles.detailRow}>
-                  <View style={[styles.detailDot, { backgroundColor: event.color }]} />
-                  <Text style={styles.detailText}>{event.label}</Text>
+          {viewMode === 'list' ? (
+            <FlatList
+              data={listDays.filter((day) => day.events.length > 0)}
+              keyExtractor={(item) => item.dateKey}
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={false}
+              renderItem={({ item }) => (
+                <View style={styles.listDayBlock}>
+                  <Text style={styles.listDayLabel}>{item.label}</Text>
+                  {item.events.map((event, index) => (
+                    <View key={`${item.dateKey}-${index}`} style={styles.listRow}>
+                      <View style={[styles.detailDot, { backgroundColor: event.color }]} />
+                      <Text style={styles.listText}>{event.label}</Text>
+                    </View>
+                  ))}
                 </View>
-              ))
-            )}
-          </View>
-        ) : null}
+              )}
+            />
+          ) : null}
+        </View>
 
         {showModeMenu ? (
           <>
@@ -595,7 +701,7 @@ const styles = StyleSheet.create({
   dayCell: {
     flex: 1,
     paddingHorizontal: 2,
-    minHeight: 86,
+    height: '100%',
   },
   dayHeader: {
     alignItems: 'center',
@@ -647,42 +753,39 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#6f6f6f',
   },
-  detailPanel: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    bottom: 140,
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000000',
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 6,
-  },
-  detailTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1b1b1b',
-    marginBottom: 10,
-  },
   detailEmpty: {
     fontSize: 13,
     color: '#8b8b8b',
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 4,
+    marginTop: 8,
   },
   detailDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
   },
-  detailText: {
+  weekList: {
+    paddingTop: 12,
+  },
+  listContent: {
+    paddingTop: 12,
+    paddingBottom: 140,
+  },
+  listDayBlock: {
+    marginBottom: 16,
+  },
+  listDayLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1b1b1b',
+    marginBottom: 6,
+  },
+  listRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 4,
+  },
+  listText: {
     fontSize: 14,
     color: '#1b1b1b',
   },
