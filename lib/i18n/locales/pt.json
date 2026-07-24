@@ -1,0 +1,59 @@
+{
+  "auth": {
+    "signIn": "Entrar",
+    "signInSubtitle": "Entre na sua conta",
+    "email": "E-mail",
+    "password": "Senha",
+    "invalidCredentials": "E-mail ou senha incorretos.",
+    "genericError": "Algo deu errado. Tente novamente."
+  },
+  "tabs": {
+    "calendar": "Agenda",
+    "list": "Lista",
+    "alerts": "Alertas",
+    "more": "Mais"
+  },
+  "calendar": {
+    "employee": "Funcionário",
+    "allStaff": "Toda a equipe",
+    "month": "Mês",
+    "week": "Semana",
+    "list": "Lista",
+    "weekLabel": "Semana {{number}}",
+    "today": "Hoje",
+    "noCompany": "Nenhuma empresa está vinculada à sua conta ainda.",
+    "retry": "Tentar novamente",
+    "noAppointmentsFound": "Nenhum agendamento encontrado.",
+    "noAppointmentsToday": "Nenhum agendamento neste dia.",
+    "failedToLoadAppointments": "Falha ao carregar agendamentos.",
+    "failedToLoadStaff": "Falha ao carregar a equipe.",
+    "untitledAppointment": "Agendamento",
+    "unknownClient": "Cliente desconhecido",
+    "unassignedStaff": "Não atribuído",
+    "monthsShort": ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"],
+    "monthsLong": [
+      "janeiro",
+      "fevereiro",
+      "março",
+      "abril",
+      "maio",
+      "junho",
+      "julho",
+      "agosto",
+      "setembro",
+      "outubro",
+      "novembro",
+      "dezembro"
+    ],
+    "weekdaysLong": ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"],
+    "weekdaysShort": ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"]
+  },
+  "profile": {
+    "signOut": "Sair",
+    "language": "Idioma"
+  },
+  "placeholders": {
+    "list": "Visualização em lista em breve",
+    "alerts": "Alertas em breve"
+  }
+}

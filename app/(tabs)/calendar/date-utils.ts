@@ -1,4 +1,26 @@
+import i18n from '@/lib/i18n';
+
 import { BASE_MONTH_INDEX, BASE_YEAR } from './constants';
+
+function weekdaysLong(): string[] {
+  return i18n.t('calendar.weekdaysLong', { returnObjects: true }) as string[];
+}
+
+function weekdaysShort(): string[] {
+  return i18n.t('calendar.weekdaysShort', { returnObjects: true }) as string[];
+}
+
+function monthsLong(): string[] {
+  return i18n.t('calendar.monthsLong', { returnObjects: true }) as string[];
+}
+
+function monthsShort(): string[] {
+  return i18n.t('calendar.monthsShort', { returnObjects: true }) as string[];
+}
+
+export function getMonthShortLabel(monthIndex: number) {
+  return monthsShort()[monthIndex];
+}
 
 export function toDateKey(date: Date) {
   const y = date.getFullYear();
@@ -48,42 +70,21 @@ export function getWeekOffsetFromBase(baseWeekStart: Date, dateKey: string) {
 
 export function getFullDateLabel(dateKey: string) {
   const date = new Date(dateKey);
-  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const monthNames = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-  return `${dayNames[date.getDay()]}, ${date.getDate()} ${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+  return `${weekdaysLong()[date.getDay()]}, ${date.getDate()} ${monthsLong()[date.getMonth()]} ${date.getFullYear()}`;
 }
 
 export function getListHeaderLabel(dateKey: string) {
   const date = new Date(dateKey);
-  const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  return `${weekdays[date.getDay()]}, ${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+  return `${weekdaysShort()[date.getDay()]}, ${date.getDate()} ${monthsShort()[date.getMonth()]} ${date.getFullYear()}`;
 }
 
 export function getWeekdayLong(date: Date) {
-  const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  return weekdays[date.getDay()];
+  return weekdaysLong()[date.getDay()];
 }
 
-export function getInitialsFromLabel(label: string) {
-  const parts = label
-    .replace(/[^a-zA-Z0-9 ]/g, ' ')
-    .split(' ')
-    .filter(Boolean);
-  if (parts.length === 0) return 'NA';
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+export function formatTime(iso: string) {
+  const date = new Date(iso);
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
 }

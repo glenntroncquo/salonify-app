@@ -1,0 +1,59 @@
+{
+  "auth": {
+    "signIn": "Inloggen",
+    "signInSubtitle": "Log in op je account",
+    "email": "E-mail",
+    "password": "Wachtwoord",
+    "invalidCredentials": "Onjuiste e-mail of wachtwoord.",
+    "genericError": "Er is iets misgegaan. Probeer het opnieuw."
+  },
+  "tabs": {
+    "calendar": "Agenda",
+    "list": "Lijst",
+    "alerts": "Meldingen",
+    "more": "Meer"
+  },
+  "calendar": {
+    "employee": "Medewerker",
+    "allStaff": "Alle medewerkers",
+    "month": "Maand",
+    "week": "Week",
+    "list": "Lijst",
+    "weekLabel": "Week {{number}}",
+    "today": "Vandaag",
+    "noCompany": "Er is nog geen bedrijf gekoppeld aan je account.",
+    "retry": "Opnieuw",
+    "noAppointmentsFound": "Geen afspraken gevonden.",
+    "noAppointmentsToday": "Geen afspraken op deze dag.",
+    "failedToLoadAppointments": "Kan afspraken niet laden.",
+    "failedToLoadStaff": "Kan medewerkers niet laden.",
+    "untitledAppointment": "Afspraak",
+    "unknownClient": "Onbekende klant",
+    "unassignedStaff": "Niet toegewezen",
+    "monthsShort": ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"],
+    "monthsLong": [
+      "januari",
+      "februari",
+      "maart",
+      "april",
+      "mei",
+      "juni",
+      "juli",
+      "augustus",
+      "september",
+      "oktober",
+      "november",
+      "december"
+    ],
+    "weekdaysLong": ["zondag", "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag"],
+    "weekdaysShort": ["zo", "ma", "di", "wo", "do", "vr", "za"]
+  },
+  "profile": {
+    "signOut": "Uitloggen",
+    "language": "Taal"
+  },
+  "placeholders": {
+    "list": "Lijstweergave komt binnenkort",
+    "alerts": "Meldingen komen binnenkort"
+  }
+}

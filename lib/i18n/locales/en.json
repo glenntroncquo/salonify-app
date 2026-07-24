@@ -1,0 +1,59 @@
+{
+  "auth": {
+    "signIn": "Sign In",
+    "signInSubtitle": "Sign in to your account",
+    "email": "Email",
+    "password": "Password",
+    "invalidCredentials": "Incorrect email or password.",
+    "genericError": "Something went wrong. Please try again."
+  },
+  "tabs": {
+    "calendar": "Calendar",
+    "list": "List",
+    "alerts": "Alerts",
+    "more": "More"
+  },
+  "calendar": {
+    "employee": "Employee",
+    "allStaff": "All staff",
+    "month": "Month",
+    "week": "Week",
+    "list": "List",
+    "weekLabel": "Week {{number}}",
+    "today": "Today",
+    "noCompany": "No company is linked to your account yet.",
+    "retry": "Retry",
+    "noAppointmentsFound": "No appointments found.",
+    "noAppointmentsToday": "No appointments on this day.",
+    "failedToLoadAppointments": "Failed to load appointments.",
+    "failedToLoadStaff": "Failed to load staff.",
+    "untitledAppointment": "Appointment",
+    "unknownClient": "Unknown client",
+    "unassignedStaff": "Unassigned",
+    "monthsShort": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+    "monthsLong": [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December"
+    ],
+    "weekdaysLong": ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+    "weekdaysShort": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+  },
+  "profile": {
+    "signOut": "Sign Out",
+    "language": "Language"
+  },
+  "placeholders": {
+    "list": "List view coming soon",
+    "alerts": "Alerts coming soon"
+  }
+}

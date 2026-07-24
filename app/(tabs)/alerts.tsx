@@ -1,10 +1,13 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 export default function AlertsScreen() {
+  const { t } = useTranslation();
+
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Alerts view placeholder</Text>
+      <Text style={styles.text}>{t('placeholders.alerts')}</Text>
     </View>
   );
 }

@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { DeviceEventEmitter } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { Colors } from '@/constants/theme';
@@ -9,6 +10,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const { t } = useTranslation();
 
   return (
     <Tabs
@@ -20,7 +22,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Calendar',
+          title: t('tabs.calendar'),
           tabBarIcon: ({ color }) => <MaterialIcons name="calendar-today" size={26} color={color} />,
           tabBarButton: (props) => (
             <HapticTab
@@ -45,21 +47,21 @@ export default function TabLayout() {
       <Tabs.Screen
         name="list"
         options={{
-          title: 'List',
+          title: t('tabs.list'),
           tabBarIcon: ({ color }) => <MaterialIcons name="view-list" size={26} color={color} />,
         }}
       />
       <Tabs.Screen
         name="alerts"
         options={{
-          title: 'Alerts',
+          title: t('tabs.alerts'),
           tabBarIcon: ({ color }) => <MaterialIcons name="notifications-none" size={26} color={color} />,
         }}
       />
       <Tabs.Screen
         name="more"
         options={{
-          title: 'More',
+          title: t('tabs.more'),
           tabBarIcon: ({ color }) => <MaterialIcons name="grid-view" size={26} color={color} />,
         }}
       />

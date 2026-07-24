@@ -1,10 +1,13 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 export default function ListScreen() {
+  const { t } = useTranslation();
+
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>List view placeholder</Text>
+      <Text style={styles.text}>{t('placeholders.list')}</Text>
     </View>
   );
 }

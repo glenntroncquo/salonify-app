@@ -1,0 +1,151 @@
+import React, { useState } from 'react';
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  StyleSheet,
+  TextInput,
+} from 'react-native';
+import { useTranslation } from 'react-i18next';
+
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { useAuth } from '@/contexts/auth-context';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+
+export default function LoginScreen() {
+  const { t } = useTranslation();
+  const { signIn } = useAuth();
+  const colorScheme = useColorScheme() ?? 'light';
+  const tint = Colors[colorScheme].tint;
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const canSubmit = email.trim().length > 0 && password.length > 0 && !isSubmitting;
+
+  const handleSubmit = async () => {
+    if (!canSubmit) return;
+    setError(null);
+    setIsSubmitting(true);
+
+    const { error } = await signIn(email.trim(), password);
+
+    if (error) {
+      setError(error.toLowerCase().includes('invalid login credentials') ? t('auth.invalidCredentials') : error);
+    }
+
+    setIsSubmitting(false);
+  };
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ThemedView style={styles.container}>
+        <ThemedText type="title" style={styles.title}>
+          Salonify
+        </ThemedText>
+        <ThemedText style={styles.subtitle}>{t('auth.signInSubtitle')}</ThemedText>
+
+        <TextInput
+          style={[
+            styles.input,
+            {
+              borderColor: colorScheme === 'dark' ? '#3a3d3e' : '#dcdfe1',
+              color: Colors[colorScheme].text,
+            },
+          ]}
+          placeholder={t('auth.email')}
+          placeholderTextColor={colorScheme === 'dark' ? '#9BA1A6' : '#687076'}
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="email-address"
+          textContentType="emailAddress"
+          value={email}
+          onChangeText={setEmail}
+          editable={!isSubmitting}
+        />
+
+        <TextInput
+          style={[
+            styles.input,
+            {
+              borderColor: colorScheme === 'dark' ? '#3a3d3e' : '#dcdfe1',
+              color: Colors[colorScheme].text,
+            },
+          ]}
+          placeholder={t('auth.password')}
+          placeholderTextColor={colorScheme === 'dark' ? '#9BA1A6' : '#687076'}
+          secureTextEntry
+          textContentType="password"
+          value={password}
+          onChangeText={setPassword}
+          editable={!isSubmitting}
+          onSubmitEditing={handleSubmit}
+        />
+
+        {error ? <ThemedText style={styles.error}>{error}</ThemedText> : null}
+
+        <Pressable
+          style={[styles.button, { backgroundColor: tint, opacity: canSubmit ? 1 : 0.5 }]}
+          onPress={handleSubmit}
+          disabled={!canSubmit}>
+          {isSubmitting ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <ThemedText style={styles.buttonText} lightColor="#fff" darkColor="#fff">
+              {t('auth.signIn')}
+            </ThemedText>
+          )}
+        </Pressable>
+      </ThemedView>
+    </KeyboardAvoidingView>
+  );
+}
+
+const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    gap: 12,
+  },
+  title: {
+    textAlign: 'center',
+  },
+  subtitle: {
+    textAlign: 'center',
+    marginBottom: 12,
+    opacity: 0.7,
+  },
+  input: {
+    height: 48,
+    borderWidth: StyleSheet.hairlineWidth * 2,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    fontSize: 16,
+  },
+  error: {
+    color: '#e5484d',
+    textAlign: 'center',
+  },
+  button: {
+    height: 48,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});

@@ -11,9 +11,20 @@ export type CalendarWeek = {
 };
 
 export type EventItem = {
+  appointmentId: string;
   label: string;
+  /** Saturated accent color — used for thin bars/dots. */
   color: string;
-  textColor?: string;
+  /** Pastel chip background, paired with textColor. */
+  bgColor: string;
+  /** Readable text color on top of bgColor. */
+  textColor: string;
+  clientName: string;
+  staffName: string;
+  staffId: string | null;
+  startTime: string;
+  endTime: string;
+  startISO: string;
 };
 
 export type MonthData = {
@@ -27,21 +38,15 @@ export type MonthData = {
   firstDateKey: string;
 };
 
-export type WeekAppointment = EventItem & {
-  startTime: string;
-  endTime: string;
-  allDay?: boolean;
-};
-
 export type WeekDayData = {
   dateKey: string;
   date: number;
   weekday: string;
   isSunday: boolean;
-  appointments: WeekAppointment[];
+  appointments: EventItem[];
 };
 
-export type ListRowItem = WeekAppointment & {
+export type ListRowItem = EventItem & {
   dateKey: string;
 };
 

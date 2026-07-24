@@ -5,6 +5,7 @@ import {
   FlatList,
   Pressable,
   Animated,
+  RefreshControl,
   ScrollView,
   SectionList,
   Text,
@@ -16,41 +17,44 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useNavigation } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 
-import {
-  BASE_MONTH_INDEX,
-  BASE_YEAR,
-  MONTH_LABELS,
-  WEEK_CENTER_INDEX,
-  WEEK_PAGE_COUNT,
-} from './calendar/constants';
+import { useAuth } from '@/contexts/auth-context';
+import { fetchAppointmentsForMonth, fetchStaff, AppointmentRow, StaffMember } from '@/lib/api/calendar';
+import { getInitialsFromLabel } from '@/lib/text';
+
+import { BASE_MONTH_INDEX, BASE_YEAR, WEEK_CENTER_INDEX, WEEK_PAGE_COUNT } from './calendar/constants';
 import {
   addDays,
   addMonths,
   getFullDateLabel,
   getISOWeekNumber,
   getListHeaderLabel,
+  getMonthShortLabel,
   getOffsetForDate,
   getWeekOffsetFromBase,
   getWeekStartMonday,
   getWeekdayLong,
-  getInitialsFromLabel,
   toDateKey,
 } from './calendar/date-utils';
-import { buildWeekAppointments, generateMonthData } from './calendar/mock-data';
+import { buildMonthData, groupAppointmentsByDateKey } from './calendar/calendar-data';
 import { ListEventRow } from './calendar/components/ListEventRow';
 import { ListSectionHeader } from './calendar/components/ListSectionHeader';
 import { styles } from './calendar/styles';
 import { EventItem, ListRowItem, ListSection, MonthData, WeekDayData } from './calendar/types';
 
 export default function CalendarScreen() {
+  const { t } = useTranslation();
   const { width, height } = useWindowDimensions();
   const gridWidth = width - 32;
+  const { companyId } = useAuth();
   const [headerHeight, setHeaderHeight] = React.useState(0);
   const [calendarAreaHeight, setCalendarAreaHeight] = React.useState(0);
   const calendarHeight = Math.max(320, calendarAreaHeight || height - headerHeight - 120);
   const weekRowFixedHeight = Math.max(84, Math.floor(calendarHeight / 7));
   const [showModeMenu, setShowModeMenu] = React.useState(false);
+  const [showStaffMenu, setShowStaffMenu] = React.useState(false);
   const [viewMode, setViewMode] = React.useState<'month' | 'week' | 'list'>('month');
   const [offsets, setOffsets] = React.useState([-2, -1, 0, 1, 2]);
   const [currentOffset, setCurrentOffset] = React.useState(0);
@@ -61,7 +65,7 @@ export default function CalendarScreen() {
     []
   );
   const [currentWeekIndex, setCurrentWeekIndex] = React.useState(WEEK_CENTER_INDEX);
-  const [selectedDateKey, setSelectedDateKey] = React.useState('2026-02-10');
+  const [selectedDateKey, setSelectedDateKey] = React.useState(() => toDateKey(new Date()));
   const [sheetVisible, setSheetVisible] = React.useState(false);
   const [sheetEvents, setSheetEvents] = React.useState<EventItem[]>([]);
   const [sheetDateLabel, setSheetDateLabel] = React.useState('');
@@ -71,13 +75,123 @@ export default function CalendarScreen() {
   const weekListRef = React.useRef<FlatList<number>>(null);
   const listSectionRef = React.useRef<SectionList<ListRowItem, ListSection>>(null);
   const weekProgrammaticScrollRef = React.useRef(false);
-  const monthCache = React.useRef(new Map<string, MonthData>()).current;
   const navigation = useNavigation();
   const offsetsRef = React.useRef(offsets);
   const viewModeRef = React.useRef(viewMode);
   const selectedDateKeyRef = React.useRef(selectedDateKey);
   const prevViewModeRef = React.useRef(viewMode);
   const listLoadTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [staffList, setStaffList] = React.useState<StaffMember[]>([]);
+  const [staffFilterId, setStaffFilterId] = React.useState<string | null>(null);
+  const [staffLoading, setStaffLoading] = React.useState(true);
+  const [refreshing, setRefreshing] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  // Appointments are fetched one calendar month at a time (see loadMonth
+  // below) rather than the whole company's history up front — cached here by
+  // "YYYY-MM" key. A ref because it's a cache, not something that should
+  // itself trigger renders; `loadingMonthKeys` (state) does that instead.
+  const monthDataRef = React.useRef(new Map<string, AppointmentRow[]>());
+  const inFlightMonthsRef = React.useRef(new Set<string>());
+  const [loadingMonthKeys, setLoadingMonthKeys] = React.useState<Set<string>>(new Set());
+
+  const monthKeyForOffset = React.useCallback((offset: number) => {
+    const { year, monthIndex } = addMonths(BASE_YEAR, BASE_MONTH_INDEX, offset);
+    return { year, monthIndex, key: `${year}-${String(monthIndex + 1).padStart(2, '0')}` };
+  }, []);
+
+  const loadMonth = React.useCallback(
+    async (offset: number, opts?: { force?: boolean }) => {
+      if (!companyId) return;
+      const { year, monthIndex, key } = monthKeyForOffset(offset);
+
+      if (inFlightMonthsRef.current.has(key)) return;
+      if (!opts?.force && monthDataRef.current.has(key)) return;
+
+      inFlightMonthsRef.current.add(key);
+      setLoadingMonthKeys((prev) => new Set(prev).add(key));
+
+      try {
+        const data = await fetchAppointmentsForMonth(companyId, year, monthIndex);
+        monthDataRef.current.set(key, data);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : t('calendar.failedToLoadAppointments'));
+      } finally {
+        inFlightMonthsRef.current.delete(key);
+        setLoadingMonthKeys((prev) => {
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        });
+      }
+    },
+    [companyId, monthKeyForOffset, t]
+  );
+
+  const loadStaff = React.useCallback(async () => {
+    if (!companyId) {
+      setStaffLoading(false);
+      return;
+    }
+    try {
+      const data = await fetchStaff(companyId);
+      setStaffList(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('calendar.failedToLoadStaff'));
+    } finally {
+      setStaffLoading(false);
+    }
+  }, [companyId, t]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      loadStaff();
+    }, [loadStaff])
+  );
+
+  const baseWeekStart = React.useMemo(() => getWeekStartMonday(new Date()), []);
+
+  // The set of month offsets the active view currently needs. Month view
+  // needs every preloaded pager offset; week view only needs the offset(s)
+  // the visible week's 7 days fall into (can be two, near a month boundary);
+  // list view needs its own small preloaded window.
+  const neededMonthOffsets = React.useMemo(() => {
+    if (viewMode === 'week') {
+      const weekOffset = weekOffsets[currentWeekIndex] ?? 0;
+      const weekStart = addDays(baseWeekStart, weekOffset * 7);
+      const offsetsSet = new Set<number>();
+      for (let i = 0; i < 7; i += 1) {
+        offsetsSet.add(getOffsetForDate(addDays(weekStart, i)));
+      }
+      return Array.from(offsetsSet);
+    }
+    if (viewMode === 'list') {
+      return listMonthOffsets;
+    }
+    return offsets;
+  }, [viewMode, weekOffsets, currentWeekIndex, baseWeekStart, listMonthOffsets, offsets]);
+
+  React.useEffect(() => {
+    neededMonthOffsets.forEach((offset) => {
+      loadMonth(offset);
+    });
+  }, [neededMonthOffsets, loadMonth]);
+
+  const handleRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    Promise.all([loadStaff(), ...neededMonthOffsets.map((offset) => loadMonth(offset, { force: true }))]).finally(() =>
+      setRefreshing(false)
+    );
+  }, [loadStaff, loadMonth, neededMonthOffsets]);
+
+  const isVisibleDataLoading = neededMonthOffsets.some((offset) => loadingMonthKeys.has(monthKeyForOffset(offset).key));
+
+  const selectedStaff = staffFilterId ? staffList.find((staff) => staff.id === staffFilterId) : undefined;
+  const selectedStaffName = selectedStaff
+    ? `${selectedStaff.first_name ?? ''} ${selectedStaff.last_name ?? ''}`.trim() || t('calendar.employee')
+    : t('calendar.allStaff');
 
   React.useEffect(() => {
     offsetsRef.current = offsets;
@@ -133,18 +247,14 @@ export default function CalendarScreen() {
   );
 
   const fetchMonthData = React.useCallback(
-    (offset: number) => {
-      const { year, monthIndex } = addMonths(BASE_YEAR, BASE_MONTH_INDEX, offset);
-      const key = `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
-      if (!monthCache.has(key)) {
-        monthCache.set(key, generateMonthData(year, monthIndex));
-      }
-      return monthCache.get(key)!;
+    (offset: number): MonthData => {
+      const { year, monthIndex, key } = monthKeyForOffset(offset);
+      const monthAppointments = monthDataRef.current.get(key) ?? [];
+      const eventsByDateKey = groupAppointmentsByDateKey(monthAppointments, staffFilterId);
+      return buildMonthData(year, monthIndex, eventsByDateKey);
     },
-    [monthCache]
+    [monthKeyForOffset, staffFilterId]
   );
-
-  const baseWeekStart = React.useMemo(() => getWeekStartMonday(new Date()), []);
 
   const fetchWeekData = React.useCallback(
     (weekOffset: number): WeekDayData[] => {
@@ -154,13 +264,12 @@ export default function CalendarScreen() {
         const dateKey = toDateKey(dayDate);
         const monthOffset = getOffsetForDate(dayDate);
         const monthData = fetchMonthData(monthOffset);
-        const baseEvents = monthData.events[dateKey] ?? [];
         return {
           dateKey,
           date: dayDate.getDate(),
           weekday: getWeekdayLong(dayDate),
           isSunday: dayDate.getDay() === 0,
-          appointments: buildWeekAppointments(baseEvents),
+          appointments: monthData.events[dateKey] ?? [],
         };
       });
     },
@@ -171,7 +280,7 @@ export default function CalendarScreen() {
   const currentWeekDays = fetchWeekData(currentWeekOffset);
   const activeDateForHeader =
     viewMode === 'week' ? new Date(currentWeekDays[0]?.dateKey ?? selectedDateKey) : new Date(selectedDateKey);
-  const activeMonthLabel = `${MONTH_LABELS[activeDateForHeader.getMonth()]} ${activeDateForHeader.getFullYear()}`;
+  const activeMonthLabel = `${getMonthShortLabel(activeDateForHeader.getMonth())} ${activeDateForHeader.getFullYear()}`;
 
   React.useEffect(() => {
     const monthData = fetchMonthData(currentOffset);
@@ -292,7 +401,7 @@ export default function CalendarScreen() {
             title: getListHeaderLabel(dateKey),
             dateKey,
             isToday: dateKey === todayKey,
-            data: buildWeekAppointments(monthData.events[dateKey] ?? []).map((item) => ({ ...item, dateKey })),
+            data: (monthData.events[dateKey] ?? []).map((item) => ({ ...item, dateKey })),
           }))
           .filter((section) => section.data.length > 0);
       });
@@ -318,7 +427,6 @@ export default function CalendarScreen() {
       if (offset === undefined) return;
 
       setCurrentOffset(offset);
-      fetchMonthData(offset);
 
       if (index <= 1) {
         const first = offsets[0];
@@ -335,7 +443,7 @@ export default function CalendarScreen() {
         setOffsets([...offsets, last + 1, last + 2, last + 3]);
       }
     },
-    [fetchMonthData, offsets]
+    [offsets]
   );
 
   const handleWeekChange = React.useCallback(
@@ -355,7 +463,7 @@ export default function CalendarScreen() {
   const selectedWeekNumber = React.useMemo(() => getISOWeekNumber(new Date(selectedDateKey)), [selectedDateKey]);
 
   const listKeyExtractor = React.useCallback(
-    (item: ListRowItem, index: number) => `${item.dateKey}-${item.startTime}-${index}`,
+    (item: ListRowItem, index: number) => `${item.appointmentId}-${index}`,
     []
   );
 
@@ -411,9 +519,9 @@ export default function CalendarScreen() {
                     </View>
 
                     <View style={styles.eventStack}>
-                      {visibleEvents.map((event, eventIndex) => (
-                        <View key={`${day.dateKey}-${eventIndex}`} style={[styles.eventPill, { backgroundColor: event.color }]}>
-                          <Text style={[styles.eventText, { color: event.textColor ?? '#e05668' }]} numberOfLines={1}>
+                      {visibleEvents.map((event) => (
+                        <View key={event.appointmentId} style={[styles.eventPill, { backgroundColor: event.bgColor }]}>
+                          <Text style={[styles.eventText, { color: event.textColor }]} numberOfLines={1}>
                             {event.label}
                           </Text>
                         </View>
@@ -439,195 +547,269 @@ export default function CalendarScreen() {
   const calendarTabCenterX = width / 8;
   const menuLeft = Math.max(12, calendarTabCenterX - menuWidth / 2);
 
+  const showInitialLoading = staffLoading && !error;
+  const showNoCompanyState = !staffLoading && !companyId;
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      <View style={styles.container}>
-        <View style={styles.scrollContent}>
-          <View style={styles.headerBlock} onLayout={(event) => setHeaderHeight(event.nativeEvent.layout.height)}>
-            <View style={styles.headerRow}>
-              <View style={styles.monthRow}>
-                <Text style={styles.monthText}>{activeMonthLabel}</Text>
-                <MaterialIcons name="keyboard-arrow-down" size={22} color="#9a9a9a" />
-              </View>
-              <View style={styles.headerIcons}>
-                <TouchableOpacity style={styles.iconButton}>
-                  <MaterialIcons name="star-border" size={22} color="#1b1b1b" />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.iconButton}>
-                  <MaterialIcons name="view-agenda" size={22} color="#1b1b1b" />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <View style={styles.employeeRow}>
-              <Text style={styles.employeeLabel}>Employee</Text>
-              <View style={styles.employeeChip}>
-                <View style={styles.employeeAvatar} />
-                <Text style={styles.employeeName}>All staff</Text>
-                <MaterialIcons name="expand-more" size={18} color="#8b8b8b" />
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.calendarArea} onLayout={(event) => setCalendarAreaHeight(event.nativeEvent.layout.height)}>
-            {viewMode === 'month' ? (
-              <FlatList
-                ref={listRef}
-                data={offsets}
-                keyExtractor={(item) => `month-${item}`}
-                horizontal
-                pagingEnabled
-                initialScrollIndex={offsets.indexOf(0)}
-                showsHorizontalScrollIndicator={false}
-                style={[styles.monthPager, { height: calendarHeight }]}
-                getItemLayout={(_, index) => ({ length: gridWidth, offset: gridWidth * index, index })}
-                onMomentumScrollEnd={(event) => {
-                  const index = Math.round(event.nativeEvent.contentOffset.x / gridWidth);
-                  handleMonthChange(index);
-                }}
-                renderItem={({ item }) => (
-                  <View style={{ width: gridWidth, height: calendarHeight }}>{renderMonthGrid(fetchMonthData(item))}</View>
-                )}
-              />
-            ) : null}
-
-            {viewMode === 'week' ? (
-              <FlatList
-                ref={weekListRef}
-                data={weekOffsets}
-                keyExtractor={(item) => `week-${item}`}
-                horizontal
-                pagingEnabled
-                initialScrollIndex={WEEK_CENTER_INDEX}
-                showsHorizontalScrollIndicator={false}
-                style={styles.weekPager}
-                getItemLayout={(_, index) => ({ length: gridWidth, offset: gridWidth * index, index })}
-                decelerationRate="fast"
-                disableIntervalMomentum
-                onMomentumScrollEnd={(event) => {
-                  const index = Math.round(event.nativeEvent.contentOffset.x / gridWidth);
-                  handleWeekChange(index);
-                }}
-                renderItem={({ item }) => {
-                  const weekDays = fetchWeekData(item);
-                  return (
-                    <View style={[styles.weekAgendaPage, { width: gridWidth, height: calendarHeight }]}> 
-                      {weekDays.map((day) => (
-                        <View key={day.dateKey} style={[styles.weekAgendaDay, { height: weekRowFixedHeight }]}>
-                          <Pressable
-                            style={styles.weekAgendaDateCol}
-                            onPress={() => {
-                              if (selectedDateKey === day.dateKey) {
-                                setSheetEvents(day.appointments);
-                                setSheetDateLabel(day.dateKey);
-                                setSheetVisible(true);
-                                return;
-                              }
-                              setSelectedDateKey(day.dateKey);
-                            }}>
-                            <Text style={[styles.weekAgendaDate, day.isSunday && styles.dayNumberSunday]}>{day.date}</Text>
-                            <Text style={styles.weekAgendaWeekday}>{day.weekday}</Text>
-                          </Pressable>
-                          <ScrollView style={styles.weekAgendaEvents} nestedScrollEnabled directionalLockEnabled showsVerticalScrollIndicator>
-                            {day.appointments.map((event, index) => (
-                              <View key={`${day.dateKey}-${index}`} style={styles.weekAgendaEventRow}>
-                                <View style={[styles.weekAgendaColorBar, { backgroundColor: event.color }]} />
-                                <Text
-                                  style={[
-                                    styles.weekAgendaTime,
-                                    {
-                                      color: !event.textColor || event.textColor === '#ffffff' ? '#8b8b8b' : event.textColor,
-                                    },
-                                  ]}>
-                                  {event.startTime}
-                                </Text>
-                                <Text style={styles.weekAgendaTitle}>{event.label}</Text>
-                                <View style={styles.weekAgendaInitialCircle}>
-                                  <Text style={styles.weekAgendaInitialText}>{getInitialsFromLabel(event.label)}</Text>
-                                </View>
-                              </View>
-                            ))}
-                          </ScrollView>
-                        </View>
-                      ))}
-                    </View>
-                  );
-                }}
-              />
-            ) : null}
-
-            {viewMode === 'list' ? (
-              <SectionList
-                ref={listSectionRef}
-                sections={listSections}
-                keyExtractor={listKeyExtractor}
-                stickySectionHeadersEnabled
-                showsVerticalScrollIndicator={false}
-                style={styles.listFullBleed}
-                contentContainerStyle={styles.listContent}
-                initialNumToRender={12}
-                maxToRenderPerBatch={8}
-                updateCellsBatchingPeriod={50}
-                windowSize={7}
-                removeClippedSubviews
-                onEndReachedThreshold={0.35}
-                onEndReached={handleListLoadMore}
-                ListFooterComponent={
-                  listLoadingMore ? (
-                    <View style={styles.listLoadingFooter}>
-                      <ActivityIndicator size="small" color="#8b8b8b" />
-                    </View>
-                  ) : null
-                }
-                renderSectionHeader={renderListHeader}
-                renderItem={renderListItem}
-              />
-            ) : null}
-          </View>
+      {showInitialLoading ? (
+        <View style={styles.stateContainer}>
+          <ActivityIndicator size="large" color="#1b1b1b" />
         </View>
+      ) : showNoCompanyState ? (
+        <View style={styles.stateContainer}>
+          <Text style={styles.stateText}>{t('calendar.noCompany')}</Text>
+        </View>
+      ) : (
+        <View style={styles.container}>
+          <View style={styles.scrollContent}>
+            <View style={styles.headerBlock} onLayout={(event) => setHeaderHeight(event.nativeEvent.layout.height)}>
+              <View style={styles.headerRow}>
+                <View style={styles.monthRow}>
+                  <Text style={styles.monthText}>{activeMonthLabel}</Text>
+                  <MaterialIcons name="keyboard-arrow-down" size={22} color="#9a9a9a" />
+                </View>
+                <View style={styles.headerIcons}>
+                  <TouchableOpacity style={styles.iconButton} onPress={handleRefresh} disabled={refreshing}>
+                    {refreshing || isVisibleDataLoading ? (
+                      <ActivityIndicator size="small" color="#1b1b1b" />
+                    ) : (
+                      <MaterialIcons name="refresh" size={20} color="#1b1b1b" />
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.iconButton}>
+                    <MaterialIcons name="view-agenda" size={22} color="#1b1b1b" />
+                  </TouchableOpacity>
+                </View>
+              </View>
 
-        {showModeMenu ? (
-          <>
-            <Pressable style={styles.menuOverlay} onPress={() => setShowModeMenu(false)} />
-            <View style={[styles.modeMenu, { left: menuLeft, width: menuWidth }]}> 
-              <Pressable
-                style={styles.modeItemActive}
-                onPress={() => {
-                  setViewMode('month');
-                  setShowModeMenu(false);
-                }}>
-                <MaterialIcons name="calendar-today" size={20} color="#1b1b1b" />
-                <Text style={styles.modeText}>Month</Text>
-                {viewMode === 'month' ? <MaterialIcons name="check" size={20} color="#20b87b" /> : null}
-              </Pressable>
-              <Pressable
-                style={styles.modeItem}
-                onPress={() => {
-                  setViewMode('week');
-                  setShowModeMenu(false);
-                }}>
-                <MaterialIcons name="view-week" size={20} color="#1b1b1b" />
-                <Text style={styles.modeText}>Week</Text>
-                {viewMode === 'week' ? <MaterialIcons name="check" size={20} color="#20b87b" /> : null}
-              </Pressable>
-              <Pressable
-                style={styles.modeItem}
-                onPress={() => {
-                  setViewMode('list');
-                  setShowModeMenu(false);
-                }}>
-                <MaterialIcons name="view-list" size={20} color="#1b1b1b" />
-                <Text style={styles.modeText}>List</Text>
-                {viewMode === 'list' ? <MaterialIcons name="check" size={20} color="#20b87b" /> : null}
-              </Pressable>
+              {error ? (
+                <View style={styles.errorBanner}>
+                  <Text style={styles.errorBannerText} numberOfLines={2}>
+                    {error}
+                  </Text>
+                  <Pressable onPress={handleRefresh}>
+                    <Text style={styles.errorBannerRetry}>{t('calendar.retry')}</Text>
+                  </Pressable>
+                </View>
+              ) : null}
+
+              <View style={styles.employeeRow}>
+                <Text style={styles.employeeLabel}>{t('calendar.employee')}</Text>
+                <Pressable style={styles.employeeChip} onPress={() => setShowStaffMenu((prev) => !prev)}>
+                  <View style={styles.employeeAvatar}>
+                    <Text style={styles.staffMenuAvatarText}>{getInitialsFromLabel(selectedStaffName)}</Text>
+                  </View>
+                  <Text style={styles.employeeName}>{selectedStaffName}</Text>
+                  <MaterialIcons name="expand-more" size={18} color="#8b8b8b" />
+                </Pressable>
+              </View>
             </View>
-          </>
-        ) : null}
 
-        <TouchableOpacity style={styles.fab}>
-          <MaterialIcons name="add" size={26} color="#1b1b1b" />
-        </TouchableOpacity>
-      </View>
+            <View style={styles.calendarArea} onLayout={(event) => setCalendarAreaHeight(event.nativeEvent.layout.height)}>
+              {viewMode === 'month' ? (
+                <FlatList
+                  ref={listRef}
+                  data={offsets}
+                  keyExtractor={(item) => `month-${item}`}
+                  horizontal
+                  pagingEnabled
+                  initialScrollIndex={offsets.indexOf(0)}
+                  showsHorizontalScrollIndicator={false}
+                  style={[styles.monthPager, { height: calendarHeight }]}
+                  getItemLayout={(_, index) => ({ length: gridWidth, offset: gridWidth * index, index })}
+                  onMomentumScrollEnd={(event) => {
+                    const index = Math.round(event.nativeEvent.contentOffset.x / gridWidth);
+                    handleMonthChange(index);
+                  }}
+                  renderItem={({ item }) => (
+                    <View style={{ width: gridWidth, height: calendarHeight }}>{renderMonthGrid(fetchMonthData(item))}</View>
+                  )}
+                />
+              ) : null}
+
+              {viewMode === 'week' ? (
+                <FlatList
+                  ref={weekListRef}
+                  data={weekOffsets}
+                  keyExtractor={(item) => `week-${item}`}
+                  horizontal
+                  pagingEnabled
+                  initialScrollIndex={WEEK_CENTER_INDEX}
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.weekPager}
+                  getItemLayout={(_, index) => ({ length: gridWidth, offset: gridWidth * index, index })}
+                  decelerationRate="fast"
+                  disableIntervalMomentum
+                  onMomentumScrollEnd={(event) => {
+                    const index = Math.round(event.nativeEvent.contentOffset.x / gridWidth);
+                    handleWeekChange(index);
+                  }}
+                  renderItem={({ item }) => {
+                    const weekDays = fetchWeekData(item);
+                    return (
+                      <View style={[styles.weekAgendaPage, { width: gridWidth, height: calendarHeight }]}>
+                        {weekDays.map((day) => (
+                          <View key={day.dateKey} style={[styles.weekAgendaDay, { height: weekRowFixedHeight }]}>
+                            <Pressable
+                              style={styles.weekAgendaDateCol}
+                              onPress={() => {
+                                if (selectedDateKey === day.dateKey) {
+                                  setSheetEvents(day.appointments);
+                                  setSheetDateLabel(day.dateKey);
+                                  setSheetVisible(true);
+                                  return;
+                                }
+                                setSelectedDateKey(day.dateKey);
+                              }}>
+                              <Text style={[styles.weekAgendaDate, day.isSunday && styles.dayNumberSunday]}>{day.date}</Text>
+                              <Text style={styles.weekAgendaWeekday}>{day.weekday}</Text>
+                            </Pressable>
+                            <ScrollView style={styles.weekAgendaEvents} nestedScrollEnabled directionalLockEnabled showsVerticalScrollIndicator>
+                              {day.appointments.map((event) => (
+                                <View key={event.appointmentId} style={styles.weekAgendaEventRow}>
+                                  <View style={[styles.weekAgendaColorBar, { backgroundColor: event.color }]} />
+                                  <Text style={styles.weekAgendaTime}>{event.startTime}</Text>
+                                  <Text style={styles.weekAgendaTitle} numberOfLines={1}>
+                                    {event.label}
+                                  </Text>
+                                  <View style={styles.weekAgendaInitialCircle}>
+                                    <Text style={styles.weekAgendaInitialText}>{getInitialsFromLabel(event.staffName)}</Text>
+                                  </View>
+                                </View>
+                              ))}
+                            </ScrollView>
+                          </View>
+                        ))}
+                      </View>
+                    );
+                  }}
+                />
+              ) : null}
+
+              {viewMode === 'list' ? (
+                <SectionList
+                  ref={listSectionRef}
+                  sections={listSections}
+                  keyExtractor={listKeyExtractor}
+                  stickySectionHeadersEnabled
+                  showsVerticalScrollIndicator={false}
+                  style={styles.listFullBleed}
+                  contentContainerStyle={styles.listContent}
+                  initialNumToRender={12}
+                  maxToRenderPerBatch={8}
+                  updateCellsBatchingPeriod={50}
+                  windowSize={7}
+                  removeClippedSubviews
+                  onEndReachedThreshold={0.35}
+                  onEndReached={handleListLoadMore}
+                  refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+                  ListFooterComponent={
+                    listLoadingMore ? (
+                      <View style={styles.listLoadingFooter}>
+                        <ActivityIndicator size="small" color="#8b8b8b" />
+                      </View>
+                    ) : null
+                  }
+                  ListEmptyComponent={
+                    <View style={styles.stateContainer}>
+                      {isVisibleDataLoading ? (
+                        <ActivityIndicator color="#8b8b8b" />
+                      ) : (
+                        <Text style={styles.stateText}>{t('calendar.noAppointmentsFound')}</Text>
+                      )}
+                    </View>
+                  }
+                  renderSectionHeader={renderListHeader}
+                  renderItem={renderListItem}
+                />
+              ) : null}
+            </View>
+          </View>
+
+          {showModeMenu ? (
+            <>
+              <Pressable style={styles.menuOverlay} onPress={() => setShowModeMenu(false)} />
+              <View style={[styles.modeMenu, { left: menuLeft, width: menuWidth }]}>
+                <Pressable
+                  style={styles.modeItemActive}
+                  onPress={() => {
+                    setViewMode('month');
+                    setShowModeMenu(false);
+                  }}>
+                  <MaterialIcons name="calendar-today" size={20} color="#1b1b1b" />
+                  <Text style={styles.modeText}>{t('calendar.month')}</Text>
+                  {viewMode === 'month' ? <MaterialIcons name="check" size={20} color="#20b87b" /> : null}
+                </Pressable>
+                <Pressable
+                  style={styles.modeItem}
+                  onPress={() => {
+                    setViewMode('week');
+                    setShowModeMenu(false);
+                  }}>
+                  <MaterialIcons name="view-week" size={20} color="#1b1b1b" />
+                  <Text style={styles.modeText}>{t('calendar.week')}</Text>
+                  {viewMode === 'week' ? <MaterialIcons name="check" size={20} color="#20b87b" /> : null}
+                </Pressable>
+                <Pressable
+                  style={styles.modeItem}
+                  onPress={() => {
+                    setViewMode('list');
+                    setShowModeMenu(false);
+                  }}>
+                  <MaterialIcons name="view-list" size={20} color="#1b1b1b" />
+                  <Text style={styles.modeText}>{t('calendar.list')}</Text>
+                  {viewMode === 'list' ? <MaterialIcons name="check" size={20} color="#20b87b" /> : null}
+                </Pressable>
+              </View>
+            </>
+          ) : null}
+
+          {showStaffMenu ? (
+            <>
+              <Pressable style={styles.menuOverlay} onPress={() => setShowStaffMenu(false)} />
+              <View style={styles.staffMenu}>
+                <ScrollView>
+                  <Pressable
+                    style={styles.staffMenuItem}
+                    onPress={() => {
+                      setStaffFilterId(null);
+                      setShowStaffMenu(false);
+                    }}>
+                    <View style={styles.staffMenuAvatar}>
+                      <MaterialIcons name="groups" size={14} color="#4a4a4a" />
+                    </View>
+                    <Text style={styles.staffMenuName}>{t('calendar.allStaff')}</Text>
+                    {staffFilterId === null ? <MaterialIcons name="check" size={18} color="#20b87b" /> : null}
+                  </Pressable>
+                  {staffList.map((staff) => {
+                    const name = `${staff.first_name ?? ''} ${staff.last_name ?? ''}`.trim() || t('calendar.employee');
+                    return (
+                      <Pressable
+                        key={staff.id}
+                        style={styles.staffMenuItem}
+                        onPress={() => {
+                          setStaffFilterId(staff.id);
+                          setShowStaffMenu(false);
+                        }}>
+                        <View style={styles.staffMenuAvatar}>
+                          <Text style={styles.staffMenuAvatarText}>{getInitialsFromLabel(name)}</Text>
+                        </View>
+                        <Text style={styles.staffMenuName}>{name}</Text>
+                        {staffFilterId === staff.id ? <MaterialIcons name="check" size={18} color="#20b87b" /> : null}
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            </>
+          ) : null}
+
+          <TouchableOpacity style={styles.fab}>
+            <MaterialIcons name="add" size={26} color="#1b1b1b" />
+          </TouchableOpacity>
+        </View>
+      )}
 
       <Modal transparent animationType="none" visible={sheetMounted} onRequestClose={() => setSheetVisible(false)}>
         <Pressable style={styles.sheetOverlay} onPress={() => setSheetVisible(false)}>
@@ -661,24 +843,34 @@ export default function CalendarScreen() {
               <View style={styles.sheetHeader}>
                 <View>
                   <Text style={styles.sheetTitle}>{getFullDateLabel(sheetDateLabel || selectedDateKey)}</Text>
-                  <Text style={styles.sheetSubtitle}>Week {selectedWeekNumber}</Text>
-                </View>
-                <View style={styles.sheetAddButton}>
-                  <MaterialIcons name="add" size={18} color="#ffffff" />
+                  <Text style={styles.sheetSubtitle}>{t('calendar.weekLabel', { number: selectedWeekNumber })}</Text>
                 </View>
               </View>
               <ScrollView contentContainerStyle={styles.sheetList} showsVerticalScrollIndicator={false}>
-                {sheetEvents.map((event, index) => (
-                  <View key={`${sheetDateLabel}-${index}`} style={styles.sheetRow}>
-                    <View style={[styles.sheetLine, { backgroundColor: event.color }]} />
-                    <View style={styles.sheetRowContent}>
-                      <Text style={styles.sheetTime}>09:30</Text>
-                      <Text style={styles.sheetTimeMuted}>10:30</Text>
+                {sheetEvents.length === 0 ? (
+                  <Text style={styles.stateText}>{t('calendar.noAppointmentsToday')}</Text>
+                ) : (
+                  sheetEvents.map((event) => (
+                    <View key={event.appointmentId} style={styles.sheetRow}>
+                      <View style={[styles.sheetLine, { backgroundColor: event.color }]} />
+                      <View style={styles.sheetRowContent}>
+                        <Text style={styles.sheetTime}>{event.startTime}</Text>
+                        <Text style={styles.sheetTimeMuted}>{event.endTime}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.sheetEventText} numberOfLines={1}>
+                          {event.label}
+                        </Text>
+                        <Text style={styles.sheetEventSubtitle} numberOfLines={1}>
+                          {event.clientName} · {event.staffName}
+                        </Text>
+                      </View>
+                      <View style={styles.sheetAvatar}>
+                        <Text style={styles.staffMenuAvatarText}>{getInitialsFromLabel(event.staffName)}</Text>
+                      </View>
                     </View>
-                    <Text style={styles.sheetEventText}>{event.label}</Text>
-                    <View style={styles.sheetAvatar} />
-                  </View>
-                ))}
+                  ))
+                )}
               </ScrollView>
             </Pressable>
           </Animated.View>
