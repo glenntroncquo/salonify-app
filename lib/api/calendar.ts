@@ -97,3 +97,17 @@ export async function fetchStaff(companyId: string): Promise<StaffMember[]> {
   if (error) throw error;
   return data ?? [];
 }
+
+/** Appointment history for a single client, newest first (for the client detail screen). */
+export async function fetchClientAppointments(clientId: string, companyId: string): Promise<AppointmentRow[]> {
+  const { data, error } = await supabase
+    .from('appointment')
+    .select(APPOINTMENT_SELECT)
+    .eq('company_id', companyId)
+    .eq('client_id', clientId)
+    .eq('is_canceled', false)
+    .order('start', { ascending: false });
+
+  if (error) throw error;
+  return (data as unknown as AppointmentRow[]) ?? [];
+}

@@ -5,7 +5,7 @@ import { COLOR_BG_MAP, COLOR_MAP, COLOR_TEXT_MAP, mapTreatmentColorToEventColor 
 import { formatTime, getISOWeekNumber, getMonthShortLabel, toDateKey } from './date-utils';
 import { EventItem, MonthData } from './types';
 
-function appointmentToEvent(appointment: AppointmentRow): EventItem {
+export function appointmentToEvent(appointment: AppointmentRow): EventItem {
   const treatments =
     appointment.appointment_treatment?.length > 0
       ? appointment.appointment_treatment.map((at) => at.treatment)

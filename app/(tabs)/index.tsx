@@ -16,13 +16,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useNavigation } from 'expo-router';
+import { useNavigation, useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 
+import { StaffAvatar } from '@/components/staff-avatar';
 import { useAuth } from '@/contexts/auth-context';
 import { fetchAppointmentsForMonth, fetchStaff, AppointmentRow, StaffMember } from '@/lib/api/calendar';
-import { getInitialsFromLabel } from '@/lib/text';
 
 import { BASE_MONTH_INDEX, BASE_YEAR, WEEK_CENTER_INDEX, WEEK_PAGE_COUNT } from './calendar/constants';
 import {
@@ -76,6 +76,7 @@ export default function CalendarScreen() {
   const listSectionRef = React.useRef<SectionList<ListRowItem, ListSection>>(null);
   const weekProgrammaticScrollRef = React.useRef(false);
   const navigation = useNavigation();
+  const router = useRouter();
   const offsetsRef = React.useRef(offsets);
   const viewModeRef = React.useRef(viewMode);
   const selectedDateKeyRef = React.useRef(selectedDateKey);
@@ -193,6 +194,12 @@ export default function CalendarScreen() {
     ? `${selectedStaff.first_name ?? ''} ${selectedStaff.last_name ?? ''}`.trim() || t('calendar.employee')
     : t('calendar.allStaff');
 
+  const staffImageById = React.useMemo(() => {
+    const map = new Map<string, string | null>();
+    staffList.forEach((staff) => map.set(staff.id, staff.image_path));
+    return map;
+  }, [staffList]);
+
   React.useEffect(() => {
     offsetsRef.current = offsets;
   }, [offsets]);
@@ -236,6 +243,13 @@ export default function CalendarScreen() {
     });
     return () => subscription.remove();
   }, []);
+
+  React.useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener('calendarRefreshAppointments', () => {
+      handleRefresh();
+    });
+    return () => subscription.remove();
+  }, [handleRefresh]);
 
   React.useEffect(
     () => () => {
@@ -597,9 +611,7 @@ export default function CalendarScreen() {
               <View style={styles.employeeRow}>
                 <Text style={styles.employeeLabel}>{t('calendar.employee')}</Text>
                 <Pressable style={styles.employeeChip} onPress={() => setShowStaffMenu((prev) => !prev)}>
-                  <View style={styles.employeeAvatar}>
-                    <Text style={styles.staffMenuAvatarText}>{getInitialsFromLabel(selectedStaffName)}</Text>
-                  </View>
+                  <StaffAvatar imagePath={selectedStaff?.image_path} name={selectedStaffName} size={26} fontSize={9} />
                   <Text style={styles.employeeName}>{selectedStaffName}</Text>
                   <MaterialIcons name="expand-more" size={18} color="#8b8b8b" />
                 </Pressable>
@@ -673,9 +685,12 @@ export default function CalendarScreen() {
                                   <Text style={styles.weekAgendaTitle} numberOfLines={1}>
                                     {event.label}
                                   </Text>
-                                  <View style={styles.weekAgendaInitialCircle}>
-                                    <Text style={styles.weekAgendaInitialText}>{getInitialsFromLabel(event.staffName)}</Text>
-                                  </View>
+                                  <StaffAvatar
+                                    imagePath={staffImageById.get(event.staffId ?? '')}
+                                    name={event.staffName}
+                                    size={18}
+                                    fontSize={8}
+                                  />
                                 </View>
                               ))}
                             </ScrollView>
@@ -792,9 +807,7 @@ export default function CalendarScreen() {
                           setStaffFilterId(staff.id);
                           setShowStaffMenu(false);
                         }}>
-                        <View style={styles.staffMenuAvatar}>
-                          <Text style={styles.staffMenuAvatarText}>{getInitialsFromLabel(name)}</Text>
-                        </View>
+                        <StaffAvatar imagePath={staff.image_path} name={name} size={22} fontSize={9} />
                         <Text style={styles.staffMenuName}>{name}</Text>
                         {staffFilterId === staff.id ? <MaterialIcons name="check" size={18} color="#20b87b" /> : null}
                       </Pressable>
@@ -805,7 +818,9 @@ export default function CalendarScreen() {
             </>
           ) : null}
 
-          <TouchableOpacity style={styles.fab}>
+          <TouchableOpacity
+            style={styles.fab}
+            onPress={() => router.push({ pathname: '/appointment-new', params: { date: selectedDateKey } })}>
             <MaterialIcons name="add" size={26} color="#1b1b1b" />
           </TouchableOpacity>
         </View>
@@ -865,9 +880,20 @@ export default function CalendarScreen() {
                           {event.clientName} · {event.staffName}
                         </Text>
                       </View>
-                      <View style={styles.sheetAvatar}>
-                        <Text style={styles.staffMenuAvatarText}>{getInitialsFromLabel(event.staffName)}</Text>
-                      </View>
+                      <StaffAvatar
+                        imagePath={staffImageById.get(event.staffId ?? '')}
+                        name={event.staffName}
+                        size={32}
+                        backgroundColor="#e4d5c8"
+                        fontSize={9}
+                      />
+                      <TouchableOpacity
+                        style={styles.sheetCheckoutButton}
+                        onPress={() =>
+                          router.push({ pathname: '/checkout/[appointmentId]', params: { appointmentId: event.appointmentId } })
+                        }>
+                        <MaterialIcons name="point-of-sale" size={20} color="#1b1b1b" />
+                      </TouchableOpacity>
                     </View>
                   ))
                 )}

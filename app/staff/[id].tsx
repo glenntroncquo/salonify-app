@@ -1,0 +1,248 @@
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
+
+import { StaffAvatar } from '@/components/staff-avatar';
+import { fetchStaffMember, Staff, updateStaff } from '@/lib/api/staff';
+
+export default function StaffDetailScreen() {
+  const { t } = useTranslation();
+  const router = useRouter();
+  const { id } = useLocalSearchParams<{ id: string }>();
+
+  const [staff, setStaff] = React.useState<Staff | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [saving, setSaving] = React.useState(false);
+
+  const [firstName, setFirstName] = React.useState('');
+  const [lastName, setLastName] = React.useState('');
+  const [email, setEmail] = React.useState('');
+  const [phone, setPhone] = React.useState('');
+  const [role, setRole] = React.useState('');
+  const [specialization, setSpecialization] = React.useState('');
+  const [status, setStatus] = React.useState('');
+
+  const load = React.useCallback(async () => {
+    if (!id) {
+      setLoading(false);
+      return;
+    }
+    try {
+      const data = await fetchStaffMember(id);
+      setStaff(data);
+      if (data) {
+        setFirstName(data.first_name ?? '');
+        setLastName(data.last_name ?? '');
+        setEmail(data.email ?? '');
+        setPhone(data.phone ?? '');
+        setRole(data.role ?? '');
+        setSpecialization(data.specialization ?? '');
+        setStatus(data.status ?? '');
+      }
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('staff.failedToLoad'));
+    } finally {
+      setLoading(false);
+    }
+  }, [id, t]);
+
+  React.useEffect(() => {
+    load();
+  }, [load]);
+
+  const handleSave = async () => {
+    if (!id || !email.trim()) return;
+    setSaving(true);
+    try {
+      await updateStaff(id, {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        role: role.trim(),
+        specialization: specialization.trim(),
+        status: status.trim(),
+      });
+      router.back();
+    } catch {
+      setError(t('staff.failedToSave'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const name = `${firstName} ${lastName}`.trim() || staff?.email || '';
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+        <View style={styles.stateContainer}>
+          <ActivityIndicator size="large" color="#1b1b1b" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
+      <View style={styles.header}>
+        <Pressable onPress={() => router.back()} hitSlop={8}>
+          <MaterialIcons name="arrow-back" size={24} color="#1b1b1b" />
+        </Pressable>
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {name || t('staff.title')}
+        </Text>
+        <Pressable onPress={handleSave} disabled={saving || !email.trim()} hitSlop={8}>
+          {saving ? (
+            <ActivityIndicator size="small" color="#1b1b1b" />
+          ) : (
+            <Text style={[styles.saveText, !email.trim() && styles.saveTextDisabled]}>{t('client.save')}</Text>
+          )}
+        </Pressable>
+      </View>
+
+      {error ? (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorBannerText}>{error}</Text>
+        </View>
+      ) : null}
+
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <View style={styles.profileSection}>
+          <StaffAvatar imagePath={staff?.image_path} name={name} size={72} fontSize={24} />
+        </View>
+
+        <View style={styles.section}>
+          <TextInput style={styles.input} placeholder={t('client.firstName')} value={firstName} onChangeText={setFirstName} />
+          <TextInput style={styles.input} placeholder={t('client.lastName')} value={lastName} onChangeText={setLastName} />
+          <TextInput
+            style={styles.input}
+            placeholder={t('client.email')}
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+          <TextInput
+            style={styles.input}
+            placeholder={t('client.phone')}
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+          />
+          <TextInput style={styles.input} placeholder={t('staff.role')} value={role} onChangeText={setRole} />
+          <TextInput
+            style={styles.input}
+            placeholder={t('staff.specialization')}
+            value={specialization}
+            onChangeText={setSpecialization}
+          />
+          <TextInput style={styles.input} placeholder={t('staff.status')} value={status} onChangeText={setStatus} />
+        </View>
+
+        <View style={styles.section}>
+          <Pressable
+            style={styles.navRow}
+            onPress={() => router.push({ pathname: '/staff/[id]/availability', params: { id } })}>
+            <Text style={styles.navRowText}>{t('staff.availability')}</Text>
+            <MaterialIcons name="chevron-right" size={20} color="#c6c6c6" />
+          </Pressable>
+          <Pressable style={styles.navRow} onPress={() => router.push({ pathname: '/staff/[id]/time-off', params: { id } })}>
+            <Text style={styles.navRowText}>{t('staff.timeOff')}</Text>
+            <MaterialIcons name="chevron-right" size={20} color="#c6c6c6" />
+          </Pressable>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1b1b1b',
+  },
+  saveText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#20b87b',
+  },
+  saveTextDisabled: {
+    color: '#c6c6c6',
+  },
+  errorBanner: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: '#FFE4E6',
+  },
+  errorBannerText: {
+    color: '#881337',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  stateContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 48,
+    gap: 24,
+  },
+  profileSection: {
+    alignItems: 'center',
+  },
+  section: {
+    gap: 10,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#e7e7e7',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: '#1b1b1b',
+    marginBottom: 8,
+  },
+  navRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e7e7e7',
+    marginBottom: 8,
+  },
+  navRowText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1b1b1b',
+  },
+});

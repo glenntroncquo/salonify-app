@@ -2,48 +2,38 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { StaffAvatar } from '@/components/staff-avatar';
 import { useAuth } from '@/contexts/auth-context';
-import { Client, fetchClients } from '@/lib/api/clients';
-import { getInitialsFromLabel } from '@/lib/text';
+import { fetchAllStaff, Staff } from '@/lib/api/staff';
 
-function clientName(client: Client, fallback: string) {
-  return `${client.first_name ?? ''} ${client.last_name ?? ''}`.trim() || fallback;
+function staffName(staff: Staff, fallback: string) {
+  return `${staff.first_name ?? ''} ${staff.last_name ?? ''}`.trim() || fallback;
 }
 
-export default function ClientsScreen() {
+export default function StaffListScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { companyId } = useAuth();
 
-  const [clients, setClients] = React.useState<Client[]>([]);
+  const [staff, setStaff] = React.useState<Staff[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = React.useState('');
 
-  const loadClients = React.useCallback(async () => {
+  const load = React.useCallback(async () => {
     if (!companyId) {
       setLoading(false);
       return;
     }
     try {
-      const data = await fetchClients(companyId);
-      setClients(data);
+      const data = await fetchAllStaff(companyId);
+      setStaff(data);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('client.failedToLoadClients'));
+      setError(err instanceof Error ? err.message : t('staff.failedToLoad'));
     } finally {
       setLoading(false);
     }
@@ -51,47 +41,25 @@ export default function ClientsScreen() {
 
   useFocusEffect(
     React.useCallback(() => {
-      loadClients();
-    }, [loadClients])
+      load();
+    }, [load])
   );
-
-  const filteredClients = React.useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
-    if (!term) return clients;
-    return clients.filter((client) => {
-      const name = clientName(client, '').toLowerCase();
-      const email = (client.email ?? '').toLowerCase();
-      return name.includes(term) || email.includes(term);
-    });
-  }, [clients, searchTerm]);
 
   const showNoCompanyState = !loading && !companyId;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
-        <Text style={styles.title}>{t('client.title')}</Text>
+        <Pressable onPress={() => router.back()} hitSlop={8}>
+          <MaterialIcons name="arrow-back" size={24} color="#1b1b1b" />
+        </Pressable>
+        <Text style={styles.headerTitle}>{t('staff.title')}</Text>
+        <View style={{ width: 24 }} />
       </View>
-
-      {!showNoCompanyState ? (
-        <View style={styles.searchRow}>
-          <MaterialIcons name="search" size={20} color="#8b8b8b" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder={t('client.searchPlaceholder')}
-            placeholderTextColor="#9a9a9a"
-            value={searchTerm}
-            onChangeText={setSearchTerm}
-          />
-        </View>
-      ) : null}
 
       {error ? (
         <View style={styles.errorBanner}>
           <Text style={styles.errorBannerText}>{error}</Text>
-          <Pressable onPress={loadClients}>
-            <Text style={styles.errorBannerRetry}>{t('calendar.retry')}</Text>
-          </Pressable>
         </View>
       ) : null}
 
@@ -105,26 +73,23 @@ export default function ClientsScreen() {
         </View>
       ) : (
         <FlatList
-          data={filteredClients}
+          data={staff}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
             <View style={styles.stateContainer}>
-              <Text style={styles.stateText}>
-                {searchTerm ? t('client.noResults') : t('client.noClients')}
-              </Text>
+              <Text style={styles.stateText}>{t('staff.noStaff')}</Text>
             </View>
           }
           renderItem={({ item }) => {
-            const name = clientName(item, t('calendar.unknownClient'));
+            const name = staffName(item, t('calendar.employee'));
+            const subtitle = [item.role, item.specialization].filter(Boolean).join(' · ');
             return (
-              <Pressable style={styles.row} onPress={() => router.push({ pathname: '/client/[id]', params: { id: item.id } })}>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>{getInitialsFromLabel(name)}</Text>
-                </View>
+              <Pressable style={styles.row} onPress={() => router.push({ pathname: '/staff/[id]', params: { id: item.id } })}>
+                <StaffAvatar imagePath={item.image_path} name={name} size={40} backgroundColor="#e7e7e7" fontSize={14} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.rowName}>{name}</Text>
-                  {item.email ? <Text style={styles.rowSubtitle}>{item.email}</Text> : null}
+                  {subtitle ? <Text style={styles.rowSubtitle}>{subtitle}</Text> : null}
                 </View>
                 <MaterialIcons name="chevron-right" size={22} color="#c6c6c6" />
               </Pressable>
@@ -134,7 +99,7 @@ export default function ClientsScreen() {
       )}
 
       {!showNoCompanyState ? (
-        <TouchableOpacity style={styles.fab} onPress={() => router.push('/client/new')}>
+        <TouchableOpacity style={styles.fab} onPress={() => router.push('/staff/new')}>
           <MaterialIcons name="add" size={26} color="#1b1b1b" />
         </TouchableOpacity>
       ) : null}
@@ -148,53 +113,30 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
   },
   header: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '600',
-    color: '#1b1b1b',
-  },
-  searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginHorizontal: 16,
-    marginBottom: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e7e7e7',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
     color: '#1b1b1b',
   },
   errorBanner: {
     marginHorizontal: 16,
-    marginBottom: 12,
+    marginTop: 12,
     padding: 12,
     borderRadius: 10,
     backgroundColor: '#FFE4E6',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
   },
   errorBannerText: {
     color: '#881337',
     fontSize: 13,
     fontWeight: '600',
-    flex: 1,
-  },
-  errorBannerRetry: {
-    color: '#881337',
-    fontSize: 13,
-    fontWeight: '700',
-    textDecorationLine: 'underline',
   },
   stateContainer: {
     flex: 1,
@@ -217,19 +159,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#e7e7e7',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#4a4a4a',
   },
   rowName: {
     fontSize: 15,

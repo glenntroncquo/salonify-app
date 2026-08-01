@@ -47,15 +47,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="list"
         options={{
-          title: t('tabs.list'),
-          tabBarIcon: ({ color }) => <MaterialIcons name="view-list" size={26} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="alerts"
-        options={{
-          title: t('tabs.alerts'),
-          tabBarIcon: ({ color }) => <MaterialIcons name="notifications-none" size={26} color={color} />,
+          title: t('tabs.clients'),
+          tabBarIcon: ({ color }) => <MaterialIcons name="people-outline" size={26} color={color} />,
         }}
       />
       <Tabs.Screen

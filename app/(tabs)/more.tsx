@@ -1,6 +1,8 @@
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 
@@ -20,6 +22,7 @@ const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
 
 export default function MoreScreen() {
   const { t } = useTranslation();
+  const router = useRouter();
   const { user, companyId, signOut } = useAuth();
   const [profile, setProfile] = React.useState<StaffProfile | null>(null);
   const [profileLoading, setProfileLoading] = React.useState(true);
@@ -50,7 +53,8 @@ export default function MoreScreen() {
   const avatarUrl = getCompanyImageUrl(profile?.image_path);
 
   return (
-    <ThemedView style={styles.container}>
+    <ThemedView style={{ flex: 1 }}>
+      <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.profileSection}>
         {profileLoading ? (
           <View style={styles.avatar}>
@@ -82,7 +86,7 @@ export default function MoreScreen() {
                 <ThemedText
                   style={styles.languageChipText}
                   lightColor={isActive ? '#ffffff' : undefined}
-                  darkColor={isActive ? '#151718' : undefined}>
+                  darkColor={isActive ? '#ffffff' : undefined}>
                   {LANGUAGE_LABELS[language]}
                 </ThemedText>
               </Pressable>
@@ -91,18 +95,43 @@ export default function MoreScreen() {
         </View>
       </View>
 
+      <View style={styles.section}>
+        <ThemedText style={styles.sectionLabel}>{t('more.manage')}</ThemedText>
+        <Pressable style={styles.manageRow} onPress={() => router.push('/staff')}>
+          <ThemedText style={styles.manageRowText}>{t('more.staff')}</ThemedText>
+          <MaterialIcons name="chevron-right" size={20} color="#c6c6c6" />
+        </Pressable>
+        <Pressable style={styles.manageRow} onPress={() => router.push('/treatments')}>
+          <ThemedText style={styles.manageRowText}>{t('more.treatments')}</ThemedText>
+          <MaterialIcons name="chevron-right" size={20} color="#c6c6c6" />
+        </Pressable>
+        <Pressable style={styles.manageRow} onPress={() => router.push('/orders')}>
+          <ThemedText style={styles.manageRowText}>{t('more.orders')}</ThemedText>
+          <MaterialIcons name="chevron-right" size={20} color="#c6c6c6" />
+        </Pressable>
+        <Pressable style={styles.manageRow} onPress={() => router.push('/dashboard')}>
+          <ThemedText style={styles.manageRowText}>{t('more.dashboard')}</ThemedText>
+          <MaterialIcons name="chevron-right" size={20} color="#c6c6c6" />
+        </Pressable>
+        <Pressable style={styles.manageRow} onPress={() => router.push('/settings')}>
+          <ThemedText style={styles.manageRowText}>{t('more.settings')}</ThemedText>
+          <MaterialIcons name="chevron-right" size={20} color="#c6c6c6" />
+        </Pressable>
+      </View>
+
       <Pressable style={styles.signOutButton} onPress={signOut}>
         <ThemedText style={styles.signOutText} lightColor="#e5484d" darkColor="#e5484d">
           {t('profile.signOut')}
         </ThemedText>
       </Pressable>
+      </ScrollView>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
     alignItems: 'center',
     paddingTop: 64,
     paddingHorizontal: 24,
@@ -157,11 +186,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   languageChipActive: {
-    backgroundColor: '#1b1b1b',
-    borderColor: '#1b1b1b',
+    backgroundColor: '#20b87b',
+    borderColor: '#20b87b',
   },
   languageChipText: {
     fontSize: 14,
+    fontWeight: '600',
+  },
+  manageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e7e7e7',
+  },
+  manageRowText: {
+    fontSize: 15,
     fontWeight: '600',
   },
   signOutButton: {

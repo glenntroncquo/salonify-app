@@ -77,12 +77,6 @@ export const styles = StyleSheet.create({
     borderColor: '#e7e7e7',
     backgroundColor: '#ffffff',
   },
-  employeeAvatar: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: '#d8cfc6',
-  },
   employeeName: {
     fontSize: 15,
     fontWeight: '600',
@@ -207,19 +201,6 @@ export const styles = StyleSheet.create({
     lineHeight: 13,
     marginRight: 2,
     fontWeight: '600',
-  },
-  weekAgendaInitialCircle: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#d8cfc6',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  weekAgendaInitialText: {
-    fontSize: 8,
-    fontWeight: '700',
-    color: '#4a4a4a',
   },
   weekAgendaTitle: {
     flexShrink: 1,
@@ -402,11 +383,15 @@ export const styles = StyleSheet.create({
     fontSize: 13,
     color: '#8b8b8b',
   },
-  sheetAvatar: {
+  sheetCheckoutButton: {
+    marginLeft: 8,
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#e4d5c8',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#e7e7e7',
   },
   menuOverlay: {
     position: 'absolute',
@@ -519,11 +504,6 @@ export const styles = StyleSheet.create({
     backgroundColor: '#d8cfc6',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  staffMenuAvatarText: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#4a4a4a',
   },
   staffMenuName: {
     flex: 1,

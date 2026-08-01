@@ -88,3 +88,19 @@ export function formatTime(iso: string) {
   const minutes = String(date.getMinutes()).padStart(2, '0');
   return `${hours}:${minutes}`;
 }
+
+/**
+ * Builds the appointment `start`/`end` string format the backend expects:
+ * local wall-clock date/time parts with a literal "Z" suffix (not a real UTC
+ * conversion). `formatTime` above reads appointments back the same way (local
+ * getters against this same fake-UTC string), so writes must match this
+ * exact shape or newly-created appointments will render at the wrong time.
+ */
+export function toFakeUtcISOString(date: Date, hours: number, minutes: number) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  const hh = String(hours).padStart(2, '0');
+  const mm = String(minutes).padStart(2, '0');
+  return `${y}-${m}-${d}T${hh}:${mm}:00Z`;
+}

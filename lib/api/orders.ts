@@ -1,0 +1,62 @@
+import { supabase } from '@/lib/supabase';
+
+export type OrderListItem = {
+  id: string;
+  order_number: string | null;
+  date: string | null;
+  created_at: string;
+  total_amount: number | null;
+  payment_status: string | null;
+  status: string | null;
+  client: { id: string; first_name: string | null; last_name: string | null } | null;
+};
+
+export async function fetchOrders(companyId: string, limit = 50): Promise<OrderListItem[]> {
+  const { data, error } = await supabase
+    .from('order')
+    .select('id, order_number, date, created_at, total_amount, payment_status, status, client:client_id ( id, first_name, last_name )')
+    .eq('company_id', companyId)
+    .order('date', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return (data as unknown as OrderListItem[]) ?? [];
+}
+
+export type OrderDetail = OrderListItem & {
+  subtotal: number | null;
+  tax_amount: number | null;
+  discount_amount: number | null;
+  notes: string | null;
+  order_item: Array<{
+    id: string;
+    quantity: number | null;
+    unit_price: number | null;
+    total: number | null;
+    treatment: { name: string } | null;
+    price_option: { name: string } | null;
+    product: { name: string } | null;
+  }>;
+  payment: Array<{
+    id: string;
+    payment_method: string | null;
+    amount_gross: number | null;
+    status: string | null;
+    payment_status: string | null;
+    paid_at: string | null;
+  }>;
+};
+
+const ORDER_DETAIL_SELECT = `
+  id, order_number, date, created_at, total_amount, subtotal, tax_amount, discount_amount, payment_status, status, notes,
+  client:client_id ( id, first_name, last_name ),
+  order_item ( id, quantity, unit_price, total, treatment:treatment_id ( name ), price_option:price_option_id ( name ), product:product_id ( name ) ),
+  payment ( id, payment_method, amount_gross, status, payment_status, paid_at )
+`;
+
+export async function fetchOrder(orderId: string): Promise<OrderDetail | null> {
+  const { data, error } = await supabase.from('order').select(ORDER_DETAIL_SELECT).eq('id', orderId).maybeSingle();
+  if (error) throw error;
+  return data as unknown as OrderDetail | null;
+}
