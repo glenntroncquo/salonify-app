@@ -19,7 +19,7 @@ export default function LoginScreen() {
   const { t } = useTranslation();
   const { signIn } = useAuth();
   const colorScheme = useColorScheme() ?? 'light';
-  const tint = Colors[colorScheme].tint;
+  const theme = Colors[colorScheme];
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -50,18 +50,21 @@ export default function LoginScreen() {
         <ThemedText type="title" style={styles.title}>
           Salonify
         </ThemedText>
-        <ThemedText style={styles.subtitle}>{t('auth.signInSubtitle')}</ThemedText>
+        <ThemedText style={styles.subtitle} lightColor={theme.muted} darkColor={theme.muted}>
+          {t('auth.signInSubtitle')}
+        </ThemedText>
 
         <TextInput
           style={[
             styles.input,
             {
-              borderColor: colorScheme === 'dark' ? '#3a3d3e' : '#dcdfe1',
-              color: Colors[colorScheme].text,
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+              color: theme.text,
             },
           ]}
           placeholder={t('auth.email')}
-          placeholderTextColor={colorScheme === 'dark' ? '#9BA1A6' : '#687076'}
+          placeholderTextColor={theme.muted}
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="email-address"
@@ -75,12 +78,13 @@ export default function LoginScreen() {
           style={[
             styles.input,
             {
-              borderColor: colorScheme === 'dark' ? '#3a3d3e' : '#dcdfe1',
-              color: Colors[colorScheme].text,
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+              color: theme.text,
             },
           ]}
           placeholder={t('auth.password')}
-          placeholderTextColor={colorScheme === 'dark' ? '#9BA1A6' : '#687076'}
+          placeholderTextColor={theme.muted}
           secureTextEntry
           textContentType="password"
           value={password}
@@ -89,10 +93,14 @@ export default function LoginScreen() {
           onSubmitEditing={handleSubmit}
         />
 
-        {error ? <ThemedText style={styles.error}>{error}</ThemedText> : null}
+        {error ? (
+          <ThemedText style={styles.error} lightColor={theme.error} darkColor={theme.error}>
+            {error}
+          </ThemedText>
+        ) : null}
 
         <Pressable
-          style={[styles.button, { backgroundColor: tint, opacity: canSubmit ? 1 : 0.5 }]}
+          style={[styles.button, { backgroundColor: theme.tint, opacity: canSubmit ? 1 : 0.5 }]}
           onPress={handleSubmit}
           disabled={!canSubmit}>
           {isSubmitting ? (
@@ -124,7 +132,6 @@ const styles = StyleSheet.create({
   subtitle: {
     textAlign: 'center',
     marginBottom: 12,
-    opacity: 0.7,
   },
   input: {
     height: 48,
@@ -134,7 +141,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   error: {
-    color: '#e5484d',
     textAlign: 'center',
   },
   button: {

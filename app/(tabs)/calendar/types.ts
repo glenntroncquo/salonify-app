@@ -20,6 +20,7 @@ export type EventItem = {
   /** Readable text color on top of bgColor. */
   textColor: string;
   clientName: string;
+  clientId: string | null;
   staffName: string;
   staffId: string | null;
   startTime: string;
@@ -46,13 +47,6 @@ export type WeekDayData = {
   appointments: EventItem[];
 };
 
-export type ListRowItem = EventItem & {
-  dateKey: string;
-};
-
-export type ListSection = {
-  title: string;
-  dateKey: string;
-  isToday: boolean;
-  data: ListRowItem[];
-};
+export type ListFlatItem =
+  | { kind: 'header'; key: string; dateKey: string; title: string; isToday: boolean }
+  | { kind: 'row'; key: string; dateKey: string; event: EventItem };

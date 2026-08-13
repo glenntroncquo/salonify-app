@@ -87,6 +87,13 @@ export async function fetchAppointmentsForMonth(
   return (data as unknown as AppointmentRow[]) ?? [];
 }
 
+export async function fetchAppointmentById(appointmentId: string): Promise<AppointmentRow | null> {
+  const { data, error } = await supabase.from('appointment').select(APPOINTMENT_SELECT).eq('id', appointmentId).single();
+
+  if (error) throw error;
+  return (data as unknown as AppointmentRow) ?? null;
+}
+
 export async function fetchStaff(companyId: string): Promise<StaffMember[]> {
   const { data, error } = await supabase
     .from('staff')
@@ -107,6 +114,26 @@ export async function fetchClientAppointments(clientId: string, companyId: strin
     .eq('client_id', clientId)
     .eq('is_canceled', false)
     .order('start', { ascending: false });
+
+  if (error) throw error;
+  return (data as unknown as AppointmentRow[]) ?? [];
+}
+
+/** A single staff member's appointments within a date range (for the staff schedule/roster view). */
+export async function fetchStaffAppointments(
+  staffId: string,
+  companyId: string,
+  rangeStart: Date,
+  rangeEndExclusive: Date
+): Promise<AppointmentRow[]> {
+  const { data, error } = await supabase
+    .from('appointment')
+    .select(APPOINTMENT_SELECT)
+    .eq('company_id', companyId)
+    .eq('staff_id', staffId)
+    .eq('is_canceled', false)
+    .gte('start', rangeStart.toISOString())
+    .lt('start', rangeEndExclusive.toISOString());
 
   if (error) throw error;
   return (data as unknown as AppointmentRow[]) ?? [];

@@ -2,6 +2,9 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import React from 'react';
 import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+
 function mergeDatePart(base: Date, picked: Date) {
   const next = new Date(base);
   next.setFullYear(picked.getFullYear(), picked.getMonth(), picked.getDate());
@@ -42,6 +45,8 @@ type Props = {
  */
 export function DateTimeField({ value, mode, onChange, formatLabel, doneLabel }: Props) {
   const [visible, setVisible] = React.useState(false);
+  const colorScheme = useColorScheme() ?? 'light';
+  const theme = Colors[colorScheme];
 
   if (Platform.OS === 'web') {
     return (
@@ -65,15 +70,23 @@ export function DateTimeField({ value, mode, onChange, formatLabel, doneLabel }:
             }
           }
         }}
-        style={webInputStyle}
+        style={{
+          fontSize: 14,
+          fontWeight: 600,
+          color: theme.text,
+          padding: '8px 12px',
+          borderRadius: 18,
+          border: `1px solid ${theme.border}`,
+          backgroundColor: theme.surface,
+        }}
       />
     );
   }
 
   return (
     <>
-      <Pressable style={styles.pill} onPress={() => setVisible(true)}>
-        <Text style={styles.pillText}>{formatLabel(value)}</Text>
+      <Pressable style={[styles.pill, { borderColor: theme.border, backgroundColor: theme.surface }]} onPress={() => setVisible(true)}>
+        <Text style={[styles.pillText, { color: theme.text }]}>{formatLabel(value)}</Text>
       </Pressable>
 
       {Platform.OS === 'android' && visible ? (
@@ -93,10 +106,10 @@ export function DateTimeField({ value, mode, onChange, formatLabel, doneLabel }:
       {Platform.OS === 'ios' && visible ? (
         <Modal transparent animationType="fade" visible onRequestClose={() => setVisible(false)}>
           <Pressable style={styles.overlay} onPress={() => setVisible(false)}>
-            <Pressable style={styles.sheet} onPress={(event) => event.stopPropagation()}>
+            <Pressable style={[styles.sheet, { backgroundColor: theme.surface }]} onPress={(event) => event.stopPropagation()}>
               <View style={styles.doneRow}>
                 <Pressable onPress={() => setVisible(false)}>
-                  <Text style={styles.doneText}>{doneLabel}</Text>
+                  <Text style={[styles.doneText, { color: theme.tint }]}>{doneLabel}</Text>
                 </Pressable>
               </View>
               <DateTimePicker
@@ -115,29 +128,16 @@ export function DateTimeField({ value, mode, onChange, formatLabel, doneLabel }:
   );
 }
 
-const webInputStyle: React.CSSProperties = {
-  fontSize: 14,
-  fontWeight: 600,
-  color: '#1b1b1b',
-  padding: '8px 12px',
-  borderRadius: 18,
-  border: '1px solid #e7e7e7',
-  backgroundColor: '#ffffff',
-};
-
 const styles = StyleSheet.create({
   pill: {
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#e7e7e7',
-    backgroundColor: '#ffffff',
   },
   pillText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1b1b1b',
   },
   overlay: {
     flex: 1,
@@ -145,7 +145,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.3)',
   },
   sheet: {
-    backgroundColor: '#ffffff',
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
     paddingBottom: 24,
@@ -158,6 +157,5 @@ const styles = StyleSheet.create({
   doneText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#20b87b',
   },
 });

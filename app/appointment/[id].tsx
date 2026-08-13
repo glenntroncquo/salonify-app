@@ -1,0 +1,352 @@
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
+
+import { Colors } from '@/constants/theme';
+import { useAuth } from '@/contexts/auth-context';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { fetchAppointmentById, fetchClientAppointments } from '@/lib/api/calendar';
+import { addClientNote, Client, ClientNote, fetchClient, fetchClientNotes } from '@/lib/api/clients';
+import { getInitialsFromLabel } from '@/lib/text';
+
+import { appointmentToEvent } from '../(tabs)/calendar/calendar-data';
+import { getListHeaderLabel, toDateKey } from '../(tabs)/calendar/date-utils';
+import { EventItem } from '../(tabs)/calendar/types';
+
+export default function AppointmentDetailScreen() {
+  const { t } = useTranslation();
+  const router = useRouter();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const { companyId } = useAuth();
+  const colorScheme = useColorScheme() ?? 'light';
+  const theme = Colors[colorScheme];
+
+  const [event, setEvent] = React.useState<EventItem | null>(null);
+  const [client, setClient] = React.useState<Client | null>(null);
+  const [notes, setNotes] = React.useState<ClientNote[]>([]);
+  const [newNote, setNewNote] = React.useState('');
+  const [addingNote, setAddingNote] = React.useState(false);
+  const [history, setHistory] = React.useState<EventItem[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const load = React.useCallback(async () => {
+    if (!id) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    try {
+      const appointment = await fetchAppointmentById(id);
+      if (!appointment) {
+        setError(t('client.failedToLoad'));
+        return;
+      }
+      const nextEvent = appointmentToEvent(appointment);
+      setEvent(nextEvent);
+
+      const clientId = nextEvent.clientId;
+      if (clientId && companyId) {
+        const [clientData, notesData, appointmentsData] = await Promise.all([
+          fetchClient(clientId),
+          fetchClientNotes(clientId, companyId),
+          fetchClientAppointments(clientId, companyId),
+        ]);
+        setClient(clientData);
+        setNotes(notesData);
+        setHistory(appointmentsData.map(appointmentToEvent).filter((item) => item.appointmentId !== nextEvent.appointmentId));
+      }
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('client.failedToLoad'));
+    } finally {
+      setLoading(false);
+    }
+  }, [id, companyId, t]);
+
+  React.useEffect(() => {
+    load();
+  }, [load]);
+
+  const handleAddNote = async () => {
+    const trimmed = newNote.trim();
+    const clientId = event?.clientId;
+    if (!trimmed || !clientId || !companyId) return;
+    setAddingNote(true);
+    try {
+      await addClientNote(clientId, companyId, trimmed);
+      setNewNote('');
+      const notesData = await fetchClientNotes(clientId, companyId);
+      setNotes(notesData);
+    } catch {
+      setError(t('client.failedToAddNote'));
+    } finally {
+      setAddingNote(false);
+    }
+  };
+
+  const clientDisplayName =
+    client && (client.first_name || client.last_name)
+      ? `${client.first_name ?? ''} ${client.last_name ?? ''}`.trim()
+      : (event?.clientName ?? '');
+
+  return (
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['top', 'left', 'right', 'bottom']}>
+      <View style={[styles.header, { borderBottomColor: theme.border }]}>
+        <Pressable onPress={() => router.back()} hitSlop={8}>
+          <MaterialIcons name="close" size={24} color={theme.text} />
+        </Pressable>
+        <Text style={[styles.headerTitle, { color: theme.text }]} numberOfLines={1}>
+          {event?.label ?? ''}
+        </Text>
+        <Pressable
+          onPress={() => {
+            if (event) router.push({ pathname: '/checkout/[appointmentId]', params: { appointmentId: event.appointmentId } });
+          }}
+          hitSlop={8}>
+          <MaterialIcons name="point-of-sale" size={22} color={theme.tint} />
+        </Pressable>
+      </View>
+
+      {loading ? (
+        <View style={styles.stateContainer}>
+          <ActivityIndicator size="large" color={theme.muted} />
+        </View>
+      ) : !event ? (
+        <View style={styles.stateContainer}>
+          <Text style={{ color: theme.muted }}>{error ?? t('client.failedToLoad')}</Text>
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          <View style={styles.section}>
+            <View style={styles.appointmentRow}>
+              <View style={[styles.colorBar, { backgroundColor: event.color }]} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.appointmentTitle, { color: theme.text }]}>{event.label}</Text>
+                <Text style={[styles.appointmentSubtitle, { color: theme.muted }]}>
+                  {`${getListHeaderLabel(toDateKey(new Date(event.startISO)))} · ${event.startTime}–${event.endTime}`}
+                </Text>
+                <Text style={[styles.appointmentSubtitle, { color: theme.muted }]}>{event.staffName}</Text>
+              </View>
+            </View>
+          </View>
+
+          {error ? <Text style={[styles.errorText, { color: theme.error }]}>{error}</Text> : null}
+
+          <View style={styles.section}>
+            <Text style={[styles.sectionLabel, { color: theme.muted }]}>{t('client.title')}</Text>
+            <Pressable
+              style={styles.clientRow}
+              onPress={() => {
+                if (event.clientId) router.push({ pathname: '/client/[id]', params: { id: event.clientId } });
+              }}>
+              <View style={[styles.clientAvatar, { backgroundColor: theme.border }]}>
+                <Text style={[styles.clientAvatarText, { color: theme.text }]}>{getInitialsFromLabel(clientDisplayName)}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.clientName, { color: theme.text }]}>{clientDisplayName}</Text>
+                {client?.email ? <Text style={[styles.clientDetail, { color: theme.muted }]}>{client.email}</Text> : null}
+                {client?.phone ? <Text style={[styles.clientDetail, { color: theme.muted }]}>{client.phone}</Text> : null}
+              </View>
+              {event.clientId ? <MaterialIcons name="chevron-right" size={20} color={theme.muted} /> : null}
+            </Pressable>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={[styles.sectionLabel, { color: theme.muted }]}>{t('client.notes')}</Text>
+            <View style={styles.addNoteRow}>
+              <TextInput
+                style={[styles.input, { borderColor: theme.border, color: theme.text, flex: 1, marginBottom: 0 }]}
+                placeholder={t('client.addNotePlaceholder')}
+                placeholderTextColor={theme.muted}
+                value={newNote}
+                onChangeText={setNewNote}
+              />
+              <Pressable style={[styles.addNoteButton, { borderColor: theme.border }]} onPress={handleAddNote} disabled={addingNote}>
+                {addingNote ? (
+                  <ActivityIndicator size="small" color={theme.text} />
+                ) : (
+                  <Text style={[styles.addNoteButtonText, { color: theme.text }]}>{t('client.addNote')}</Text>
+                )}
+              </Pressable>
+            </View>
+            {notes.length === 0 ? (
+              <Text style={[styles.emptyText, { color: theme.muted }]}>{t('client.noNotes')}</Text>
+            ) : (
+              notes.map((note) => (
+                <View key={note.id} style={[styles.noteRow, { borderBottomColor: theme.border }]}>
+                  <Text style={[styles.noteText, { color: theme.text }]}>{note.note}</Text>
+                  <Text style={[styles.noteDate, { color: theme.muted }]}>
+                    {getListHeaderLabel(toDateKey(new Date(note.created_at)))}
+                  </Text>
+                </View>
+              ))
+            )}
+          </View>
+
+          <View style={styles.section}>
+            <Text style={[styles.sectionLabel, { color: theme.muted }]}>{t('client.history')}</Text>
+            {history.length === 0 ? (
+              <Text style={[styles.emptyText, { color: theme.muted }]}>{t('client.noHistory')}</Text>
+            ) : (
+              history.map((historyEvent) => (
+                <View key={historyEvent.appointmentId} style={[styles.historyRow, { borderBottomColor: theme.border }]}>
+                  <View style={[styles.historyColorBar, { backgroundColor: historyEvent.color }]} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.historyTitle, { color: theme.text }]}>{historyEvent.label}</Text>
+                    <Text style={[styles.historySubtitle, { color: theme.muted }]}>
+                      {`${getListHeaderLabel(toDateKey(new Date(historyEvent.startISO)))} · ${historyEvent.startTime}–${historyEvent.endTime}`}
+                    </Text>
+                  </View>
+                </View>
+              ))
+            )}
+          </View>
+        </ScrollView>
+      )}
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  headerTitle: {
+    flex: 1,
+    marginHorizontal: 12,
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  stateContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 48,
+    gap: 24,
+  },
+  section: {
+    gap: 10,
+  },
+  sectionLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  errorText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  appointmentRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  colorBar: {
+    width: 4,
+    borderRadius: 2,
+  },
+  appointmentTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  appointmentSubtitle: {
+    marginTop: 2,
+    fontSize: 13,
+  },
+  clientRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  clientAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  clientAvatarText: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  clientName: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  clientDetail: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 15,
+    marginBottom: 8,
+  },
+  addNoteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  addNoteButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  addNoteButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  emptyText: {
+    fontSize: 14,
+  },
+  noteRow: {
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+  },
+  noteText: {
+    fontSize: 14,
+  },
+  noteDate: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  historyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+  },
+  historyColorBar: {
+    width: 4,
+    height: 32,
+    borderRadius: 2,
+  },
+  historyTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  historySubtitle: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+});

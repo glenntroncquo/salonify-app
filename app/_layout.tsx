@@ -8,6 +8,7 @@ import 'react-native-reanimated';
 
 import { AuthProvider, useAuth } from '@/contexts/auth-context';
 import { ThemePreferenceProvider } from '@/contexts/theme-context';
+import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import i18n, { initI18n } from '@/lib/i18n';
 
@@ -16,6 +17,32 @@ export const unstable_settings = {
 };
 
 SplashScreen.preventAutoHideAsync();
+
+const AppLightTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    primary: Colors.light.tint,
+    background: Colors.light.background,
+    card: Colors.light.surface,
+    text: Colors.light.text,
+    border: Colors.light.border,
+    notification: Colors.light.error,
+  },
+};
+
+const AppDarkTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    primary: Colors.dark.tint,
+    background: Colors.dark.background,
+    card: Colors.dark.surface,
+    text: Colors.dark.text,
+    border: Colors.dark.border,
+    notification: Colors.dark.error,
+  },
+};
 
 function RootNavigator() {
   const { session, loading } = useAuth();
@@ -35,17 +62,22 @@ function RootNavigator() {
       <Stack.Protected guard={!!session}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+        <Stack.Screen name="day/[date]" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="appointment-new" options={{ presentation: 'modal', headerShown: false }} />
+        <Stack.Screen name="appointment/[id]" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="client/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="client/new" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="treatments/index" options={{ headerShown: false }} />
         <Stack.Screen name="treatments/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="treatments/new" options={{ presentation: 'modal', headerShown: false }} />
+        <Stack.Screen name="treatments/price-option" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="staff/index" options={{ headerShown: false }} />
         <Stack.Screen name="staff/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="staff/new" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="staff/[id]/availability" options={{ headerShown: false }} />
         <Stack.Screen name="staff/[id]/time-off" options={{ headerShown: false }} />
+        <Stack.Screen name="staff/[id]/schedule" options={{ headerShown: false }} />
+        <Stack.Screen name="staff/time-off-new" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="checkout/[appointmentId]" options={{ presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="orders/index" options={{ headerShown: false }} />
         <Stack.Screen name="orders/[id]" options={{ headerShown: false }} />
@@ -63,7 +95,7 @@ function RootLayoutInner() {
   const colorScheme = useColorScheme();
 
   return (
-    <NavThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <NavThemeProvider value={colorScheme === 'dark' ? AppDarkTheme : AppLightTheme}>
       <RootNavigator />
       <StatusBar style="auto" />
     </NavThemeProvider>

@@ -149,7 +149,10 @@
     "failedToLoadTimeOff": "Kan verlof niet laden.",
     "failedToSaveTimeOff": "Kan verlof niet opslaan. Probeer het opnieuw.",
     "failedToDeleteTimeOff": "Kan verlof niet verwijderen. Probeer het opnieuw.",
-    "date": "Datum"
+    "date": "Datum",
+    "schedule": "Rooster",
+    "absent": "Afwezig",
+    "failedToLoadSchedule": "Kan rooster niet laden."
   },
   "checkout": {
     "title": "Afrekenen",

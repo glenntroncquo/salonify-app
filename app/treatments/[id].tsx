@@ -1,37 +1,18 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import {
-  ActivityIndicator,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
-import { useAuth } from '@/contexts/auth-context';
-import {
-  ManagedTreatment,
-  PriceOption,
-  createPriceOption,
-  deletePriceOption,
-  fetchTreatment,
-  updatePriceOption,
-  updateTreatment,
-} from '@/lib/api/treatments';
+import { ManagedTreatment, PriceOption, deletePriceOption, fetchTreatment, updateTreatment } from '@/lib/api/treatments';
 import { COLOR_MAP, TREATMENT_COLORS, TreatmentColor } from '@/lib/treatment-colors';
 
 export default function TreatmentDetailScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { companyId } = useAuth();
 
   const [treatment, setTreatment] = React.useState<ManagedTreatment | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -44,12 +25,6 @@ export default function TreatmentDetailScreen() {
   const [isActive, setIsActive] = React.useState(true);
 
   const [priceOptions, setPriceOptions] = React.useState<PriceOption[]>([]);
-  const [modalVisible, setModalVisible] = React.useState(false);
-  const [editingOption, setEditingOption] = React.useState<PriceOption | null>(null);
-  const [poName, setPoName] = React.useState('');
-  const [poPrice, setPoPrice] = React.useState('');
-  const [poDuration, setPoDuration] = React.useState('');
-  const [savingOption, setSavingOption] = React.useState(false);
 
   const load = React.useCallback(async () => {
     if (!id) {
@@ -74,9 +49,11 @@ export default function TreatmentDetailScreen() {
     }
   }, [id, t]);
 
-  React.useEffect(() => {
-    load();
-  }, [load]);
+  useFocusEffect(
+    React.useCallback(() => {
+      load();
+    }, [load])
+  );
 
   const handleSave = async () => {
     if (!id || !name.trim()) return;
@@ -92,46 +69,20 @@ export default function TreatmentDetailScreen() {
   };
 
   const openAddOption = () => {
-    setEditingOption(null);
-    setPoName('');
-    setPoPrice('');
-    setPoDuration('');
-    setModalVisible(true);
+    router.push({ pathname: '/treatments/price-option', params: { treatmentId: id } });
   };
 
   const openEditOption = (option: PriceOption) => {
-    setEditingOption(option);
-    setPoName(option.name);
-    setPoPrice(String(option.price));
-    setPoDuration(String(option.duration_in_minutes));
-    setModalVisible(true);
-  };
-
-  const handleSaveOption = async () => {
-    if (!id || !companyId || !poName.trim()) return;
-    const price = Number(poPrice);
-    const duration = Number(poDuration);
-    if (!Number.isFinite(price) || !Number.isFinite(duration)) return;
-
-    setSavingOption(true);
-    try {
-      if (editingOption) {
-        await updatePriceOption(editingOption.id, { name: poName.trim(), price, durationInMinutes: duration });
-        setPriceOptions((prev) =>
-          prev.map((item) =>
-            item.id === editingOption.id ? { ...item, name: poName.trim(), price, duration_in_minutes: duration } : item
-          )
-        );
-      } else {
-        const created = await createPriceOption(id, companyId, { name: poName.trim(), price, durationInMinutes: duration });
-        setPriceOptions((prev) => [...prev, created]);
-      }
-      setModalVisible(false);
-    } catch {
-      setError(t('treatment.failedToSaveOption'));
-    } finally {
-      setSavingOption(false);
-    }
+    router.push({
+      pathname: '/treatments/price-option',
+      params: {
+        treatmentId: id,
+        optionId: option.id,
+        name: option.name,
+        price: String(option.price),
+        duration: String(option.duration_in_minutes),
+      },
+    });
   };
 
   const handleDeleteOption = async (option: PriceOption) => {
@@ -237,41 +188,6 @@ export default function TreatmentDetailScreen() {
           </Pressable>
         </View>
       </ScrollView>
-
-      <Modal transparent animationType="fade" visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setModalVisible(false)}>
-          <Pressable style={styles.modalSheet} onPress={(event) => event.stopPropagation()}>
-            <Text style={styles.sheetTitle}>
-              {editingOption ? t('treatment.editPriceOption') : t('treatment.addPriceOption')}
-            </Text>
-            <TextInput style={styles.input} placeholder={t('treatment.optionName')} value={poName} onChangeText={setPoName} />
-            <TextInput
-              style={styles.input}
-              placeholder={t('treatment.price')}
-              value={poPrice}
-              onChangeText={setPoPrice}
-              keyboardType="decimal-pad"
-            />
-            <TextInput
-              style={styles.input}
-              placeholder={t('treatment.durationMinutes')}
-              value={poDuration}
-              onChangeText={setPoDuration}
-              keyboardType="number-pad"
-            />
-            <Pressable
-              style={styles.modalSaveButton}
-              onPress={handleSaveOption}
-              disabled={savingOption || !poName.trim()}>
-              {savingOption ? (
-                <ActivityIndicator size="small" color="#ffffff" />
-              ) : (
-                <Text style={styles.modalSaveButtonText}>{t('client.save')}</Text>
-              )}
-            </Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -398,35 +314,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#8b8b8b',
     marginTop: 2,
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.3)',
-  },
-  modalSheet: {
-    backgroundColor: '#ffffff',
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-    padding: 16,
-    paddingBottom: 32,
-  },
-  sheetTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1b1b1b',
-    marginBottom: 12,
-  },
-  modalSaveButton: {
-    backgroundColor: '#1b1b1b',
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  modalSaveButtonText: {
-    color: '#ffffff',
-    fontSize: 15,
-    fontWeight: '700',
   },
 });

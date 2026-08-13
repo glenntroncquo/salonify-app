@@ -149,7 +149,10 @@
     "failedToLoadTimeOff": "Falha ao carregar folgas.",
     "failedToSaveTimeOff": "Falha ao salvar folga. Tente novamente.",
     "failedToDeleteTimeOff": "Falha ao excluir folga. Tente novamente.",
-    "date": "Data"
+    "date": "Data",
+    "schedule": "Agenda de trabalho",
+    "absent": "Ausente",
+    "failedToLoadSchedule": "Falha ao carregar a agenda de trabalho."
   },
   "checkout": {
     "title": "Finalizar venda",

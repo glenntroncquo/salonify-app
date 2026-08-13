@@ -156,6 +156,10 @@ export default function StaffDetailScreen() {
             <Text style={styles.navRowText}>{t('staff.timeOff')}</Text>
             <MaterialIcons name="chevron-right" size={20} color="#c6c6c6" />
           </Pressable>
+          <Pressable style={styles.navRow} onPress={() => router.push({ pathname: '/staff/[id]/schedule', params: { id } })}>
+            <Text style={styles.navRowText}>{t('staff.schedule')}</Text>
+            <MaterialIcons name="chevron-right" size={20} color="#c6c6c6" />
+          </Pressable>
         </View>
       </ScrollView>
     </SafeAreaView>

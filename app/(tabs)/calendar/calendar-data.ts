@@ -33,6 +33,7 @@ export function appointmentToEvent(appointment: AppointmentRow): EventItem {
     bgColor: COLOR_BG_MAP[eventColor],
     textColor: COLOR_TEXT_MAP[eventColor],
     clientName,
+    clientId: appointment.client?.id ?? null,
     staffName,
     staffId: appointment.staff?.id ?? null,
     startTime: formatTime(appointment.start),

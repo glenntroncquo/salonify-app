@@ -17,7 +17,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { createAppointment } from '@/lib/api/appointment-create';
 import { fetchStaff, StaffMember } from '@/lib/api/calendar';
 import { ClientSearchResult, searchClients } from '@/lib/api/clients';
@@ -36,6 +38,8 @@ type CartItem = {
   price: number;
   durationMinutes: number;
 };
+
+type Screen = 'form' | 'treatments' | 'treatmentOptions';
 
 function formatDateForInput(date: Date) {
   const y = date.getFullYear();
@@ -80,6 +84,11 @@ export default function NewAppointmentScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ date?: string }>();
   const { companyId } = useAuth();
+  const colorScheme = useColorScheme() ?? 'light';
+  const theme = Colors[colorScheme];
+
+  const [screen, setScreen] = React.useState<Screen>('form');
+  const [pickedTreatment, setPickedTreatment] = React.useState<TreatmentWithOptions | null>(null);
 
   const [staffList, setStaffList] = React.useState<StaffMember[]>([]);
   const [staffLoading, setStaffLoading] = React.useState(true);
@@ -87,8 +96,6 @@ export default function NewAppointmentScreen() {
 
   const [treatmentsList, setTreatmentsList] = React.useState<TreatmentWithOptions[]>([]);
   const [cart, setCart] = React.useState<CartItem[]>([]);
-  const [treatmentPickerVisible, setTreatmentPickerVisible] = React.useState(false);
-  const [treatmentPickerSelected, setTreatmentPickerSelected] = React.useState<TreatmentWithOptions | null>(null);
 
   const [clientSearchTerm, setClientSearchTerm] = React.useState('');
   const [clientResults, setClientResults] = React.useState<ClientSearchResult[]>([]);
@@ -165,13 +172,8 @@ export default function NewAppointmentScreen() {
         durationMinutes: option.duration_in_minutes,
       },
     ]);
-    setTreatmentPickerVisible(false);
-    setTreatmentPickerSelected(null);
-  }, []);
-
-  const closeTreatmentPicker = React.useCallback(() => {
-    setTreatmentPickerVisible(false);
-    setTreatmentPickerSelected(null);
+    setScreen('form');
+    setPickedTreatment(null);
   }, []);
 
   const totalMinutes = cart.reduce((sum, item) => sum + item.durationMinutes, 0);
@@ -236,6 +238,16 @@ export default function NewAppointmentScreen() {
     t,
   ]);
 
+  const webInputStyle: React.CSSProperties = {
+    fontSize: 14,
+    fontWeight: 600,
+    color: theme.text,
+    padding: '8px 12px',
+    borderRadius: 18,
+    border: `1px solid ${theme.border}`,
+    backgroundColor: theme.surface,
+  };
+
   const renderDatePill = () => {
     if (Platform.OS === 'web') {
       return (
@@ -257,8 +269,8 @@ export default function NewAppointmentScreen() {
       );
     }
     return (
-      <Pressable style={styles.pill} onPress={() => setShowDatePicker(true)}>
-        <Text style={styles.pillText}>
+      <Pressable style={[styles.pill, { borderColor: theme.border, backgroundColor: theme.surface }]} onPress={() => setShowDatePicker(true)}>
+        <Text style={[styles.pillText, { color: theme.text }]}>
           {`${startDate.getDate()} ${getMonthShortLabel(startDate.getMonth())} ${startDate.getFullYear()}`}
         </Text>
       </Pressable>
@@ -286,202 +298,280 @@ export default function NewAppointmentScreen() {
       );
     }
     return (
-      <Pressable style={styles.pill} onPress={() => setShowTimePicker(true)}>
-        <Text style={styles.pillText}>{formatTimeForInput(startDate)}</Text>
+      <Pressable style={[styles.pill, { borderColor: theme.border, backgroundColor: theme.surface }]} onPress={() => setShowTimePicker(true)}>
+        <Text style={[styles.pillText, { color: theme.text }]}>{formatTimeForInput(startDate)}</Text>
       </Pressable>
     );
   };
 
-  return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
-      <View style={styles.header}>
+  const header = (() => {
+    if (screen === 'treatments') {
+      return (
+        <View style={[styles.header, { borderBottomColor: theme.border }]}>
+          <Pressable onPress={() => setScreen('form')} hitSlop={8}>
+            <MaterialIcons name="arrow-back" size={22} color={theme.text} />
+          </Pressable>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>{t('appointment.selectTreatment')}</Text>
+          <View style={{ width: 22 }} />
+        </View>
+      );
+    }
+    if (screen === 'treatmentOptions') {
+      return (
+        <View style={[styles.header, { borderBottomColor: theme.border }]}>
+          <Pressable
+            onPress={() => {
+              setPickedTreatment(null);
+              setScreen('treatments');
+            }}
+            hitSlop={8}>
+            <MaterialIcons name="arrow-back" size={22} color={theme.text} />
+          </Pressable>
+          <Text style={[styles.headerTitle, { color: theme.text }]} numberOfLines={1}>
+            {pickedTreatment?.name}
+          </Text>
+          <View style={{ width: 22 }} />
+        </View>
+      );
+    }
+    return (
+      <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <Pressable onPress={() => router.back()} hitSlop={8}>
-          <MaterialIcons name="close" size={24} color="#1b1b1b" />
+          <MaterialIcons name="close" size={24} color={theme.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>{t('appointment.title')}</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>{t('appointment.title')}</Text>
         <Pressable onPress={handleSave} disabled={!canSave} hitSlop={8}>
           {submitting ? (
-            <ActivityIndicator size="small" color="#1b1b1b" />
+            <ActivityIndicator size="small" color={theme.tint} />
           ) : (
-            <Text style={[styles.saveText, !canSave && styles.saveTextDisabled]}>{t('appointment.save')}</Text>
+            <Text style={[styles.saveText, { color: canSave ? theme.tint : theme.muted }]}>{t('appointment.save')}</Text>
           )}
         </Pressable>
       </View>
+    );
+  })();
 
-      {errorMessage ? (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorBannerText}>{errorMessage}</Text>
+  return (
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['top', 'left', 'right', 'bottom']}>
+      {header}
+
+      {screen === 'form' && errorMessage ? (
+        <View style={[styles.errorBanner, { backgroundColor: `${theme.error}22` }]}>
+          <Text style={[styles.errorBannerText, { color: theme.error }]}>{errorMessage}</Text>
         </View>
       ) : null}
 
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        {/* Client */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>{t('appointment.client')}</Text>
-          {selectedClient ? (
-            <View style={styles.selectedClientRow}>
+      {screen === 'treatments' ? (
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          {treatmentsList.map((treatment) => (
+            <Pressable
+              key={treatment.id}
+              style={[styles.pickerRow, { borderBottomColor: theme.border }]}
+              onPress={() => {
+                setPickedTreatment(treatment);
+                setScreen('treatmentOptions');
+              }}>
+              <View
+                style={[
+                  styles.colorDot,
+                  { backgroundColor: COLOR_MAP[mapTreatmentColorToEventColor(treatment.color, treatment.name)] },
+                ]}
+              />
+              <Text style={[styles.pickerRowText, { color: theme.text }]}>{treatment.name}</Text>
+              <MaterialIcons name="chevron-right" size={20} color={theme.muted} />
+            </Pressable>
+          ))}
+        </ScrollView>
+      ) : screen === 'treatmentOptions' && pickedTreatment ? (
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          {pickedTreatment.price_option.map((option) => (
+            <Pressable
+              key={option.id}
+              style={[styles.pickerRow, { borderBottomColor: theme.border }]}
+              onPress={() => handleAddTreatment(pickedTreatment, option)}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.selectedClientName}>
-                  {`${selectedClient.first_name ?? ''} ${selectedClient.last_name ?? ''}`.trim() || selectedClient.email}
+                <Text style={[styles.pickerRowText, { color: theme.text }]}>{option.name}</Text>
+                <Text style={[styles.selectedClientEmail, { color: theme.muted }]}>
+                  {`${option.duration_in_minutes} ${t('appointment.minutesShort')} · €${option.price}`}
                 </Text>
-                <Text style={styles.selectedClientEmail}>{selectedClient.email}</Text>
               </View>
-              <Pressable onPress={() => setSelectedClient(null)}>
-                <Text style={styles.changeLink}>{t('appointment.change')}</Text>
-              </Pressable>
-            </View>
-          ) : showNewClientForm ? (
-            <View>
-              <TextInput
-                style={styles.input}
-                placeholder={t('appointment.firstName')}
-                placeholderTextColor="#9a9a9a"
-                value={newFirstName}
-                onChangeText={setNewFirstName}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder={t('appointment.lastName')}
-                placeholderTextColor="#9a9a9a"
-                value={newLastName}
-                onChangeText={setNewLastName}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder={t('appointment.email')}
-                placeholderTextColor="#9a9a9a"
-                value={newEmail}
-                onChangeText={setNewEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-              <Pressable onPress={() => setShowNewClientForm(false)}>
-                <Text style={styles.changeLink}>{t('appointment.searchClientPlaceholder')}</Text>
-              </Pressable>
-            </View>
-          ) : (
-            <View>
-              <TextInput
-                style={styles.input}
-                placeholder={t('appointment.searchClientPlaceholder')}
-                placeholderTextColor="#9a9a9a"
-                value={clientSearchTerm}
-                onChangeText={handleClientSearchChange}
-              />
-              {clientSearching ? (
-                <ActivityIndicator style={{ marginTop: 8 }} color="#8b8b8b" />
-              ) : clientSearchTerm.trim().length >= 2 && clientResults.length === 0 ? (
-                <Text style={styles.noResultsText}>{t('appointment.noResults')}</Text>
-              ) : (
-                clientResults.map((result) => (
-                  <Pressable
-                    key={result.id}
-                    style={styles.clientResultRow}
-                    onPress={() => {
-                      setSelectedClient(result);
-                      setClientResults([]);
-                      setClientSearchTerm('');
-                    }}>
-                    <Text style={styles.pickerRowText}>
-                      {`${result.first_name ?? ''} ${result.last_name ?? ''}`.trim() || result.email}
-                    </Text>
-                    <Text style={styles.selectedClientEmail}>{result.email}</Text>
-                  </Pressable>
-                ))
-              )}
-              <Pressable onPress={() => setShowNewClientForm(true)} style={{ marginTop: 8 }}>
-                <Text style={styles.changeLink}>{t('appointment.addNewClient')}</Text>
-              </Pressable>
-            </View>
-          )}
-        </View>
-
-        {/* Staff */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>{t('appointment.staffMember')}</Text>
-          {staffLoading ? (
-            <ActivityIndicator color="#8b8b8b" />
-          ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.staffRow}>
-              {staffList.map((staff) => {
-                const name = `${staff.first_name ?? ''} ${staff.last_name ?? ''}`.trim() || t('calendar.employee');
-                const isSelected = staffId === staff.id;
-                return (
-                  <Pressable
-                    key={staff.id}
-                    style={[styles.staffChip, isSelected && styles.staffChipActive]}
-                    onPress={() => setStaffId(staff.id)}>
-                    <View style={styles.staffAvatar}>
-                      <Text style={styles.staffAvatarText}>{getInitialsFromLabel(name)}</Text>
-                    </View>
-                    <Text style={[styles.staffChipText, isSelected && styles.staffChipTextActive]}>{name}</Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          )}
-        </View>
-
-        {/* Treatments */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>{t('appointment.treatments')}</Text>
-          {cart.length === 0 ? (
-            <Text style={styles.noResultsText}>{t('appointment.noTreatmentsAdded')}</Text>
-          ) : (
-            cart.map((item, index) => (
-              <View key={`${item.treatmentId}-${item.priceOptionId}-${index}`} style={styles.cartRow}>
-                <View
-                  style={[
-                    styles.colorDot,
-                    { backgroundColor: COLOR_MAP[mapTreatmentColorToEventColor(item.color, item.treatmentName)] },
-                  ]}
-                />
+            </Pressable>
+          ))}
+        </ScrollView>
+      ) : (
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          {/* Client */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionLabel, { color: theme.muted }]}>{t('appointment.client')}</Text>
+            {selectedClient ? (
+              <View style={[styles.selectedClientRow, { borderColor: theme.border }]}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.pickerRowText}>{item.treatmentName}</Text>
-                  <Text style={styles.selectedClientEmail}>
-                    {`${item.priceOptionName} · ${item.durationMinutes} ${t('appointment.minutesShort')} · €${item.price}`}
+                  <Text style={[styles.selectedClientName, { color: theme.text }]}>
+                    {`${selectedClient.first_name ?? ''} ${selectedClient.last_name ?? ''}`.trim() || selectedClient.email}
                   </Text>
+                  <Text style={[styles.selectedClientEmail, { color: theme.muted }]}>{selectedClient.email}</Text>
                 </View>
-                <Pressable onPress={() => setCart((prev) => prev.filter((_, i) => i !== index))} hitSlop={8}>
-                  <MaterialIcons name="close" size={20} color="#8b8b8b" />
+                <Pressable onPress={() => setSelectedClient(null)}>
+                  <Text style={[styles.changeLink, { color: theme.tint }]}>{t('appointment.change')}</Text>
                 </Pressable>
               </View>
-            ))
-          )}
-          <Pressable style={{ marginTop: 8 }} onPress={() => setTreatmentPickerVisible(true)}>
-            <Text style={styles.changeLink}>{t('appointment.addTreatment')}</Text>
-          </Pressable>
-        </View>
+            ) : showNewClientForm ? (
+              <View>
+                <TextInput
+                  style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+                  placeholder={t('appointment.firstName')}
+                  placeholderTextColor={theme.muted}
+                  value={newFirstName}
+                  onChangeText={setNewFirstName}
+                />
+                <TextInput
+                  style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+                  placeholder={t('appointment.lastName')}
+                  placeholderTextColor={theme.muted}
+                  value={newLastName}
+                  onChangeText={setNewLastName}
+                />
+                <TextInput
+                  style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+                  placeholder={t('appointment.email')}
+                  placeholderTextColor={theme.muted}
+                  value={newEmail}
+                  onChangeText={setNewEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+                <Pressable onPress={() => setShowNewClientForm(false)}>
+                  <Text style={[styles.changeLink, { color: theme.tint }]}>{t('appointment.searchClientPlaceholder')}</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <View>
+                <TextInput
+                  style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+                  placeholder={t('appointment.searchClientPlaceholder')}
+                  placeholderTextColor={theme.muted}
+                  value={clientSearchTerm}
+                  onChangeText={handleClientSearchChange}
+                />
+                {clientSearching ? (
+                  <ActivityIndicator style={{ marginTop: 8 }} color={theme.muted} />
+                ) : clientSearchTerm.trim().length >= 2 && clientResults.length === 0 ? (
+                  <Text style={[styles.noResultsText, { color: theme.muted }]}>{t('appointment.noResults')}</Text>
+                ) : (
+                  clientResults.map((result) => (
+                    <Pressable
+                      key={result.id}
+                      style={[styles.clientResultRow, { borderBottomColor: theme.border }]}
+                      onPress={() => {
+                        setSelectedClient(result);
+                        setClientResults([]);
+                        setClientSearchTerm('');
+                      }}>
+                      <Text style={[styles.pickerRowText, { color: theme.text }]}>
+                        {`${result.first_name ?? ''} ${result.last_name ?? ''}`.trim() || result.email}
+                      </Text>
+                      <Text style={[styles.selectedClientEmail, { color: theme.muted }]}>{result.email}</Text>
+                    </Pressable>
+                  ))
+                )}
+                <Pressable onPress={() => setShowNewClientForm(true)} style={{ marginTop: 8 }}>
+                  <Text style={[styles.changeLink, { color: theme.tint }]}>{t('appointment.addNewClient')}</Text>
+                </Pressable>
+              </View>
+            )}
+          </View>
 
-        {/* Date & time */}
-        <View style={styles.section}>
-          <View style={styles.dateRow}>
-            <Text style={styles.sectionLabel}>{t('appointment.starts')}</Text>
-            <View style={styles.dateRowPills}>
-              {renderDatePill()}
-              {renderTimePill()}
+          {/* Staff */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionLabel, { color: theme.muted }]}>{t('appointment.staffMember')}</Text>
+            {staffLoading ? (
+              <ActivityIndicator color={theme.muted} />
+            ) : (
+              <View style={styles.staffRow}>
+                {staffList.map((staff) => {
+                  const name = `${staff.first_name ?? ''} ${staff.last_name ?? ''}`.trim() || t('calendar.employee');
+                  const isSelected = staffId === staff.id;
+                  return (
+                    <Pressable
+                      key={staff.id}
+                      style={[
+                        styles.staffChip,
+                        { borderColor: theme.border, backgroundColor: theme.surface },
+                        isSelected && { backgroundColor: theme.tint, borderColor: theme.tint },
+                      ]}
+                      onPress={() => setStaffId(staff.id)}>
+                      <View style={[styles.staffAvatar, { backgroundColor: theme.border }]}>
+                        <Text style={[styles.staffAvatarText, { color: theme.text }]}>{getInitialsFromLabel(name)}</Text>
+                      </View>
+                      <Text style={[styles.staffChipText, { color: isSelected ? '#fff' : theme.text }]}>{name}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+
+          {/* Treatments */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionLabel, { color: theme.muted }]}>{t('appointment.treatments')}</Text>
+            {cart.length === 0 ? (
+              <Text style={[styles.noResultsText, { color: theme.muted }]}>{t('appointment.noTreatmentsAdded')}</Text>
+            ) : (
+              cart.map((item, index) => (
+                <View key={`${item.treatmentId}-${item.priceOptionId}-${index}`} style={[styles.cartRow, { borderBottomColor: theme.border }]}>
+                  <View
+                    style={[
+                      styles.colorDot,
+                      { backgroundColor: COLOR_MAP[mapTreatmentColorToEventColor(item.color, item.treatmentName)] },
+                    ]}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.pickerRowText, { color: theme.text }]}>{item.treatmentName}</Text>
+                    <Text style={[styles.selectedClientEmail, { color: theme.muted }]}>
+                      {`${item.priceOptionName} · ${item.durationMinutes} ${t('appointment.minutesShort')} · €${item.price}`}
+                    </Text>
+                  </View>
+                  <Pressable onPress={() => setCart((prev) => prev.filter((_, i) => i !== index))} hitSlop={8}>
+                    <MaterialIcons name="close" size={20} color={theme.muted} />
+                  </Pressable>
+                </View>
+              ))
+            )}
+            <Pressable style={{ marginTop: 8 }} onPress={() => setScreen('treatments')}>
+              <Text style={[styles.changeLink, { color: theme.tint }]}>{t('appointment.addTreatment')}</Text>
+            </Pressable>
+          </View>
+
+          {/* Date & time */}
+          <View style={styles.section}>
+            <View style={styles.dateRow}>
+              <Text style={[styles.sectionLabel, { color: theme.muted }]}>{t('appointment.starts')}</Text>
+              <View style={styles.dateRowPills}>
+                {renderDatePill()}
+                {renderTimePill()}
+              </View>
             </View>
+            <View style={styles.dateRow}>
+              <Text style={[styles.sectionLabel, { color: theme.muted }]}>{t('appointment.ends')}</Text>
+              <Text style={[styles.computedEndText, { color: theme.muted }]}>{formatTimeForInput(endDate)}</Text>
+            </View>
+            <Text style={[styles.endsHint, { color: theme.muted }]}>{t('appointment.endsComputedHint')}</Text>
           </View>
-          <View style={styles.dateRow}>
-            <Text style={styles.sectionLabel}>{t('appointment.ends')}</Text>
-            <Text style={styles.computedEndText}>{formatTimeForInput(endDate)}</Text>
-          </View>
-          <Text style={styles.endsHint}>{t('appointment.endsComputedHint')}</Text>
-        </View>
 
-        {/* Notes */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>{t('appointment.notes')}</Text>
-          <TextInput
-            style={[styles.input, styles.notesInput]}
-            placeholder={t('appointment.notesPlaceholder')}
-            placeholderTextColor="#9a9a9a"
-            value={notes}
-            onChangeText={setNotes}
-            multiline
-          />
-        </View>
-      </ScrollView>
+          {/* Notes */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionLabel, { color: theme.muted }]}>{t('appointment.notes')}</Text>
+            <TextInput
+              style={[styles.input, styles.notesInput, { borderColor: theme.border, color: theme.text }]}
+              placeholder={t('appointment.notesPlaceholder')}
+              placeholderTextColor={theme.muted}
+              value={notes}
+              onChangeText={setNotes}
+              multiline
+            />
+          </View>
+        </ScrollView>
+      )}
 
       {Platform.OS === 'android' && showDatePicker ? (
         <DateTimePicker
@@ -522,14 +612,14 @@ export default function NewAppointmentScreen() {
               setShowDatePicker(false);
               setShowTimePicker(false);
             }}>
-            <Pressable style={styles.pickerSheet} onPress={(event) => event.stopPropagation()}>
+            <Pressable style={[styles.pickerSheet, { backgroundColor: theme.surface }]} onPress={(event) => event.stopPropagation()}>
               <View style={styles.pickerDoneRow}>
                 <Pressable
                   onPress={() => {
                     setShowDatePicker(false);
                     setShowTimePicker(false);
                   }}>
-                  <Text style={styles.pickerDoneText}>{t('appointment.done')}</Text>
+                  <Text style={[styles.pickerDoneText, { color: theme.tint }]}>{t('appointment.done')}</Text>
                 </Pressable>
               </View>
               <DateTimePicker
@@ -545,78 +635,13 @@ export default function NewAppointmentScreen() {
           </Pressable>
         </Modal>
       ) : null}
-
-      <Modal transparent animationType="slide" visible={treatmentPickerVisible} onRequestClose={closeTreatmentPicker}>
-        <Pressable style={styles.pickerOverlay} onPress={closeTreatmentPicker}>
-          <Pressable style={styles.treatmentSheet} onPress={(event) => event.stopPropagation()}>
-            <View style={styles.sheetHandle} />
-            {treatmentPickerSelected ? (
-              <>
-                <View style={styles.sheetHeaderRow}>
-                  <Pressable onPress={() => setTreatmentPickerSelected(null)} hitSlop={8}>
-                    <MaterialIcons name="arrow-back" size={20} color="#1b1b1b" />
-                  </Pressable>
-                  <Text style={styles.sheetTitle}>{treatmentPickerSelected.name}</Text>
-                </View>
-                <ScrollView>
-                  {treatmentPickerSelected.price_option.map((option) => (
-                    <Pressable
-                      key={option.id}
-                      style={styles.pickerRow}
-                      onPress={() => handleAddTreatment(treatmentPickerSelected, option)}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.pickerRowText}>{option.name}</Text>
-                        <Text style={styles.selectedClientEmail}>
-                          {`${option.duration_in_minutes} ${t('appointment.minutesShort')} · €${option.price}`}
-                        </Text>
-                      </View>
-                    </Pressable>
-                  ))}
-                </ScrollView>
-              </>
-            ) : (
-              <>
-                <Text style={styles.sheetTitle}>{t('appointment.selectTreatment')}</Text>
-                <ScrollView>
-                  {treatmentsList.map((treatment) => (
-                    <Pressable
-                      key={treatment.id}
-                      style={styles.pickerRow}
-                      onPress={() => setTreatmentPickerSelected(treatment)}>
-                      <View
-                        style={[
-                          styles.colorDot,
-                          { backgroundColor: COLOR_MAP[mapTreatmentColorToEventColor(treatment.color, treatment.name)] },
-                        ]}
-                      />
-                      <Text style={styles.pickerRowText}>{treatment.name}</Text>
-                      <MaterialIcons name="chevron-right" size={20} color="#8b8b8b" />
-                    </Pressable>
-                  ))}
-                </ScrollView>
-              </>
-            )}
-          </Pressable>
-        </Pressable>
-      </Modal>
     </SafeAreaView>
   );
 }
 
-const webInputStyle: React.CSSProperties = {
-  fontSize: 14,
-  fontWeight: 600,
-  color: '#1b1b1b',
-  padding: '8px 12px',
-  borderRadius: 18,
-  border: '1px solid #e7e7e7',
-  backgroundColor: '#ffffff',
-};
-
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#ffffff',
   },
   header: {
     flexDirection: 'row',
@@ -625,30 +650,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
   headerTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1b1b1b',
   },
   saveText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#20b87b',
-  },
-  saveTextDisabled: {
-    color: '#c6c6c6',
   },
   errorBanner: {
     marginHorizontal: 16,
     marginTop: 12,
     padding: 12,
     borderRadius: 10,
-    backgroundColor: '#FFE4E6',
   },
   errorBannerText: {
-    color: '#881337',
     fontSize: 13,
     fontWeight: '600',
   },
@@ -663,17 +680,14 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#8b8b8b',
     textTransform: 'uppercase',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#e7e7e7',
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 15,
-    color: '#1b1b1b',
     marginBottom: 8,
   },
   notesInput: {
@@ -682,18 +696,15 @@ const styles = StyleSheet.create({
   },
   noResultsText: {
     fontSize: 14,
-    color: '#8b8b8b',
   },
   changeLink: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#20b87b',
   },
   selectedClientRow: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#e7e7e7',
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -701,24 +712,22 @@ const styles = StyleSheet.create({
   selectedClientName: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1b1b1b',
   },
   selectedClientEmail: {
     fontSize: 13,
-    color: '#8b8b8b',
     marginTop: 2,
   },
   clientResultRow: {
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
   pickerRowText: {
     fontSize: 15,
-    color: '#1b1b1b',
     fontWeight: '500',
   },
   staffRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
   },
   staffChip: {
@@ -729,33 +738,21 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#e7e7e7',
-    backgroundColor: '#ffffff',
-  },
-  staffChipActive: {
-    backgroundColor: '#1b1b1b',
-    borderColor: '#1b1b1b',
   },
   staffAvatar: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#e7e7e7',
     alignItems: 'center',
     justifyContent: 'center',
   },
   staffAvatarText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#4a4a4a',
   },
   staffChipText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1b1b1b',
-  },
-  staffChipTextActive: {
-    color: '#ffffff',
   },
   cartRow: {
     flexDirection: 'row',
@@ -763,7 +760,6 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
   colorDot: {
     width: 10,
@@ -784,22 +780,17 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#e7e7e7',
-    backgroundColor: '#ffffff',
   },
   pillText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1b1b1b',
   },
   computedEndText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#8b8b8b',
   },
   endsHint: {
     fontSize: 12,
-    color: '#9a9a9a',
   },
   pickerOverlay: {
     flex: 1,
@@ -807,7 +798,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.3)',
   },
   pickerSheet: {
-    backgroundColor: '#ffffff',
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
     paddingBottom: 24,
@@ -820,43 +810,13 @@ const styles = StyleSheet.create({
   pickerDoneText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#20b87b',
-  },
-  treatmentSheet: {
-    backgroundColor: '#ffffff',
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 24,
-    maxHeight: '75%',
-  },
-  sheetHandle: {
-    alignSelf: 'center',
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#e0e0e0',
-    marginBottom: 12,
-  },
-  sheetHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 8,
-  },
-  sheetTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1b1b1b',
-    marginBottom: 8,
   },
   pickerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     paddingVertical: 12,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
 });

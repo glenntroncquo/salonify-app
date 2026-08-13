@@ -1,18 +1,13 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { DateTimeField } from '@/components/date-time-field';
 import { useAuth } from '@/contexts/auth-context';
-import {
-  UnavailabilityBlock,
-  createUnavailability,
-  deleteUnavailability,
-  fetchUnavailability,
-} from '@/lib/api/staff';
+import { UnavailabilityBlock, deleteUnavailability, fetchUnavailability } from '@/lib/api/staff';
 
 function formatDateLabel(date: Date) {
   const y = date.getFullYear();
@@ -27,24 +22,6 @@ function formatTimeLabel(date: Date) {
   return `${h}:${m}`;
 }
 
-function defaultDate() {
-  const date = new Date();
-  date.setHours(0, 0, 0, 0);
-  return date;
-}
-
-function defaultStart() {
-  const date = new Date();
-  date.setHours(0, 0, 0, 0);
-  return date;
-}
-
-function defaultEnd() {
-  const date = new Date();
-  date.setHours(23, 59, 0, 0);
-  return date;
-}
-
 export default function StaffTimeOffScreen() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -54,12 +31,6 @@ export default function StaffTimeOffScreen() {
   const [blocks, setBlocks] = React.useState<UnavailabilityBlock[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-
-  const [modalVisible, setModalVisible] = React.useState(false);
-  const [date, setDate] = React.useState(defaultDate);
-  const [startTime, setStartTime] = React.useState(defaultStart);
-  const [endTime, setEndTime] = React.useState(defaultEnd);
-  const [saving, setSaving] = React.useState(false);
 
   const load = React.useCallback(async () => {
     if (!id || !companyId) {
@@ -77,38 +48,11 @@ export default function StaffTimeOffScreen() {
     }
   }, [id, companyId, t]);
 
-  React.useEffect(() => {
-    load();
-  }, [load]);
-
-  const openAdd = () => {
-    setDate(defaultDate());
-    setStartTime(defaultStart());
-    setEndTime(defaultEnd());
-    setModalVisible(true);
-  };
-
-  const handleSave = async () => {
-    if (!id || !companyId) return;
-    setSaving(true);
-    try {
-      await createUnavailability(
-        id,
-        companyId,
-        date,
-        startTime.getHours(),
-        startTime.getMinutes(),
-        endTime.getHours(),
-        endTime.getMinutes()
-      );
-      setModalVisible(false);
-      await load();
-    } catch {
-      setError(t('staff.failedToSaveTimeOff'));
-    } finally {
-      setSaving(false);
-    }
-  };
+  useFocusEffect(
+    React.useCallback(() => {
+      load();
+    }, [load])
+  );
 
   const handleDelete = async (blockId: string) => {
     try {
@@ -162,40 +106,11 @@ export default function StaffTimeOffScreen() {
               );
             })
           )}
-          <Pressable style={{ marginTop: 12 }} onPress={openAdd}>
+          <Pressable style={{ marginTop: 12 }} onPress={() => router.push({ pathname: '/staff/time-off-new', params: { staffId: id } })}>
             <Text style={styles.addLink}>{t('staff.addTimeOff')}</Text>
           </Pressable>
         </ScrollView>
       )}
-
-      <Modal transparent animationType="slide" visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setModalVisible(false)}>
-          <Pressable style={styles.modalSheet} onPress={(event) => event.stopPropagation()}>
-            <Text style={styles.sheetTitle}>{t('staff.addTimeOff')}</Text>
-
-            <View style={styles.modalRow}>
-              <Text style={styles.modalRowLabel}>{t('staff.date')}</Text>
-              <DateTimeField value={date} mode="date" doneLabel={t('appointment.done')} formatLabel={formatDateLabel} onChange={setDate} />
-            </View>
-            <View style={styles.modalRow}>
-              <Text style={styles.modalRowLabel}>{t('appointment.starts')}</Text>
-              <DateTimeField value={startTime} mode="time" doneLabel={t('appointment.done')} formatLabel={formatTimeLabel} onChange={setStartTime} />
-            </View>
-            <View style={styles.modalRow}>
-              <Text style={styles.modalRowLabel}>{t('appointment.ends')}</Text>
-              <DateTimeField value={endTime} mode="time" doneLabel={t('appointment.done')} formatLabel={formatTimeLabel} onChange={setEndTime} />
-            </View>
-
-            <Pressable style={styles.modalSaveButton} onPress={handleSave} disabled={saving}>
-              {saving ? (
-                <ActivityIndicator size="small" color="#ffffff" />
-              ) : (
-                <Text style={styles.modalSaveButtonText}>{t('client.save')}</Text>
-              )}
-            </Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -265,45 +180,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#20b87b',
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.3)',
-  },
-  modalSheet: {
-    backgroundColor: '#ffffff',
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-    padding: 16,
-    paddingBottom: 32,
-    gap: 12,
-  },
-  sheetTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1b1b1b',
-  },
-  modalRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  modalRowLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1b1b1b',
-  },
-  modalSaveButton: {
-    backgroundColor: '#1b1b1b',
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  modalSaveButtonText: {
-    color: '#ffffff',
-    fontSize: 15,
-    fontWeight: '700',
   },
 });

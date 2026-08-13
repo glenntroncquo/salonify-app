@@ -149,7 +149,10 @@
     "failedToLoadTimeOff": "Failed to load time off.",
     "failedToSaveTimeOff": "Failed to save time off. Please try again.",
     "failedToDeleteTimeOff": "Failed to delete time off. Please try again.",
-    "date": "Date"
+    "date": "Date",
+    "schedule": "Schedule",
+    "absent": "Absent",
+    "failedToLoadSchedule": "Failed to load schedule."
   },
   "checkout": {
     "title": "Checkout",

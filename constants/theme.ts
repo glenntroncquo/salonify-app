@@ -5,13 +5,19 @@
 
 import { Platform } from 'react-native';
 
+// Brand teal stays constant across themes: it already clears 4.5:1 contrast
+// against white button labels and pops clearly against both surfaces.
 const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+const tintColorDark = '#0a7ea4';
 
 export const Colors = {
   light: {
     text: '#11181C',
     background: '#fff',
+    surface: '#F5F6F7',
+    border: '#DCDFE1',
+    muted: '#687076',
+    error: '#E5484D',
     tint: tintColorLight,
     icon: '#687076',
     tabIconDefault: '#687076',
@@ -19,7 +25,11 @@ export const Colors = {
   },
   dark: {
     text: '#ECEDEE',
-    background: '#151718',
+    background: '#121212',
+    surface: '#1E1F20',
+    border: '#2C2F30',
+    muted: '#9BA1A6',
+    error: '#FF6B6B',
     tint: tintColorDark,
     icon: '#9BA1A6',
     tabIconDefault: '#9BA1A6',
