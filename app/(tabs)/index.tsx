@@ -64,9 +64,14 @@ export default function CalendarScreen() {
   const [showModeMenu, setShowModeMenu] = React.useState(false);
   const [showStaffMenu, setShowStaffMenu] = React.useState(false);
   const [viewMode, setViewMode] = React.useState<'month' | 'week' | 'list'>('month');
-  const [offsets, setOffsets] = React.useState([-2, -1, 0, 1, 2]);
-  const [currentOffset, setCurrentOffset] = React.useState(0);
-  const [listMonthOffsets, setListMonthOffsets] = React.useState(() => buildPrefetchWindow(0));
+  const [offsets, setOffsets] = React.useState(() => {
+    const todayOffset = getOffsetForDate(new Date());
+    return [todayOffset - 2, todayOffset - 1, todayOffset, todayOffset + 1, todayOffset + 2];
+  });
+  const [currentOffset, setCurrentOffset] = React.useState(() => getOffsetForDate(new Date()));
+  const [listMonthOffsets, setListMonthOffsets] = React.useState(() =>
+    buildPrefetchWindow(getOffsetForDate(new Date()))
+  );
   const weekOffsets = React.useMemo(
     () => Array.from({ length: WEEK_PAGE_COUNT }, (_, i) => i - WEEK_CENTER_INDEX),
     []
@@ -498,12 +503,22 @@ export default function CalendarScreen() {
 
   const listGetItemType = React.useCallback((item: ListFlatItem) => item.kind, []);
 
-  const renderListItem = React.useCallback(({ item }: { item: ListFlatItem }) => {
-    if (item.kind === 'header') {
-      return <ListSectionHeader title={item.title} isToday={item.isToday} />;
-    }
-    return <ListEventRow event={item.event} />;
-  }, []);
+  const handleListEventPress = React.useCallback(
+    (event: EventItem) => {
+      router.push({ pathname: '/appointment/[id]', params: { id: event.appointmentId } });
+    },
+    [router]
+  );
+
+  const renderListItem = React.useCallback(
+    ({ item }: { item: ListFlatItem }) => {
+      if (item.kind === 'header') {
+        return <ListSectionHeader title={item.title} isToday={item.isToday} />;
+      }
+      return <ListEventRow event={item.event} onPress={handleListEventPress} />;
+    },
+    [handleListEventPress]
+  );
 
   const renderMonthGrid = React.useCallback(
     (monthData: MonthData) => {

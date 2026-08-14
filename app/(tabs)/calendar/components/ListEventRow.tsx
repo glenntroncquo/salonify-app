@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { getInitialsFromLabel } from '@/lib/text';
 
@@ -8,11 +8,12 @@ import { EventItem } from '../types';
 
 type Props = {
   event: EventItem;
+  onPress?: (event: EventItem) => void;
 };
 
-export const ListEventRow = React.memo(function ListEventRow({ event }: Props) {
+export const ListEventRow = React.memo(function ListEventRow({ event, onPress }: Props) {
   return (
-    <View style={styles.listEventRow}>
+    <Pressable style={styles.listEventRow} onPress={() => onPress?.(event)}>
       <View style={styles.listEventTimeCol}>
         <Text style={styles.listEventTime}>{event.startTime}</Text>
         <Text style={styles.listEventTimeMuted}>{event.endTime}</Text>
@@ -29,6 +30,6 @@ export const ListEventRow = React.memo(function ListEventRow({ event }: Props) {
       <View style={styles.listEventAvatar}>
         <Text style={styles.listEventAvatarText}>{getInitialsFromLabel(event.staffName)}</Text>
       </View>
-    </View>
+    </Pressable>
   );
 });
