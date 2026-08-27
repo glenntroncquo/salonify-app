@@ -1,11 +1,13 @@
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { Pressable } from '@/components/pressable-scale';
+import { AppIcon } from '@/components/app-icon';
+import { TabSwipeArea } from '@/components/tab-swipe-area';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   TextInput,
@@ -15,7 +17,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Client, fetchClients } from '@/lib/api/clients';
 import { getInitialsFromLabel } from '@/lib/text';
 
@@ -27,9 +31,13 @@ export default function ClientsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { companyId } = useAuth();
+  const colorScheme = useColorScheme() ?? 'light';
+  const theme = Colors[colorScheme];
+  const styles = createStyles(theme);
 
   const [clients, setClients] = React.useState<Client[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [refreshing, setRefreshing] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [searchTerm, setSearchTerm] = React.useState('');
 
@@ -55,6 +63,12 @@ export default function ClientsScreen() {
     }, [loadClients])
   );
 
+  const handleRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await loadClients();
+    setRefreshing(false);
+  }, [loadClients]);
+
   const filteredClients = React.useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     if (!term) return clients;
@@ -68,6 +82,7 @@ export default function ClientsScreen() {
   const showNoCompanyState = !loading && !companyId;
 
   return (
+    <TabSwipeArea next="/more" prev="/">
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         <Text style={styles.title}>{t('client.title')}</Text>
@@ -75,11 +90,11 @@ export default function ClientsScreen() {
 
       {!showNoCompanyState ? (
         <View style={styles.searchRow}>
-          <MaterialIcons name="search" size={20} color="#8b8b8b" />
+          <AppIcon name="search" size={20} color={theme.muted} />
           <TextInput
             style={styles.searchInput}
             placeholder={t('client.searchPlaceholder')}
-            placeholderTextColor="#9a9a9a"
+            placeholderTextColor={theme.muted}
             value={searchTerm}
             onChangeText={setSearchTerm}
           />
@@ -97,7 +112,7 @@ export default function ClientsScreen() {
 
       {loading ? (
         <View style={styles.stateContainer}>
-          <ActivityIndicator size="large" color="#1b1b1b" />
+          <ActivityIndicator size="large" color={theme.text} />
         </View>
       ) : showNoCompanyState ? (
         <View style={styles.stateContainer}>
@@ -107,6 +122,7 @@ export default function ClientsScreen() {
         <FlatList
           data={filteredClients}
           keyExtractor={(item) => item.id}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
             <View style={styles.stateContainer}>
@@ -126,7 +142,7 @@ export default function ClientsScreen() {
                   <Text style={styles.rowName}>{name}</Text>
                   {item.email ? <Text style={styles.rowSubtitle}>{item.email}</Text> : null}
                 </View>
-                <MaterialIcons name="chevron-right" size={22} color="#c6c6c6" />
+                <AppIcon name="chevronRight" size={22} color={theme.muted} />
               </Pressable>
             );
           }}
@@ -135,128 +151,130 @@ export default function ClientsScreen() {
 
       {!showNoCompanyState ? (
         <TouchableOpacity style={styles.fab} onPress={() => router.push('/client/new')}>
-          <MaterialIcons name="add" size={26} color="#1b1b1b" />
+          <AppIcon name="add" size={26} color={theme.text} />
         </TouchableOpacity>
       ) : null}
     </SafeAreaView>
+    </TabSwipeArea>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '600',
-    color: '#1b1b1b',
-  },
-  searchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginHorizontal: 16,
-    marginBottom: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e7e7e7',
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    color: '#1b1b1b',
-  },
-  errorBanner: {
-    marginHorizontal: 16,
-    marginBottom: 12,
-    padding: 12,
-    borderRadius: 10,
-    backgroundColor: '#FFE4E6',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  errorBannerText: {
-    color: '#881337',
-    fontSize: 13,
-    fontWeight: '600',
-    flex: 1,
-  },
-  errorBannerRetry: {
-    color: '#881337',
-    fontSize: 13,
-    fontWeight: '700',
-    textDecorationLine: 'underline',
-  },
-  stateContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 60,
-  },
-  stateText: {
-    fontSize: 15,
-    color: '#8b8b8b',
-  },
-  listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 100,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#e7e7e7',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#4a4a4a',
-  },
-  rowName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1b1b1b',
-  },
-  rowSubtitle: {
-    fontSize: 13,
-    color: '#8b8b8b',
-    marginTop: 2,
-  },
-  fab: {
-    position: 'absolute',
-    right: 20,
-    bottom: 24,
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: '#ffffff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#1b1b1b',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-});
+const createStyles = (theme: typeof Colors.light) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    header: {
+      paddingHorizontal: 16,
+      paddingTop: 8,
+      paddingBottom: 12,
+    },
+    title: {
+      fontSize: 28,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    searchRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginHorizontal: 16,
+      marginBottom: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    searchInput: {
+      flex: 1,
+      fontSize: 15,
+      color: theme.text,
+    },
+    errorBanner: {
+      marginHorizontal: 16,
+      marginBottom: 12,
+      padding: 12,
+      borderRadius: 10,
+      backgroundColor: '#FFE4E6',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    errorBannerText: {
+      color: '#881337',
+      fontSize: 13,
+      fontWeight: '600',
+      flex: 1,
+    },
+    errorBannerRetry: {
+      color: '#881337',
+      fontSize: 13,
+      fontWeight: '700',
+      textDecorationLine: 'underline',
+    },
+    stateContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingTop: 60,
+    },
+    stateText: {
+      fontSize: 15,
+      color: theme.muted,
+    },
+    listContent: {
+      paddingHorizontal: 16,
+      paddingBottom: 100,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    avatar: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: theme.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarText: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: theme.text,
+    },
+    rowName: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    rowSubtitle: {
+      fontSize: 13,
+      color: theme.muted,
+      marginTop: 2,
+    },
+    fab: {
+      position: 'absolute',
+      right: 20,
+      bottom: 24,
+      width: 54,
+      height: 54,
+      borderRadius: 27,
+      backgroundColor: theme.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: theme.text,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 6,
+      elevation: 4,
+    },
+  });

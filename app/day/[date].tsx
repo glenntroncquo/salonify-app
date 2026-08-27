@@ -1,10 +1,11 @@
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Pressable } from '@/components/pressable-scale';
+import { AppIcon } from '@/components/app-icon';
+import { HeaderButton } from '@/components/header-button';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
 import {
   ActivityIndicator,
   DeviceEventEmitter,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -65,24 +66,30 @@ export default function DayScreen() {
   const weekNumber = date ? getISOWeekNumber(new Date(date)) : 0;
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['top', 'left', 'right', 'bottom']}>
-      <View style={[styles.header, { borderBottomColor: theme.border }]}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <MaterialIcons name="close" size={24} color={theme.text} />
-        </Pressable>
-        <View style={styles.headerCenter}>
-          <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>
-            {date ? getFullDateLabel(date) : ''}
-          </Text>
-          <Text style={[styles.subtitle, { color: theme.muted }]}>{t('calendar.weekLabel', { number: weekNumber })}</Text>
-        </View>
-        <Pressable
-          style={[styles.addButton, { backgroundColor: theme.tint }]}
-          onPress={() => router.push({ pathname: '/appointment-new', params: { date } })}
-          hitSlop={8}>
-          <MaterialIcons name="add" size={20} color="#fff" />
-        </Pressable>
-      </View>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['left', 'right', 'bottom']}>
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          headerTitle: () => (
+            <View style={styles.headerCenter}>
+              <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>
+                {date ? getFullDateLabel(date) : ''}
+              </Text>
+              <Text style={[styles.subtitle, { color: theme.muted }]}>{t('calendar.weekLabel', { number: weekNumber })}</Text>
+            </View>
+          ),
+          headerLeft: () => (
+            <HeaderButton onPress={() => router.back()} hitSlop={8}>
+              <AppIcon name="close" size={18} color={theme.text} />
+            </HeaderButton>
+          ),
+          headerRight: () => (
+            <HeaderButton onPress={() => router.push({ pathname: '/appointment-new', params: { date } })} hitSlop={8}>
+              <AppIcon name="add" size={24} color={theme.text} />
+            </HeaderButton>
+          ),
+        }}
+      />
 
       {loading ? (
         <View style={styles.stateContainer}>
@@ -123,7 +130,7 @@ export default function DayScreen() {
                   onPress={() =>
                     router.push({ pathname: '/checkout/[appointmentId]', params: { appointmentId: event.appointmentId } })
                   }>
-                  <MaterialIcons name="point-of-sale" size={20} color={theme.text} />
+                  <AppIcon name="pointOfSale" size={20} color={theme.text} />
                 </TouchableOpacity>
               </Pressable>
             ))
@@ -157,13 +164,6 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 13,
     marginTop: 2,
-  },
-  addButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   stateContainer: {
     flex: 1,

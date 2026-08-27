@@ -1,4 +1,7 @@
 {
+  "common": {
+    "delete": "Verwijderen"
+  },
   "auth": {
     "signIn": "Inloggen",
     "signInSubtitle": "Log in op je account",

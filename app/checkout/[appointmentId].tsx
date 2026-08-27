@@ -1,11 +1,16 @@
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Pressable } from '@/components/pressable-scale';
+import { AppIcon } from '@/components/app-icon';
+import { HeaderButton } from '@/components/header-button';
+import * as Haptics from 'expo-haptics';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   CheckoutLineItem,
   CheckoutPaymentType,
@@ -21,6 +26,9 @@ export default function CheckoutScreen() {
   const router = useRouter();
   const { appointmentId } = useLocalSearchParams<{ appointmentId: string }>();
   const { companyId } = useAuth();
+  const colorScheme = useColorScheme() ?? 'light';
+  const theme = Colors[colorScheme];
+  const styles = createStyles(theme);
 
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -79,8 +87,10 @@ export default function CheckoutScreen() {
       });
       setOrderNumber(result.order_number ?? null);
       setSuccess(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('checkout.failedToComplete'));
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setSubmitting(false);
     }
@@ -89,8 +99,9 @@ export default function CheckoutScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+        <Stack.Screen options={{ headerShown: false }} />
         <View style={styles.stateContainer}>
-          <ActivityIndicator size="large" color="#1b1b1b" />
+          <ActivityIndicator size="large" color={theme.text} />
         </View>
       </SafeAreaView>
     );
@@ -99,8 +110,9 @@ export default function CheckoutScreen() {
   if (success) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
+        <Stack.Screen options={{ headerShown: false }} />
         <View style={styles.successContainer}>
-          <MaterialIcons name="check-circle" size={64} color="#20b87b" />
+          <AppIcon name="checkCircle" size={64} color="#20b87b" />
           <Text style={styles.successTitle}>{t('checkout.success')}</Text>
           {orderNumber ? <Text style={styles.successSubtitle}>{orderNumber}</Text> : null}
           <Pressable style={styles.doneButton} onPress={() => router.back()}>
@@ -112,14 +124,18 @@ export default function CheckoutScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <MaterialIcons name="close" size={24} color="#1b1b1b" />
-        </Pressable>
-        <Text style={styles.headerTitle}>{t('checkout.title')}</Text>
-        <View style={{ width: 24 }} />
-      </View>
+    <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: t('checkout.title'),
+          headerLeft: () => (
+            <HeaderButton onPress={() => router.back()} hitSlop={8}>
+              <AppIcon name="close" size={18} color={theme.text} />
+            </HeaderButton>
+          ),
+        }}
+      />
 
       {error ? (
         <View style={styles.errorBanner}>
@@ -179,7 +195,7 @@ export default function CheckoutScreen() {
       <View style={styles.footer}>
         <Pressable style={[styles.completeButton, !canSubmit && styles.completeButtonDisabled]} onPress={handleComplete} disabled={!canSubmit}>
           {submitting ? (
-            <ActivityIndicator size="small" color="#ffffff" />
+            <ActivityIndicator size="small" color={theme.onTint} />
           ) : (
             <Text style={styles.completeButtonText}>{t('checkout.complete')}</Text>
           )}
@@ -189,176 +205,177 @@ export default function CheckoutScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1b1b1b',
-  },
-  errorBanner: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    padding: 12,
-    borderRadius: 10,
-    backgroundColor: '#FFE4E6',
-  },
-  errorBannerText: {
-    color: '#881337',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  stateContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 24,
-    gap: 24,
-  },
-  section: {
-    gap: 10,
-  },
-  sectionLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#8b8b8b',
-    textTransform: 'uppercase',
-  },
-  clientName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1b1b1b',
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#8b8b8b',
-  },
-  lineItemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  lineItemName: {
-    fontSize: 15,
-    color: '#1b1b1b',
-  },
-  lineItemPrice: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1b1b1b',
-  },
-  totalRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 8,
-  },
-  totalLabel: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1b1b1b',
-  },
-  totalValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1b1b1b',
-  },
-  paymentRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  paymentChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#e7e7e7',
-  },
-  paymentChipActive: {
-    backgroundColor: '#1b1b1b',
-    borderColor: '#1b1b1b',
-  },
-  paymentChipText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1b1b1b',
-  },
-  paymentChipTextActive: {
-    color: '#ffffff',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#e7e7e7',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: '#1b1b1b',
-  },
-  footer: {
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-  },
-  completeButton: {
-    backgroundColor: '#1b1b1b',
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  completeButtonDisabled: {
-    backgroundColor: '#e0e0e0',
-  },
-  completeButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  successContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    padding: 24,
-  },
-  successTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1b1b1b',
-  },
-  successSubtitle: {
-    fontSize: 14,
-    color: '#8b8b8b',
-  },
-  doneButton: {
-    marginTop: 16,
-    backgroundColor: '#1b1b1b',
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 32,
-  },
-  doneButtonText: {
-    color: '#ffffff',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-});
+const createStyles = (theme: typeof Colors.light) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    headerTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: theme.text,
+    },
+    errorBanner: {
+      marginHorizontal: 16,
+      marginTop: 12,
+      padding: 12,
+      borderRadius: 10,
+      backgroundColor: '#FFE4E6',
+    },
+    errorBannerText: {
+      color: '#881337',
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    stateContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    scrollContent: {
+      padding: 16,
+      paddingBottom: 24,
+      gap: 24,
+    },
+    section: {
+      gap: 10,
+    },
+    sectionLabel: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: theme.muted,
+      textTransform: 'uppercase',
+    },
+    clientName: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    emptyText: {
+      fontSize: 14,
+      color: theme.muted,
+    },
+    lineItemRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    lineItemName: {
+      fontSize: 15,
+      color: theme.text,
+    },
+    lineItemPrice: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    totalRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingTop: 8,
+    },
+    totalLabel: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: theme.text,
+    },
+    totalValue: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: theme.text,
+    },
+    paymentRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    paymentChip: {
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    paymentChipActive: {
+      backgroundColor: theme.tint,
+      borderColor: theme.tint,
+    },
+    paymentChipText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    paymentChipTextActive: {
+      color: theme.onTint,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      fontSize: 15,
+      color: theme.text,
+    },
+    footer: {
+      padding: 16,
+      borderTopWidth: 1,
+      borderTopColor: theme.border,
+    },
+    completeButton: {
+      backgroundColor: theme.tint,
+      borderRadius: 14,
+      paddingVertical: 14,
+      alignItems: 'center',
+    },
+    completeButtonDisabled: {
+      backgroundColor: theme.border,
+    },
+    completeButtonText: {
+      color: theme.onTint,
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    successContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 12,
+      padding: 24,
+    },
+    successTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: theme.text,
+    },
+    successSubtitle: {
+      fontSize: 14,
+      color: theme.muted,
+    },
+    doneButton: {
+      marginTop: 16,
+      backgroundColor: theme.tint,
+      borderRadius: 14,
+      paddingVertical: 12,
+      paddingHorizontal: 32,
+    },
+    doneButtonText: {
+      color: theme.onTint,
+      fontSize: 15,
+      fontWeight: '700',
+    },
+  });

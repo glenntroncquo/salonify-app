@@ -1,17 +1,19 @@
+import { Pressable } from '@/components/pressable-scale';
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { getInitialsFromLabel } from '@/lib/text';
 
-import { styles } from '../styles';
+import { createStyles } from '../styles';
 import { EventItem } from '../types';
 
 type Props = {
   event: EventItem;
   onPress?: (event: EventItem) => void;
+  styles: ReturnType<typeof createStyles>;
 };
 
-export const ListEventRow = React.memo(function ListEventRow({ event, onPress }: Props) {
+export const ListEventRow = React.memo(function ListEventRow({ event, onPress, styles }: Props) {
   return (
     <Pressable style={styles.listEventRow} onPress={() => onPress?.(event)}>
       <View style={styles.listEventTimeCol}>

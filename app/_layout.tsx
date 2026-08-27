@@ -4,6 +4,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { I18nextProvider } from 'react-i18next';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
 import { AuthProvider, useAuth } from '@/contexts/auth-context';
@@ -62,27 +63,27 @@ function RootNavigator() {
       <Stack.Protected guard={!!session}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-        <Stack.Screen name="day/[date]" options={{ presentation: 'modal', headerShown: false }} />
-        <Stack.Screen name="appointment-new" options={{ presentation: 'modal', headerShown: false }} />
-        <Stack.Screen name="appointment/[id]" options={{ presentation: 'modal', headerShown: false }} />
-        <Stack.Screen name="client/[id]" options={{ headerShown: false }} />
-        <Stack.Screen name="client/new" options={{ presentation: 'modal', headerShown: false }} />
-        <Stack.Screen name="treatments/index" options={{ headerShown: false }} />
-        <Stack.Screen name="treatments/[id]" options={{ headerShown: false }} />
-        <Stack.Screen name="treatments/new" options={{ presentation: 'modal', headerShown: false }} />
-        <Stack.Screen name="treatments/price-option" options={{ presentation: 'modal', headerShown: false }} />
-        <Stack.Screen name="staff/index" options={{ headerShown: false }} />
-        <Stack.Screen name="staff/[id]" options={{ headerShown: false }} />
-        <Stack.Screen name="staff/new" options={{ presentation: 'modal', headerShown: false }} />
-        <Stack.Screen name="staff/[id]/availability" options={{ headerShown: false }} />
-        <Stack.Screen name="staff/[id]/time-off" options={{ headerShown: false }} />
-        <Stack.Screen name="staff/[id]/schedule" options={{ headerShown: false }} />
-        <Stack.Screen name="staff/time-off-new" options={{ presentation: 'modal', headerShown: false }} />
+        <Stack.Screen name="day/[date]" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="appointment-new" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="appointment/[id]" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="client/[id]" />
+        <Stack.Screen name="client/new" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="treatments/index" />
+        <Stack.Screen name="treatments/[id]" />
+        <Stack.Screen name="treatments/new" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="treatments/price-option" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="staff/index" />
+        <Stack.Screen name="staff/[id]" />
+        <Stack.Screen name="staff/new" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="staff/[id]/availability" />
+        <Stack.Screen name="staff/[id]/time-off" />
+        <Stack.Screen name="staff/[id]/schedule" />
+        <Stack.Screen name="staff/time-off-new" options={{ presentation: 'modal' }} />
         <Stack.Screen name="checkout/[appointmentId]" options={{ presentation: 'modal', headerShown: false }} />
-        <Stack.Screen name="orders/index" options={{ headerShown: false }} />
-        <Stack.Screen name="orders/[id]" options={{ headerShown: false }} />
-        <Stack.Screen name="dashboard/index" options={{ headerShown: false }} />
-        <Stack.Screen name="settings/index" options={{ headerShown: false }} />
+        <Stack.Screen name="orders/index" />
+        <Stack.Screen name="orders/[id]" />
+        <Stack.Screen name="dashboard/index" />
+        <Stack.Screen name="settings/index" />
       </Stack.Protected>
       <Stack.Protected guard={!session}>
         <Stack.Screen name="login" options={{ headerShown: false }} />
@@ -114,12 +115,14 @@ export default function RootLayout() {
   }
 
   return (
-    <I18nextProvider i18n={i18n}>
-      <ThemePreferenceProvider>
-        <AuthProvider>
-          <RootLayoutInner />
-        </AuthProvider>
-      </ThemePreferenceProvider>
-    </I18nextProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <I18nextProvider i18n={i18n}>
+        <ThemePreferenceProvider>
+          <AuthProvider>
+            <RootLayoutInner />
+          </AuthProvider>
+        </ThemePreferenceProvider>
+      </I18nextProvider>
+    </GestureHandlerRootView>
   );
 }

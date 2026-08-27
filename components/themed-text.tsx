@@ -47,14 +47,16 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: 'bold',
     lineHeight: 32,
+    letterSpacing: -0.4,
   },
   subtitle: {
     fontSize: 20,
     fontWeight: 'bold',
+    letterSpacing: -0.2,
   },
   link: {
     lineHeight: 30,
     fontSize: 16,
-    color: '#0a7ea4',
+    textDecorationLine: 'underline',
   },
 });

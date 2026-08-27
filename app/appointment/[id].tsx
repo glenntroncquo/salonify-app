@@ -1,7 +1,9 @@
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Pressable } from '@/components/pressable-scale';
+import { AppIcon } from '@/components/app-icon';
+import { HeaderButton } from '@/components/header-button';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
@@ -94,22 +96,27 @@ export default function AppointmentDetailScreen() {
       : (event?.clientName ?? '');
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['top', 'left', 'right', 'bottom']}>
-      <View style={[styles.header, { borderBottomColor: theme.border }]}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <MaterialIcons name="close" size={24} color={theme.text} />
-        </Pressable>
-        <Text style={[styles.headerTitle, { color: theme.text }]} numberOfLines={1}>
-          {event?.label ?? ''}
-        </Text>
-        <Pressable
-          onPress={() => {
-            if (event) router.push({ pathname: '/checkout/[appointmentId]', params: { appointmentId: event.appointmentId } });
-          }}
-          hitSlop={8}>
-          <MaterialIcons name="point-of-sale" size={22} color={theme.tint} />
-        </Pressable>
-      </View>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['left', 'right', 'bottom']}>
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: event?.label ?? '',
+          headerLeft: () => (
+            <HeaderButton onPress={() => router.back()} hitSlop={8}>
+              <AppIcon name="close" size={18} color={theme.text} />
+            </HeaderButton>
+          ),
+          headerRight: () => (
+            <HeaderButton
+              onPress={() => {
+                if (event) router.push({ pathname: '/checkout/[appointmentId]', params: { appointmentId: event.appointmentId } });
+              }}
+              hitSlop={8}>
+              <AppIcon name="pointOfSale" size={22} color={theme.tint} />
+            </HeaderButton>
+          ),
+        }}
+      />
 
       {loading ? (
         <View style={styles.stateContainer}>
@@ -151,7 +158,7 @@ export default function AppointmentDetailScreen() {
                 {client?.email ? <Text style={[styles.clientDetail, { color: theme.muted }]}>{client.email}</Text> : null}
                 {client?.phone ? <Text style={[styles.clientDetail, { color: theme.muted }]}>{client.phone}</Text> : null}
               </View>
-              {event.clientId ? <MaterialIcons name="chevron-right" size={20} color={theme.muted} /> : null}
+              {event.clientId ? <AppIcon name="chevronRight" size={20} color={theme.muted} /> : null}
             </Pressable>
           </View>
 

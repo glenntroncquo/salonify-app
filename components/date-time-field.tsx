@@ -1,6 +1,7 @@
+import { Pressable } from '@/components/pressable-scale';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import React from 'react';
-import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Platform, StyleSheet, Text, View } from 'react-native';
 
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';

@@ -1,23 +1,27 @@
+import { Pressable } from '@/components/pressable-scale';
 import React from 'react';
 import {
   DeviceEventEmitter,
   ActivityIndicator,
   FlatList,
-  Pressable,
   ScrollView,
   Text,
   View,
   TouchableOpacity,
   useWindowDimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AppIcon } from '@/components/app-icon';
+import { SalonSelector } from '@/components/salon-selector';
+import { TabSwipeArea } from '@/components/tab-swipe-area';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
-import { useNavigation, useRouter } from 'expo-router';
+import * as Haptics from 'expo-haptics';
+import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 
 import { StaffAvatar } from '@/components/staff-avatar';
+import { ESTIMATED_TAB_BAR_HEIGHT } from '@/constants/layout';
 import { useAuth } from '@/contexts/auth-context';
 import { fetchAppointmentsForMonth, fetchStaff, AppointmentRow, StaffMember } from '@/lib/api/calendar';
 
@@ -44,8 +48,11 @@ import {
 import { buildMonthData, groupAppointmentsByDateKey } from './calendar/calendar-data';
 import { ListEventRow } from './calendar/components/ListEventRow';
 import { ListSectionHeader } from './calendar/components/ListSectionHeader';
-import { styles } from './calendar/styles';
+import { createStyles } from './calendar/styles';
 import { EventItem, ListFlatItem, MonthData, WeekDayData } from './calendar/types';
+
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 function buildPrefetchWindow(centerOffset: number): number[] {
   const span = PREFETCH_PAST_MONTHS + PREFETCH_FUTURE_MONTHS + 1;
@@ -57,12 +64,28 @@ export default function CalendarScreen() {
   const { width, height } = useWindowDimensions();
   const gridWidth = width - 32;
   const { companyId } = useAuth();
+  const colorScheme = useColorScheme() ?? 'light';
+  const theme = Colors[colorScheme];
+  const styles = createStyles(theme);
+  const insets = useSafeAreaInsets();
   const [headerHeight, setHeaderHeight] = React.useState(0);
   const [calendarAreaHeight, setCalendarAreaHeight] = React.useState(0);
-  const calendarHeight = Math.max(320, calendarAreaHeight || height - headerHeight - 120);
-  const weekRowFixedHeight = Math.max(84, Math.floor(calendarHeight / 7));
+  // The tab bar floats via `position: absolute` (that's what makes it a
+  // pill instead of an edge-to-edge bar), so it never participates in this
+  // screen's flex layout — this SafeAreaView also deliberately skips the
+  // bottom edge, so `calendarAreaHeight` measures all the way to the
+  // physical screen bottom. Without subtracting the bar's footprint here,
+  // the grid's last row renders underneath it instead of above it.
+  const tabBarClearance = ESTIMATED_TAB_BAR_HEIGHT + insets.bottom + 8;
+  const calendarHeight = Math.max(280, (calendarAreaHeight || height - headerHeight) - tabBarClearance);
+  const weekRowFixedHeight = Math.max(72, Math.floor(calendarHeight / 7));
   const [showModeMenu, setShowModeMenu] = React.useState(false);
   const [showStaffMenu, setShowStaffMenu] = React.useState(false);
+  const [modeMenuPos, setModeMenuPos] = React.useState({ top: 0, right: 16 });
+  const [staffMenuPos, setStaffMenuPos] = React.useState({ top: 0, left: 16 });
+  const containerRef = React.useRef<View>(null);
+  const modeButtonRef = React.useRef<View>(null);
+  const staffChipRef = React.useRef<View>(null);
   const [viewMode, setViewMode] = React.useState<'month' | 'week' | 'list'>('month');
   const [offsets, setOffsets] = React.useState(() => {
     const todayOffset = getOffsetForDate(new Date());
@@ -77,13 +100,16 @@ export default function CalendarScreen() {
     []
   );
   const [currentWeekIndex, setCurrentWeekIndex] = React.useState(WEEK_CENTER_INDEX);
-  const [selectedDateKey, setSelectedDateKey] = React.useState(() => toDateKey(new Date()));
+  // Nothing is selected until the user taps a day — "today" gets its own
+  // visual marker (below) so it's still clear at a glance without forcing a
+  // selection state on it.
+  const [selectedDateKey, setSelectedDateKey] = React.useState<string | null>(null);
+  const todayKey = React.useMemo(() => toDateKey(new Date()), []);
   const listRef = React.useRef<FlatList<number>>(null);
   const weekListRef = React.useRef<FlatList<number>>(null);
   const listAgendaRef = React.useRef<FlashListRef<ListFlatItem>>(null);
   const pendingListScrollRef = React.useRef<string | null>(null);
   const weekProgrammaticScrollRef = React.useRef(false);
-  const navigation = useNavigation();
   const router = useRouter();
   const offsetsRef = React.useRef(offsets);
   const viewModeRef = React.useRef(viewMode);
@@ -230,13 +256,6 @@ export default function CalendarScreen() {
     selectedDateKeyRef.current = selectedDateKey;
   }, [selectedDateKey]);
 
-  React.useEffect(() => {
-    const subscription = DeviceEventEmitter.addListener('calendarModeMenu', () => {
-      setShowModeMenu((prev) => !prev);
-    });
-    return () => subscription.remove();
-  }, []);
-
   const fetchMonthData = React.useCallback(
     (offset: number): MonthData => {
       const { year, monthIndex, key } = monthKeyForOffset(offset);
@@ -290,14 +309,24 @@ export default function CalendarScreen() {
 
   const currentWeekOffset = weekOffsets[currentWeekIndex] ?? 0;
   const currentWeekDays = fetchWeekData(currentWeekOffset);
-  const activeDateForHeader =
-    viewMode === 'week' ? new Date(currentWeekDays[0]?.dateKey ?? selectedDateKey) : new Date(selectedDateKey);
-  const activeMonthLabel = `${getMonthShortLabel(activeDateForHeader.getMonth())} ${activeDateForHeader.getFullYear()}`;
+  // The header label tracks whichever month/week is on screen, independent
+  // of selection — selecting (or not selecting) a day shouldn't change it.
+  const activeMonthLabel =
+    viewMode === 'week'
+      ? (() => {
+          const weekDate = new Date(currentWeekDays[0]?.dateKey ?? todayKey);
+          return `${getMonthShortLabel(weekDate.getMonth())} ${weekDate.getFullYear()}`;
+        })()
+      : (() => {
+          const { year, monthIndex } = monthKeyForOffset(currentOffset);
+          return `${getMonthShortLabel(monthIndex)} ${year}`;
+        })();
 
   React.useEffect(() => {
+    if (!selectedDateKey) return;
     const monthData = fetchMonthData(currentOffset);
     if (!monthData.inMonthKeys.has(selectedDateKey)) {
-      setSelectedDateKey(monthData.firstDateKey);
+      setSelectedDateKey(null);
     }
   }, [currentOffset, fetchMonthData, selectedDateKey]);
 
@@ -306,7 +335,7 @@ export default function CalendarScreen() {
     prevViewModeRef.current = viewMode;
     if (viewMode !== 'week' || prevMode === 'week') return;
 
-    const targetWeekOffset = getWeekOffsetFromBase(baseWeekStart, selectedDateKeyRef.current);
+    const targetWeekOffset = getWeekOffsetFromBase(baseWeekStart, selectedDateKeyRef.current ?? todayKey);
     const targetIndex = WEEK_CENTER_INDEX + targetWeekOffset;
     if (targetIndex < 0 || targetIndex >= WEEK_PAGE_COUNT) return;
 
@@ -318,7 +347,7 @@ export default function CalendarScreen() {
         weekProgrammaticScrollRef.current = false;
       }, 120);
     });
-  }, [baseWeekStart, viewMode]);
+  }, [baseWeekStart, viewMode, todayKey]);
 
   React.useEffect(() => {
     if (viewMode !== 'list') return;
@@ -378,24 +407,12 @@ export default function CalendarScreen() {
     }
   }, []);
 
-  React.useEffect(() => {
-    const subscription = DeviceEventEmitter.addListener('calendarGoToToday', goToToday);
-    return () => subscription.remove();
-  }, [goToToday]);
-
-  React.useEffect(() => {
-    const unsubscribe = navigation.addListener('tabPress', () => {
-      goToToday();
-    });
-    return unsubscribe;
-  }, [goToToday, navigation]);
 
   // Flattened [header, row, row, ...] data for the agenda FlashList, with the
   // header indices FlashList needs to pin them via stickyHeaderIndices. Built
   // from the cached per-month groupings so EventItem object identity stays
   // stable across renders (React.memo on ListEventRow relies on this).
   const listFlatData = React.useMemo(() => {
-    const todayKey = toDateKey(new Date());
     const items: ListFlatItem[] = [];
     const stickyHeaderIndices: number[] = [];
 
@@ -427,7 +444,7 @@ export default function CalendarScreen() {
       });
 
     return { items, stickyHeaderIndices };
-  }, [getMonthEventsByDateKey, listMonthOffsets, staffFilterId]);
+  }, [getMonthEventsByDateKey, listMonthOffsets, staffFilterId, todayKey]);
 
   // Grows the loaded window forward by one month at a time, up to a cap.
   // Never drops already-loaded months (that eviction was what caused the
@@ -491,12 +508,8 @@ export default function CalendarScreen() {
       const weekOffset = weekOffsets[index];
       if (weekOffset === undefined) return;
       setCurrentWeekIndex(index);
-      const days = fetchWeekData(weekOffset);
-      if (days[0]) {
-        setSelectedDateKey(days[0].dateKey);
-      }
     },
-    [fetchWeekData, weekOffsets]
+    [weekOffsets]
   );
 
   const listKeyExtractor = React.useCallback((item: ListFlatItem) => item.key, []);
@@ -513,11 +526,11 @@ export default function CalendarScreen() {
   const renderListItem = React.useCallback(
     ({ item }: { item: ListFlatItem }) => {
       if (item.kind === 'header') {
-        return <ListSectionHeader title={item.title} isToday={item.isToday} />;
+        return <ListSectionHeader title={item.title} isToday={item.isToday} styles={styles} />;
       }
-      return <ListEventRow event={item.event} onPress={handleListEventPress} />;
+      return <ListEventRow event={item.event} onPress={handleListEventPress} styles={styles} />;
     },
-    [handleListEventPress]
+    [handleListEventPress, styles]
   );
 
   const renderMonthGrid = React.useCallback(
@@ -536,6 +549,7 @@ export default function CalendarScreen() {
                 const visibleEvents = events.slice(0, 3);
                 const hiddenCount = Math.max(0, events.length - visibleEvents.length);
                 const isSelected = selectedDateKey === day.dateKey;
+                const isToday = day.dateKey === todayKey;
 
                 return (
                   <Pressable
@@ -552,12 +566,17 @@ export default function CalendarScreen() {
                       setSelectedDateKey(day.dateKey);
                     }}>
                     <View style={styles.dayHeader}>
-                      <View style={[styles.dayNumberWrapper, isSelected ? styles.selectedDayCircle : undefined]}>
+                      <View
+                        style={[
+                          styles.dayNumberWrapper,
+                          isSelected ? styles.selectedDayCircle : isToday ? styles.todayRingCircle : undefined,
+                        ]}>
                         <Text
                           style={[
                             styles.dayNumber,
                             !day.inMonth && styles.dayNumberMuted,
                             day.isSunday && styles.dayNumberSunday,
+                            isToday && !isSelected && styles.dayNumberToday,
                             isSelected && styles.dayNumberSelected,
                           ]}>
                           {day.date}
@@ -587,48 +606,92 @@ export default function CalendarScreen() {
         </View>
       );
     },
-    [selectedDateKey, staffFilterId, router]
+    [selectedDateKey, staffFilterId, router, styles, todayKey]
   );
 
   const menuWidth = 190;
-  const calendarTabCenterX = width / 8;
-  const menuLeft = Math.max(12, calendarTabCenterX - menuWidth / 2);
+  const staffMenuWidth = 200;
+
+  const openModeMenu = React.useCallback(() => {
+    if (showModeMenu) {
+      setShowModeMenu(false);
+      return;
+    }
+    modeButtonRef.current?.measureInWindow((bx, by, bw, bh) => {
+      containerRef.current?.measureInWindow((cx, cy, cw) => {
+        setModeMenuPos({
+          top: by - cy + bh + 8,
+          right: Math.max(12, cx + cw - (bx + bw)),
+        });
+        setShowModeMenu(true);
+      });
+    });
+  }, [showModeMenu]);
+
+  const openStaffMenu = React.useCallback(() => {
+    if (showStaffMenu) {
+      setShowStaffMenu(false);
+      return;
+    }
+    staffChipRef.current?.measureInWindow((bx, by, bw, bh) => {
+      containerRef.current?.measureInWindow((cx, cy, cw) => {
+        const maxLeft = Math.max(12, cw - staffMenuWidth - 12);
+        setStaffMenuPos({
+          top: by - cy + bh + 8,
+          left: Math.min(Math.max(12, bx - cx), maxLeft),
+        });
+        setShowStaffMenu(true);
+      });
+    });
+  }, [showStaffMenu]);
 
   const showInitialLoading = staffLoading && !error;
   const showNoCompanyState = !staffLoading && !companyId;
 
   return (
+    <TabSwipeArea next="/list">
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       {showInitialLoading ? (
         <View style={styles.stateContainer}>
-          <ActivityIndicator size="large" color="#1b1b1b" />
+          <ActivityIndicator size="large" color={theme.text} />
         </View>
       ) : showNoCompanyState ? (
         <View style={styles.stateContainer}>
           <Text style={styles.stateText}>{t('calendar.noCompany')}</Text>
         </View>
       ) : (
-        <View style={styles.container}>
+        <View style={styles.container} ref={containerRef} collapsable={false}>
           <View style={styles.scrollContent}>
             <View style={styles.headerBlock} onLayout={(event) => setHeaderHeight(event.nativeEvent.layout.height)}>
               <View style={styles.headerRow}>
-                <View style={styles.monthRow}>
-                  <Text style={styles.monthText}>{activeMonthLabel}</Text>
-                  <MaterialIcons name="keyboard-arrow-down" size={22} color="#9a9a9a" />
-                </View>
+                <Pressable style={styles.monthRow} onPress={goToToday} hitSlop={8}>
+                  <Text style={styles.monthText} numberOfLines={1}>
+                    {activeMonthLabel}
+                  </Text>
+                  <AppIcon name="arrowDown" size={18} color={theme.muted} />
+                </Pressable>
+
+                <Pressable ref={staffChipRef} collapsable={false} style={styles.employeeChip} onPress={openStaffMenu}>
+                  <StaffAvatar imagePath={selectedStaff?.image_path} name={selectedStaffName} size={22} fontSize={9} />
+                  <Text style={styles.employeeName} numberOfLines={1}>
+                    {selectedStaffName}
+                  </Text>
+                  <AppIcon name="expandMore" size={16} color={theme.muted} />
+                </Pressable>
+
                 <View style={styles.headerIcons}>
-                  <TouchableOpacity style={styles.iconButton} onPress={handleRefresh} disabled={refreshing}>
-                    {refreshing || isVisibleDataLoading ? (
-                      <ActivityIndicator size="small" color="#1b1b1b" />
-                    ) : (
-                      <MaterialIcons name="refresh" size={20} color="#1b1b1b" />
-                    )}
+                  <TouchableOpacity
+                    style={styles.iconButton}
+                    onPress={() => router.push({ pathname: '/appointment-new', params: { date: selectedDateKey ?? todayKey } })}>
+                    <AppIcon name="add" size={20} color={theme.text} />
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.iconButton}>
-                    <MaterialIcons name="view-agenda" size={22} color="#1b1b1b" />
+                  <TouchableOpacity ref={modeButtonRef} style={styles.iconButton} onPress={openModeMenu}>
+                    <AppIcon name="viewAgenda" size={18} color={theme.text} />
                   </TouchableOpacity>
                 </View>
               </View>
+
+              <SalonSelector />
 
               {error ? (
                 <View style={styles.errorBanner}>
@@ -640,15 +703,6 @@ export default function CalendarScreen() {
                   </Pressable>
                 </View>
               ) : null}
-
-              <View style={styles.employeeRow}>
-                <Text style={styles.employeeLabel}>{t('calendar.employee')}</Text>
-                <Pressable style={styles.employeeChip} onPress={() => setShowStaffMenu((prev) => !prev)}>
-                  <StaffAvatar imagePath={selectedStaff?.image_path} name={selectedStaffName} size={26} fontSize={9} />
-                  <Text style={styles.employeeName}>{selectedStaffName}</Text>
-                  <MaterialIcons name="expand-more" size={18} color="#8b8b8b" />
-                </Pressable>
-              </View>
             </View>
 
             <View style={styles.calendarArea} onLayout={(event) => setCalendarAreaHeight(event.nativeEvent.layout.height)}>
@@ -659,7 +713,7 @@ export default function CalendarScreen() {
                   keyExtractor={(item) => `month-${item}`}
                   horizontal
                   pagingEnabled
-                  initialScrollIndex={offsets.indexOf(0)}
+                  initialScrollIndex={offsets.indexOf(currentOffset)}
                   showsHorizontalScrollIndicator={false}
                   style={[styles.monthPager, { height: calendarHeight }]}
                   getItemLayout={(_, index) => ({ length: gridWidth, offset: gridWidth * index, index })}
@@ -753,14 +807,14 @@ export default function CalendarScreen() {
                   ListFooterComponent={
                     listLoadingMore ? (
                       <View style={styles.listLoadingFooter}>
-                        <ActivityIndicator size="small" color="#8b8b8b" />
+                        <ActivityIndicator size="small" color={theme.muted} />
                       </View>
                     ) : null
                   }
                   ListEmptyComponent={
                     <View style={styles.stateContainer}>
                       {isVisibleDataLoading ? (
-                        <ActivityIndicator color="#8b8b8b" />
+                        <ActivityIndicator color={theme.muted} />
                       ) : (
                         <Text style={styles.stateText}>{t('calendar.noAppointmentsFound')}</Text>
                       )}
@@ -775,36 +829,39 @@ export default function CalendarScreen() {
           {showModeMenu ? (
             <>
               <Pressable style={styles.menuOverlay} onPress={() => setShowModeMenu(false)} />
-              <View style={[styles.modeMenu, { left: menuLeft, width: menuWidth }]}>
+              <View style={[styles.modeMenu, { top: modeMenuPos.top, right: modeMenuPos.right, width: menuWidth }]}>
                 <Pressable
                   style={styles.modeItemActive}
                   onPress={() => {
+                    Haptics.selectionAsync();
                     setViewMode('month');
                     setShowModeMenu(false);
                   }}>
-                  <MaterialIcons name="calendar-today" size={20} color="#1b1b1b" />
+                  <AppIcon name="calendar" size={20} color={theme.text} />
                   <Text style={styles.modeText}>{t('calendar.month')}</Text>
-                  {viewMode === 'month' ? <MaterialIcons name="check" size={20} color="#20b87b" /> : null}
+                  {viewMode === 'month' ? <AppIcon name="check" size={20} color="#20b87b" /> : null}
                 </Pressable>
                 <Pressable
                   style={styles.modeItem}
                   onPress={() => {
+                    Haptics.selectionAsync();
                     setViewMode('week');
                     setShowModeMenu(false);
                   }}>
-                  <MaterialIcons name="view-week" size={20} color="#1b1b1b" />
+                  <AppIcon name="viewWeek" size={20} color={theme.text} />
                   <Text style={styles.modeText}>{t('calendar.week')}</Text>
-                  {viewMode === 'week' ? <MaterialIcons name="check" size={20} color="#20b87b" /> : null}
+                  {viewMode === 'week' ? <AppIcon name="check" size={20} color="#20b87b" /> : null}
                 </Pressable>
                 <Pressable
                   style={styles.modeItem}
                   onPress={() => {
+                    Haptics.selectionAsync();
                     setViewMode('list');
                     setShowModeMenu(false);
                   }}>
-                  <MaterialIcons name="view-list" size={20} color="#1b1b1b" />
+                  <AppIcon name="viewList" size={20} color={theme.text} />
                   <Text style={styles.modeText}>{t('calendar.list')}</Text>
-                  {viewMode === 'list' ? <MaterialIcons name="check" size={20} color="#20b87b" /> : null}
+                  {viewMode === 'list' ? <AppIcon name="check" size={20} color="#20b87b" /> : null}
                 </Pressable>
               </View>
             </>
@@ -813,19 +870,20 @@ export default function CalendarScreen() {
           {showStaffMenu ? (
             <>
               <Pressable style={styles.menuOverlay} onPress={() => setShowStaffMenu(false)} />
-              <View style={styles.staffMenu}>
+              <View style={[styles.staffMenu, { top: staffMenuPos.top, left: staffMenuPos.left, width: staffMenuWidth }]}>
                 <ScrollView>
                   <Pressable
                     style={styles.staffMenuItem}
                     onPress={() => {
+                      Haptics.selectionAsync();
                       setStaffFilterId(null);
                       setShowStaffMenu(false);
                     }}>
                     <View style={styles.staffMenuAvatar}>
-                      <MaterialIcons name="groups" size={14} color="#4a4a4a" />
+                      <AppIcon name="groups" size={14} color="#4a4a4a" />
                     </View>
                     <Text style={styles.staffMenuName}>{t('calendar.allStaff')}</Text>
-                    {staffFilterId === null ? <MaterialIcons name="check" size={18} color="#20b87b" /> : null}
+                    {staffFilterId === null ? <AppIcon name="check" size={18} color="#20b87b" /> : null}
                   </Pressable>
                   {staffList.map((staff) => {
                     const name = `${staff.first_name ?? ''} ${staff.last_name ?? ''}`.trim() || t('calendar.employee');
@@ -834,12 +892,13 @@ export default function CalendarScreen() {
                         key={staff.id}
                         style={styles.staffMenuItem}
                         onPress={() => {
+                          Haptics.selectionAsync();
                           setStaffFilterId(staff.id);
                           setShowStaffMenu(false);
                         }}>
                         <StaffAvatar imagePath={staff.image_path} name={name} size={22} fontSize={9} />
                         <Text style={styles.staffMenuName}>{name}</Text>
-                        {staffFilterId === staff.id ? <MaterialIcons name="check" size={18} color="#20b87b" /> : null}
+                        {staffFilterId === staff.id ? <AppIcon name="check" size={18} color="#20b87b" /> : null}
                       </Pressable>
                     );
                   })}
@@ -847,14 +906,9 @@ export default function CalendarScreen() {
               </View>
             </>
           ) : null}
-
-          <TouchableOpacity
-            style={styles.fab}
-            onPress={() => router.push({ pathname: '/appointment-new', params: { date: selectedDateKey } })}>
-            <MaterialIcons name="add" size={26} color="#1b1b1b" />
-          </TouchableOpacity>
         </View>
       )}
     </SafeAreaView>
+    </TabSwipeArea>
   );
 }

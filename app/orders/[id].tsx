@@ -1,10 +1,11 @@
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { fetchOrder, OrderDetail } from '@/lib/api/orders';
 
 function formatDateTime(value: string) {
@@ -24,8 +25,10 @@ function itemName(item: OrderDetail['order_item'][number]) {
 
 export default function OrderDetailScreen() {
   const { t } = useTranslation();
-  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const colorScheme = useColorScheme() ?? 'light';
+  const theme = Colors[colorScheme];
+  const styles = createStyles(theme);
 
   const [order, setOrder] = React.useState<OrderDetail | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -47,16 +50,8 @@ export default function OrderDetailScreen() {
     : '';
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <MaterialIcons name="arrow-back" size={24} color="#1b1b1b" />
-        </Pressable>
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          {order?.order_number ?? t('order.title')}
-        </Text>
-        <View style={{ width: 24 }} />
-      </View>
+    <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
+      <Stack.Screen options={{ headerShown: true, title: order?.order_number ?? t('order.title') }} />
 
       {error ? (
         <View style={styles.errorBanner}>
@@ -66,7 +61,7 @@ export default function OrderDetailScreen() {
 
       {loading ? (
         <View style={styles.stateContainer}>
-          <ActivityIndicator size="large" color="#1b1b1b" />
+          <ActivityIndicator size="large" color={theme.text} />
         </View>
       ) : !order ? null : (
         <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -111,99 +106,100 @@ export default function OrderDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1b1b1b',
-    textAlign: 'center',
-  },
-  errorBanner: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    padding: 12,
-    borderRadius: 10,
-    backgroundColor: '#FFE4E6',
-  },
-  errorBannerText: {
-    color: '#881337',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  stateContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 48,
-    gap: 24,
-  },
-  section: {
-    gap: 8,
-  },
-  sectionLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#8b8b8b',
-    textTransform: 'uppercase',
-  },
-  value: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1b1b1b',
-  },
-  subvalue: {
-    fontSize: 13,
-    color: '#8b8b8b',
-  },
-  itemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  itemName: {
-    fontSize: 15,
-    color: '#1b1b1b',
-  },
-  itemPrice: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1b1b1b',
-  },
-  totalRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 8,
-  },
-  totalLabel: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1b1b1b',
-  },
-  totalValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1b1b1b',
-  },
-});
+const createStyles = (theme: typeof Colors.light) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    headerTitle: {
+      flex: 1,
+      fontSize: 16,
+      fontWeight: '700',
+      color: theme.text,
+      textAlign: 'center',
+    },
+    errorBanner: {
+      marginHorizontal: 16,
+      marginTop: 12,
+      padding: 12,
+      borderRadius: 10,
+      backgroundColor: '#FFE4E6',
+    },
+    errorBannerText: {
+      color: '#881337',
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    stateContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    scrollContent: {
+      padding: 16,
+      paddingBottom: 48,
+      gap: 24,
+    },
+    section: {
+      gap: 8,
+    },
+    sectionLabel: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: theme.muted,
+      textTransform: 'uppercase',
+    },
+    value: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    subvalue: {
+      fontSize: 13,
+      color: theme.muted,
+    },
+    itemRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    itemName: {
+      fontSize: 15,
+      color: theme.text,
+    },
+    itemPrice: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    totalRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingTop: 8,
+    },
+    totalLabel: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: theme.text,
+    },
+    totalValue: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: theme.text,
+    },
+  });

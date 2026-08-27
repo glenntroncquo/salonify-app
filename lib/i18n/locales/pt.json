@@ -1,4 +1,7 @@
 {
+  "common": {
+    "delete": "Excluir"
+  },
   "auth": {
     "signIn": "Entrar",
     "signInSubtitle": "Entre na sua conta",

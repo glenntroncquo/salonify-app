@@ -1,13 +1,15 @@
+import { Pressable } from '@/components/pressable-scale';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { AppIcon } from '@/components/app-icon';
+import { HeaderButton } from '@/components/header-button';
+import * as Haptics from 'expo-haptics';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
 import {
   ActivityIndicator,
   DeviceEventEmitter,
   Modal,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -160,6 +162,7 @@ export default function NewAppointmentScreen() {
   }, []);
 
   const handleAddTreatment = React.useCallback((treatment: TreatmentWithOptions, option: PriceOption) => {
+    Haptics.selectionAsync();
     setCart((prev) => [
       ...prev,
       {
@@ -209,8 +212,10 @@ export default function NewAppointmentScreen() {
         notes: notes.trim(),
       });
       DeviceEventEmitter.emit('calendarRefreshAppointments');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.back();
     } catch (err) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       const message = err instanceof Error ? err.message.toLowerCase() : '';
       if (message.includes('duplicate') || message.includes('conflict')) {
         setErrorMessage(t('appointment.errorConflict'));
@@ -304,56 +309,69 @@ export default function NewAppointmentScreen() {
     );
   };
 
-  const header = (() => {
+  const screenOptions = (() => {
     if (screen === 'treatments') {
       return (
-        <View style={[styles.header, { borderBottomColor: theme.border }]}>
-          <Pressable onPress={() => setScreen('form')} hitSlop={8}>
-            <MaterialIcons name="arrow-back" size={22} color={theme.text} />
-          </Pressable>
-          <Text style={[styles.headerTitle, { color: theme.text }]}>{t('appointment.selectTreatment')}</Text>
-          <View style={{ width: 22 }} />
-        </View>
+        <Stack.Screen
+          options={{
+            headerShown: true,
+            title: t('appointment.selectTreatment'),
+            headerLeft: () => (
+              <HeaderButton onPress={() => setScreen('form')} hitSlop={8}>
+                <AppIcon name="back" size={22} color={theme.text} />
+              </HeaderButton>
+            ),
+          }}
+        />
       );
     }
     if (screen === 'treatmentOptions') {
       return (
-        <View style={[styles.header, { borderBottomColor: theme.border }]}>
-          <Pressable
-            onPress={() => {
-              setPickedTreatment(null);
-              setScreen('treatments');
-            }}
-            hitSlop={8}>
-            <MaterialIcons name="arrow-back" size={22} color={theme.text} />
-          </Pressable>
-          <Text style={[styles.headerTitle, { color: theme.text }]} numberOfLines={1}>
-            {pickedTreatment?.name}
-          </Text>
-          <View style={{ width: 22 }} />
-        </View>
+        <Stack.Screen
+          options={{
+            headerShown: true,
+            title: pickedTreatment?.name ?? '',
+            headerLeft: () => (
+              <HeaderButton
+                onPress={() => {
+                  setPickedTreatment(null);
+                  setScreen('treatments');
+                }}
+                hitSlop={8}>
+                <AppIcon name="back" size={22} color={theme.text} />
+              </HeaderButton>
+            ),
+          }}
+        />
       );
     }
     return (
-      <View style={[styles.header, { borderBottomColor: theme.border }]}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <MaterialIcons name="close" size={24} color={theme.text} />
-        </Pressable>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>{t('appointment.title')}</Text>
-        <Pressable onPress={handleSave} disabled={!canSave} hitSlop={8}>
-          {submitting ? (
-            <ActivityIndicator size="small" color={theme.tint} />
-          ) : (
-            <Text style={[styles.saveText, { color: canSave ? theme.tint : theme.muted }]}>{t('appointment.save')}</Text>
-          )}
-        </Pressable>
-      </View>
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: t('appointment.title'),
+          headerLeft: () => (
+            <HeaderButton onPress={() => router.back()} hitSlop={8}>
+              <AppIcon name="close" size={18} color={theme.text} />
+            </HeaderButton>
+          ),
+          headerRight: () => (
+            <HeaderButton onPress={handleSave} disabled={!canSave} hitSlop={8}>
+              {submitting ? (
+                <ActivityIndicator size="small" color={theme.tint} />
+              ) : (
+                <Text style={[styles.saveText, { color: canSave ? theme.tint : theme.muted }]}>{t('appointment.save')}</Text>
+              )}
+            </HeaderButton>
+          ),
+        }}
+      />
     );
   })();
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['top', 'left', 'right', 'bottom']}>
-      {header}
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['left', 'right', 'bottom']}>
+      {screenOptions}
 
       {screen === 'form' && errorMessage ? (
         <View style={[styles.errorBanner, { backgroundColor: `${theme.error}22` }]}>
@@ -378,7 +396,7 @@ export default function NewAppointmentScreen() {
                 ]}
               />
               <Text style={[styles.pickerRowText, { color: theme.text }]}>{treatment.name}</Text>
-              <MaterialIcons name="chevron-right" size={20} color={theme.muted} />
+              <AppIcon name="chevronRight" size={20} color={theme.muted} />
             </Pressable>
           ))}
         </ScrollView>
@@ -499,11 +517,14 @@ export default function NewAppointmentScreen() {
                         { borderColor: theme.border, backgroundColor: theme.surface },
                         isSelected && { backgroundColor: theme.tint, borderColor: theme.tint },
                       ]}
-                      onPress={() => setStaffId(staff.id)}>
+                      onPress={() => {
+                        Haptics.selectionAsync();
+                        setStaffId(staff.id);
+                      }}>
                       <View style={[styles.staffAvatar, { backgroundColor: theme.border }]}>
                         <Text style={[styles.staffAvatarText, { color: theme.text }]}>{getInitialsFromLabel(name)}</Text>
                       </View>
-                      <Text style={[styles.staffChipText, { color: isSelected ? '#fff' : theme.text }]}>{name}</Text>
+                      <Text style={[styles.staffChipText, { color: isSelected ? theme.onTint : theme.text }]}>{name}</Text>
                     </Pressable>
                   );
                 })}
@@ -532,7 +553,7 @@ export default function NewAppointmentScreen() {
                     </Text>
                   </View>
                   <Pressable onPress={() => setCart((prev) => prev.filter((_, i) => i !== index))} hitSlop={8}>
-                    <MaterialIcons name="close" size={20} color={theme.muted} />
+                    <AppIcon name="close" size={20} color={theme.muted} />
                   </Pressable>
                 </View>
               ))

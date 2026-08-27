@@ -1,12 +1,15 @@
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { Pressable } from '@/components/pressable-scale';
+import { SwipeableRow } from '@/components/swipeable-row';
 import { useFocusEffect } from '@react-navigation/native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { UnavailabilityBlock, deleteUnavailability, fetchUnavailability } from '@/lib/api/staff';
 
 function formatDateLabel(date: Date) {
@@ -27,6 +30,9 @@ export default function StaffTimeOffScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { companyId } = useAuth();
+  const colorScheme = useColorScheme() ?? 'light';
+  const theme = Colors[colorScheme];
+  const styles = createStyles(theme);
 
   const [blocks, setBlocks] = React.useState<UnavailabilityBlock[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -64,14 +70,8 @@ export default function StaffTimeOffScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <MaterialIcons name="arrow-back" size={24} color="#1b1b1b" />
-        </Pressable>
-        <Text style={styles.headerTitle}>{t('staff.timeOff')}</Text>
-        <View style={{ width: 24 }} />
-      </View>
+    <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
+      <Stack.Screen options={{ headerShown: true, title: t('staff.timeOff') }} />
 
       {error ? (
         <View style={styles.errorBanner}>
@@ -81,7 +81,7 @@ export default function StaffTimeOffScreen() {
 
       {loading ? (
         <View style={styles.stateContainer}>
-          <ActivityIndicator size="large" color="#1b1b1b" />
+          <ActivityIndicator size="large" color={theme.text} />
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -92,17 +92,16 @@ export default function StaffTimeOffScreen() {
               const start = block.start ? new Date(block.start) : null;
               const end = block.end ? new Date(block.end) : null;
               return (
-                <View key={block.id} style={styles.blockRow}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.blockDate}>{start ? formatDateLabel(start) : '—'}</Text>
-                    <Text style={styles.blockTime}>
-                      {start && end ? `${formatTimeLabel(start)} – ${formatTimeLabel(end)}` : '—'}
-                    </Text>
+                <SwipeableRow key={block.id} onDelete={() => handleDelete(block.id)} deleteLabel={t('common.delete')}>
+                  <View style={styles.blockRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.blockDate}>{start ? formatDateLabel(start) : '—'}</Text>
+                      <Text style={styles.blockTime}>
+                        {start && end ? `${formatTimeLabel(start)} – ${formatTimeLabel(end)}` : '—'}
+                      </Text>
+                    </View>
                   </View>
-                  <Pressable onPress={() => handleDelete(block.id)} hitSlop={8}>
-                    <MaterialIcons name="close" size={20} color="#8b8b8b" />
-                  </Pressable>
-                </View>
+                </SwipeableRow>
               );
             })
           )}
@@ -115,70 +114,71 @@ export default function StaffTimeOffScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1b1b1b',
-  },
-  errorBanner: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    padding: 12,
-    borderRadius: 10,
-    backgroundColor: '#FFE4E6',
-  },
-  errorBannerText: {
-    color: '#881337',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  stateContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 48,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#8b8b8b',
-  },
-  blockRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  blockDate: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1b1b1b',
-  },
-  blockTime: {
-    fontSize: 13,
-    color: '#8b8b8b',
-    marginTop: 2,
-  },
-  addLink: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#20b87b',
-  },
-});
+const createStyles = (theme: typeof Colors.light) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    headerTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: theme.text,
+    },
+    errorBanner: {
+      marginHorizontal: 16,
+      marginTop: 12,
+      padding: 12,
+      borderRadius: 10,
+      backgroundColor: '#FFE4E6',
+    },
+    errorBannerText: {
+      color: '#881337',
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    stateContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    scrollContent: {
+      padding: 16,
+      paddingBottom: 48,
+    },
+    emptyText: {
+      fontSize: 14,
+      color: theme.muted,
+    },
+    blockRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    blockDate: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    blockTime: {
+      fontSize: 13,
+      color: theme.muted,
+      marginTop: 2,
+    },
+    addLink: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: '#20b87b',
+    },
+  });

@@ -1,14 +1,20 @@
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { Pressable } from '@/components/pressable-scale';
+import { AppIcon } from '@/components/app-icon';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { TabSwipeArea } from '@/components/tab-swipe-area';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { Colors } from '@/constants/theme';
+import { ESTIMATED_TAB_BAR_HEIGHT } from '@/constants/layout';
 import { useAuth } from '@/contexts/auth-context';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import i18n, { SUPPORTED_LANGUAGES, SupportedLanguage, setLanguage } from '@/lib/i18n';
 import { fetchOwnStaffProfile, StaffProfile } from '@/lib/api/profile';
 import { getCompanyImageUrl } from '@/lib/storage';
@@ -23,6 +29,11 @@ const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
 export default function MoreScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const tabBarHeight = ESTIMATED_TAB_BAR_HEIGHT + insets.bottom;
+  const colorScheme = useColorScheme() ?? 'light';
+  const theme = Colors[colorScheme];
+  const styles = createStyles(theme);
   const { user, companyId, signOut } = useAuth();
   const [profile, setProfile] = React.useState<StaffProfile | null>(null);
   const [profileLoading, setProfileLoading] = React.useState(true);
@@ -53,12 +64,13 @@ export default function MoreScreen() {
   const avatarUrl = getCompanyImageUrl(profile?.image_path);
 
   return (
+    <TabSwipeArea prev="/list">
     <ThemedView style={{ flex: 1 }}>
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView contentContainerStyle={[styles.container, { paddingBottom: 40 + tabBarHeight }]}>
       <View style={styles.profileSection}>
         {profileLoading ? (
           <View style={styles.avatar}>
-            <ActivityIndicator color="#8b8b8b" />
+            <ActivityIndicator color={theme.muted} />
           </View>
         ) : avatarUrl ? (
           <Image source={{ uri: avatarUrl }} style={styles.avatar} contentFit="cover" />
@@ -99,122 +111,124 @@ export default function MoreScreen() {
         <ThemedText style={styles.sectionLabel}>{t('more.manage')}</ThemedText>
         <Pressable style={styles.manageRow} onPress={() => router.push('/staff')}>
           <ThemedText style={styles.manageRowText}>{t('more.staff')}</ThemedText>
-          <MaterialIcons name="chevron-right" size={20} color="#c6c6c6" />
+          <AppIcon name="chevronRight" size={20} color={theme.muted} />
         </Pressable>
         <Pressable style={styles.manageRow} onPress={() => router.push('/treatments')}>
           <ThemedText style={styles.manageRowText}>{t('more.treatments')}</ThemedText>
-          <MaterialIcons name="chevron-right" size={20} color="#c6c6c6" />
+          <AppIcon name="chevronRight" size={20} color={theme.muted} />
         </Pressable>
         <Pressable style={styles.manageRow} onPress={() => router.push('/orders')}>
           <ThemedText style={styles.manageRowText}>{t('more.orders')}</ThemedText>
-          <MaterialIcons name="chevron-right" size={20} color="#c6c6c6" />
+          <AppIcon name="chevronRight" size={20} color={theme.muted} />
         </Pressable>
         <Pressable style={styles.manageRow} onPress={() => router.push('/dashboard')}>
           <ThemedText style={styles.manageRowText}>{t('more.dashboard')}</ThemedText>
-          <MaterialIcons name="chevron-right" size={20} color="#c6c6c6" />
+          <AppIcon name="chevronRight" size={20} color={theme.muted} />
         </Pressable>
         <Pressable style={styles.manageRow} onPress={() => router.push('/settings')}>
           <ThemedText style={styles.manageRowText}>{t('more.settings')}</ThemedText>
-          <MaterialIcons name="chevron-right" size={20} color="#c6c6c6" />
+          <AppIcon name="chevronRight" size={20} color={theme.muted} />
         </Pressable>
       </View>
 
       <Pressable style={styles.signOutButton} onPress={signOut}>
-        <ThemedText style={styles.signOutText} lightColor="#e5484d" darkColor="#e5484d">
+        <ThemedText style={styles.signOutText} lightColor={Colors.light.error} darkColor={Colors.dark.error}>
           {t('profile.signOut')}
         </ThemedText>
       </Pressable>
       </ScrollView>
     </ThemedView>
+    </TabSwipeArea>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flexGrow: 1,
-    alignItems: 'center',
-    paddingTop: 64,
-    paddingHorizontal: 24,
-    gap: 40,
-  },
-  profileSection: {
-    alignItems: 'center',
-    gap: 6,
-  },
-  avatar: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: '#d8cfc6',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  avatarInitials: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#4a4a4a',
-  },
-  name: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  email: {
-    fontSize: 14,
-    opacity: 0.6,
-  },
-  section: {
-    width: '100%',
-    gap: 10,
-  },
-  sectionLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    opacity: 0.6,
-    textTransform: 'uppercase',
-  },
-  languageRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  languageChip: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#e7e7e7',
-    alignItems: 'center',
-  },
-  languageChipActive: {
-    backgroundColor: '#20b87b',
-    borderColor: '#20b87b',
-  },
-  languageChipText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  manageRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#e7e7e7',
-  },
-  manageRowText: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  signOutButton: {
-    marginTop: 'auto',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    marginBottom: 24,
-  },
-  signOutText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
+const createStyles = (theme: typeof Colors.light) =>
+  StyleSheet.create({
+    container: {
+      flexGrow: 1,
+      alignItems: 'center',
+      paddingTop: 64,
+      paddingHorizontal: 24,
+      gap: 40,
+    },
+    profileSection: {
+      alignItems: 'center',
+      gap: 6,
+    },
+    avatar: {
+      width: 88,
+      height: 88,
+      borderRadius: 44,
+      backgroundColor: '#d8cfc6',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 8,
+    },
+    avatarInitials: {
+      fontSize: 28,
+      fontWeight: '700',
+      color: '#4a4a4a',
+    },
+    name: {
+      fontSize: 18,
+      fontWeight: '700',
+    },
+    email: {
+      fontSize: 14,
+      opacity: 0.6,
+    },
+    section: {
+      width: '100%',
+      gap: 10,
+    },
+    sectionLabel: {
+      fontSize: 13,
+      fontWeight: '600',
+      opacity: 0.6,
+      textTransform: 'uppercase',
+    },
+    languageRow: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    languageChip: {
+      flex: 1,
+      paddingVertical: 10,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: theme.border,
+      alignItems: 'center',
+    },
+    languageChipActive: {
+      backgroundColor: '#20b87b',
+      borderColor: '#20b87b',
+    },
+    languageChipText: {
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    manageRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    manageRowText: {
+      fontSize: 15,
+      fontWeight: '600',
+    },
+    signOutButton: {
+      marginTop: 'auto',
+      paddingVertical: 12,
+      paddingHorizontal: 24,
+      marginBottom: 24,
+    },
+    signOutText: {
+      fontSize: 16,
+      fontWeight: '600',
+    },
+  });

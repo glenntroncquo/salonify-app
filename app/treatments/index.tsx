@@ -1,11 +1,12 @@
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { Pressable } from '@/components/pressable-scale';
+import { AppIcon } from '@/components/app-icon';
 import { useFocusEffect } from '@react-navigation/native';
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import React from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -14,7 +15,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ManagedTreatment, fetchAllTreatments, reorderTreatments, updateTreatment } from '@/lib/api/treatments';
 import { COLOR_MAP, mapTreatmentColorToEventColor } from '@/lib/treatment-colors';
 
@@ -22,9 +25,13 @@ export default function TreatmentsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { companyId } = useAuth();
+  const colorScheme = useColorScheme() ?? 'light';
+  const theme = Colors[colorScheme];
+  const styles = createStyles(theme);
 
   const [treatments, setTreatments] = React.useState<ManagedTreatment[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [refreshing, setRefreshing] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   const load = React.useCallback(async () => {
@@ -48,6 +55,12 @@ export default function TreatmentsScreen() {
       load();
     }, [load])
   );
+
+  const handleRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }, [load]);
 
   const handleMove = React.useCallback(
     async (index: number, direction: -1 | 1) => {
@@ -85,14 +98,8 @@ export default function TreatmentsScreen() {
   const showNoCompanyState = !loading && !companyId;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <MaterialIcons name="arrow-back" size={24} color="#1b1b1b" />
-        </Pressable>
-        <Text style={styles.headerTitle}>{t('treatment.title')}</Text>
-        <View style={{ width: 24 }} />
-      </View>
+    <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
+      <Stack.Screen options={{ headerShown: true, title: t('treatment.title') }} />
 
       {error ? (
         <View style={styles.errorBanner}>
@@ -102,7 +109,7 @@ export default function TreatmentsScreen() {
 
       {loading ? (
         <View style={styles.stateContainer}>
-          <ActivityIndicator size="large" color="#1b1b1b" />
+          <ActivityIndicator size="large" color={theme.text} />
         </View>
       ) : showNoCompanyState ? (
         <View style={styles.stateContainer}>
@@ -113,6 +120,7 @@ export default function TreatmentsScreen() {
           data={treatments}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
           ListEmptyComponent={
             <View style={styles.stateContainer}>
               <Text style={styles.stateText}>{t('treatment.noTreatments')}</Text>
@@ -128,16 +136,16 @@ export default function TreatmentsScreen() {
                     style={styles.reorderButton}
                     disabled={index === 0}
                     onPress={() => handleMove(index, -1)}>
-                    <MaterialIcons name="keyboard-arrow-up" size={20} color={index === 0 ? '#d6d6d6' : '#1b1b1b'} />
+                    <AppIcon name="arrowUp" size={20} color={index === 0 ? theme.border : theme.text} />
                   </Pressable>
                   <Pressable
                     style={styles.reorderButton}
                     disabled={index === treatments.length - 1}
                     onPress={() => handleMove(index, 1)}>
-                    <MaterialIcons
-                      name="keyboard-arrow-down"
+                    <AppIcon
+                      name="arrowDown"
                       size={20}
-                      color={index === treatments.length - 1 ? '#d6d6d6' : '#1b1b1b'}
+                      color={index === treatments.length - 1 ? theme.border : theme.text}
                     />
                   </Pressable>
                 </View>
@@ -154,7 +162,7 @@ export default function TreatmentsScreen() {
                         : t('treatment.optionsCount', { count: optionsCount })}
                     </Text>
                   </View>
-                  <MaterialIcons name="chevron-right" size={22} color="#c6c6c6" />
+                  <AppIcon name="chevronRight" size={22} color={theme.muted} />
                 </Pressable>
 
                 <Pressable
@@ -172,138 +180,139 @@ export default function TreatmentsScreen() {
 
       {!showNoCompanyState ? (
         <TouchableOpacity style={styles.fab} onPress={() => router.push('/treatments/new')}>
-          <MaterialIcons name="add" size={26} color="#1b1b1b" />
+          <AppIcon name="add" size={26} color={theme.text} />
         </TouchableOpacity>
       ) : null}
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1b1b1b',
-  },
-  errorBanner: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    padding: 12,
-    borderRadius: 10,
-    backgroundColor: '#FFE4E6',
-  },
-  errorBannerText: {
-    color: '#881337',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  stateContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 60,
-  },
-  stateText: {
-    fontSize: 15,
-    color: '#8b8b8b',
-  },
-  listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 100,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  reorderCol: {
-    width: 28,
-  },
-  reorderButton: {
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rowContent: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  colorDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  rowName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1b1b1b',
-  },
-  rowNameInactive: {
-    color: '#b0b0b0',
-  },
-  rowSubtitle: {
-    fontSize: 13,
-    color: '#8b8b8b',
-    marginTop: 2,
-  },
-  activeBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  activeBadgeOn: {
-    backgroundColor: '#D1FAE5',
-    borderColor: '#D1FAE5',
-  },
-  activeBadgeOff: {
-    backgroundColor: '#ffffff',
-    borderColor: '#e7e7e7',
-  },
-  activeBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  activeBadgeTextOn: {
-    color: '#064E3B',
-  },
-  activeBadgeTextOff: {
-    color: '#9a9a9a',
-  },
-  fab: {
-    position: 'absolute',
-    right: 20,
-    bottom: 24,
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: '#ffffff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#1b1b1b',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-});
+const createStyles = (theme: typeof Colors.light) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    headerTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: theme.text,
+    },
+    errorBanner: {
+      marginHorizontal: 16,
+      marginTop: 12,
+      padding: 12,
+      borderRadius: 10,
+      backgroundColor: '#FFE4E6',
+    },
+    errorBannerText: {
+      color: '#881337',
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    stateContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingTop: 60,
+    },
+    stateText: {
+      fontSize: 15,
+      color: theme.muted,
+    },
+    listContent: {
+      paddingHorizontal: 16,
+      paddingBottom: 100,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingVertical: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    reorderCol: {
+      width: 28,
+    },
+    reorderButton: {
+      height: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    rowContent: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    colorDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+    },
+    rowName: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    rowNameInactive: {
+      color: theme.muted,
+    },
+    rowSubtitle: {
+      fontSize: 13,
+      color: theme.muted,
+      marginTop: 2,
+    },
+    activeBadge: {
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 12,
+      borderWidth: 1,
+    },
+    activeBadgeOn: {
+      backgroundColor: '#D1FAE5',
+      borderColor: '#D1FAE5',
+    },
+    activeBadgeOff: {
+      backgroundColor: theme.background,
+      borderColor: theme.border,
+    },
+    activeBadgeText: {
+      fontSize: 11,
+      fontWeight: '700',
+    },
+    activeBadgeTextOn: {
+      color: '#064E3B',
+    },
+    activeBadgeTextOff: {
+      color: theme.muted,
+    },
+    fab: {
+      position: 'absolute',
+      right: 20,
+      bottom: 24,
+      width: 54,
+      height: 54,
+      borderRadius: 27,
+      backgroundColor: theme.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: theme.text,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 6,
+      elevation: 4,
+    },
+  });

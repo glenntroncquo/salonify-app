@@ -1,17 +1,24 @@
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Pressable } from '@/components/pressable-scale';
+import { AppIcon } from '@/components/app-icon';
+import { HeaderButton } from '@/components/header-button';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { StaffAvatar } from '@/components/staff-avatar';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { fetchStaffMember, Staff, updateStaff } from '@/lib/api/staff';
 
 export default function StaffDetailScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const colorScheme = useColorScheme() ?? 'light';
+  const theme = Colors[colorScheme];
+  const styles = createStyles(theme);
 
   const [staff, setStaff] = React.useState<Staff | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -78,33 +85,38 @@ export default function StaffDetailScreen() {
 
   const name = `${firstName} ${lastName}`.trim() || staff?.email || '';
 
+  const screenOptions = (
+    <Stack.Screen
+      options={{
+        headerShown: true,
+        title: name || t('staff.title'),
+        headerRight: () => (
+          <HeaderButton onPress={handleSave} disabled={saving || !email.trim()} hitSlop={8}>
+            {saving ? (
+              <ActivityIndicator size="small" color={theme.text} />
+            ) : (
+              <Text style={[styles.saveText, !email.trim() && styles.saveTextDisabled]}>{t('client.save')}</Text>
+            )}
+          </HeaderButton>
+        ),
+      }}
+    />
+  );
+
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
+        {screenOptions}
         <View style={styles.stateContainer}>
-          <ActivityIndicator size="large" color="#1b1b1b" />
+          <ActivityIndicator size="large" color={theme.text} />
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <MaterialIcons name="arrow-back" size={24} color="#1b1b1b" />
-        </Pressable>
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          {name || t('staff.title')}
-        </Text>
-        <Pressable onPress={handleSave} disabled={saving || !email.trim()} hitSlop={8}>
-          {saving ? (
-            <ActivityIndicator size="small" color="#1b1b1b" />
-          ) : (
-            <Text style={[styles.saveText, !email.trim() && styles.saveTextDisabled]}>{t('client.save')}</Text>
-          )}
-        </Pressable>
-      </View>
+    <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
+      {screenOptions}
 
       {error ? (
         <View style={styles.errorBanner}>
@@ -150,15 +162,15 @@ export default function StaffDetailScreen() {
             style={styles.navRow}
             onPress={() => router.push({ pathname: '/staff/[id]/availability', params: { id } })}>
             <Text style={styles.navRowText}>{t('staff.availability')}</Text>
-            <MaterialIcons name="chevron-right" size={20} color="#c6c6c6" />
+            <AppIcon name="chevronRight" size={20} color={theme.muted} />
           </Pressable>
           <Pressable style={styles.navRow} onPress={() => router.push({ pathname: '/staff/[id]/time-off', params: { id } })}>
             <Text style={styles.navRowText}>{t('staff.timeOff')}</Text>
-            <MaterialIcons name="chevron-right" size={20} color="#c6c6c6" />
+            <AppIcon name="chevronRight" size={20} color={theme.muted} />
           </Pressable>
           <Pressable style={styles.navRow} onPress={() => router.push({ pathname: '/staff/[id]/schedule', params: { id } })}>
             <Text style={styles.navRowText}>{t('staff.schedule')}</Text>
-            <MaterialIcons name="chevron-right" size={20} color="#c6c6c6" />
+            <AppIcon name="chevronRight" size={20} color={theme.muted} />
           </Pressable>
         </View>
       </ScrollView>
@@ -166,87 +178,88 @@ export default function StaffDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1b1b1b',
-  },
-  saveText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#20b87b',
-  },
-  saveTextDisabled: {
-    color: '#c6c6c6',
-  },
-  errorBanner: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    padding: 12,
-    borderRadius: 10,
-    backgroundColor: '#FFE4E6',
-  },
-  errorBannerText: {
-    color: '#881337',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  stateContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 48,
-    gap: 24,
-  },
-  profileSection: {
-    alignItems: 'center',
-  },
-  section: {
-    gap: 10,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#e7e7e7',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: '#1b1b1b',
-    marginBottom: 8,
-  },
-  navRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e7e7e7',
-    marginBottom: 8,
-  },
-  navRowText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1b1b1b',
-  },
-});
+const createStyles = (theme: typeof Colors.light) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    headerTitle: {
+      flex: 1,
+      fontSize: 16,
+      fontWeight: '700',
+      color: theme.text,
+    },
+    saveText: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: '#20b87b',
+    },
+    saveTextDisabled: {
+      color: theme.muted,
+    },
+    errorBanner: {
+      marginHorizontal: 16,
+      marginTop: 12,
+      padding: 12,
+      borderRadius: 10,
+      backgroundColor: '#FFE4E6',
+    },
+    errorBannerText: {
+      color: '#881337',
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    stateContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    scrollContent: {
+      padding: 16,
+      paddingBottom: 48,
+      gap: 24,
+    },
+    profileSection: {
+      alignItems: 'center',
+    },
+    section: {
+      gap: 10,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      fontSize: 15,
+      color: theme.text,
+      marginBottom: 8,
+    },
+    navRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+      marginBottom: 8,
+    },
+    navRowText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: theme.text,
+    },
+  });

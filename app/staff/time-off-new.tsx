@@ -1,7 +1,8 @@
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { AppIcon } from '@/components/app-icon';
+import { HeaderButton } from '@/components/header-button';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -73,20 +74,27 @@ export default function StaffTimeOffNewScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['top', 'left', 'right', 'bottom']}>
-      <View style={[styles.header, { borderBottomColor: theme.border }]}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <MaterialIcons name="close" size={24} color={theme.text} />
-        </Pressable>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>{t('staff.addTimeOff')}</Text>
-        <Pressable onPress={handleSave} disabled={saving} hitSlop={8}>
-          {saving ? (
-            <ActivityIndicator size="small" color={theme.tint} />
-          ) : (
-            <Text style={[styles.saveText, { color: theme.tint }]}>{t('client.save')}</Text>
-          )}
-        </Pressable>
-      </View>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['left', 'right', 'bottom']}>
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: t('staff.addTimeOff'),
+          headerLeft: () => (
+            <HeaderButton onPress={() => router.back()} hitSlop={8}>
+              <AppIcon name="close" size={18} color={theme.text} />
+            </HeaderButton>
+          ),
+          headerRight: () => (
+            <HeaderButton onPress={handleSave} disabled={saving} hitSlop={8}>
+              {saving ? (
+                <ActivityIndicator size="small" color={theme.tint} />
+              ) : (
+                <Text style={[styles.saveText, { color: theme.tint }]}>{t('client.save')}</Text>
+              )}
+            </HeaderButton>
+          ),
+        }}
+      />
 
       {error ? (
         <View style={[styles.errorBanner, { backgroundColor: `${theme.error}22` }]}>

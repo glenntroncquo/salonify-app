@@ -1,9 +1,9 @@
+import { Pressable } from '@/components/pressable-scale';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   StyleSheet,
   TextInput,
 } from 'react-native';
@@ -104,9 +104,9 @@ export default function LoginScreen() {
           onPress={handleSubmit}
           disabled={!canSubmit}>
           {isSubmitting ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={theme.onTint} />
           ) : (
-            <ThemedText style={styles.buttonText} lightColor="#fff" darkColor="#fff">
+            <ThemedText style={styles.buttonText} lightColor={theme.onTint} darkColor={theme.onTint}>
               {t('auth.signIn')}
             </ThemedText>
           )}

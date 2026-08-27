@@ -1,14 +1,17 @@
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Pressable } from '@/components/pressable-scale';
+import { AppIcon } from '@/components/app-icon';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { groupAppointmentsByDateKey } from '@/app/(tabs)/calendar/calendar-data';
 import { addDays, getISOWeekNumber, getMonthShortLabel, getWeekStartMonday, getWeekdayLong, toDateKey } from '@/app/(tabs)/calendar/date-utils';
 import { EventItem } from '@/app/(tabs)/calendar/types';
+import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { fetchStaffAppointments } from '@/lib/api/calendar';
 import {
   AvailabilitySlot,
@@ -39,9 +42,11 @@ function formatTimeOfDay(value: string) {
 
 export default function StaffScheduleScreen() {
   const { t } = useTranslation();
-  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { companyId } = useAuth();
+  const colorScheme = useColorScheme() ?? 'light';
+  const theme = Colors[colorScheme];
+  const styles = createStyles(theme);
 
   const [weekOffset, setWeekOffset] = React.useState(0);
   const [availability, setAvailability] = React.useState<AvailabilitySlot[]>([]);
@@ -97,24 +102,18 @@ export default function StaffScheduleScreen() {
   const todayKey = toDateKey(new Date());
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <MaterialIcons name="arrow-back" size={24} color="#1b1b1b" />
-        </Pressable>
-        <Text style={styles.headerTitle}>{t('staff.schedule')}</Text>
-        <View style={{ width: 24 }} />
-      </View>
+    <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
+      <Stack.Screen options={{ headerShown: true, title: t('staff.schedule') }} />
 
       <View style={styles.weekNavRow}>
         <Pressable onPress={() => setWeekOffset((prev) => prev - 1)} hitSlop={8}>
-          <MaterialIcons name="chevron-left" size={24} color="#1b1b1b" />
+          <AppIcon name="chevronLeft" size={24} color={theme.text} />
         </Pressable>
         <Pressable onPress={() => setWeekOffset(0)}>
           <Text style={styles.weekLabel}>{t('calendar.weekLabel', { number: weekNumber })}</Text>
         </Pressable>
         <Pressable onPress={() => setWeekOffset((prev) => prev + 1)} hitSlop={8}>
-          <MaterialIcons name="chevron-right" size={24} color="#1b1b1b" />
+          <AppIcon name="chevronRight" size={24} color={theme.text} />
         </Pressable>
       </View>
 
@@ -126,7 +125,7 @@ export default function StaffScheduleScreen() {
 
       {loading ? (
         <View style={styles.stateContainer}>
-          <ActivityIndicator size="large" color="#1b1b1b" />
+          <ActivityIndicator size="large" color={theme.text} />
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -157,13 +156,13 @@ export default function StaffScheduleScreen() {
                 </View>
 
                 <View style={styles.metaRow}>
-                  <MaterialIcons name="schedule" size={14} color="#8b8b8b" />
+                  <AppIcon name="schedule" size={14} color={theme.muted} />
                   <Text style={styles.metaText}>{availabilityLabel}</Text>
                 </View>
 
                 {absences.map((block) => (
                   <View key={block.id} style={styles.absentRow}>
-                    <MaterialIcons name="event-busy" size={14} color="#e5484d" />
+                    <AppIcon name="eventBusy" size={14} color={theme.error} />
                     <Text style={styles.absentText}>
                       {block.start && block.end
                         ? `${t('staff.absent')} · ${formatTimeOfDay(block.start)}–${formatTimeOfDay(block.end)}`
@@ -197,139 +196,140 @@ export default function StaffScheduleScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1b1b1b',
-  },
-  weekNavRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  weekLabel: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1b1b1b',
-    minWidth: 100,
-    textAlign: 'center',
-  },
-  errorBanner: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    padding: 12,
-    borderRadius: 10,
-    backgroundColor: '#FFE4E6',
-  },
-  errorBannerText: {
-    color: '#881337',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  stateContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 48,
-    gap: 12,
-  },
-  dayCard: {
-    borderWidth: 1,
-    borderColor: '#f0f0f0',
-    borderRadius: 14,
-    padding: 14,
-    gap: 8,
-  },
-  dayHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  dayHeaderTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1b1b1b',
-    textTransform: 'capitalize',
-  },
-  todayBadge: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#20b87b',
-    textTransform: 'uppercase',
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  metaText: {
-    fontSize: 13,
-    color: '#8b8b8b',
-    fontWeight: '600',
-  },
-  absentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  absentText: {
-    fontSize: 13,
-    color: '#e5484d',
-    fontWeight: '600',
-  },
-  noAppointmentsText: {
-    fontSize: 13,
-    color: '#c6c6c6',
-  },
-  appointmentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 6,
-    borderTopWidth: 1,
-    borderTopColor: '#f5f5f5',
-  },
-  colorBar: {
-    width: 3,
-    height: 20,
-    borderRadius: 2,
-  },
-  appointmentTime: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#1b1b1b',
-    width: 42,
-  },
-  appointmentLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#1b1b1b',
-    flex: 1,
-  },
-  appointmentClient: {
-    fontSize: 12,
-    color: '#8b8b8b',
-    maxWidth: 100,
-  },
-});
+const createStyles = (theme: typeof Colors.light) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    headerTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: theme.text,
+    },
+    weekNavRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 16,
+      paddingVertical: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    weekLabel: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: theme.text,
+      minWidth: 100,
+      textAlign: 'center',
+    },
+    errorBanner: {
+      marginHorizontal: 16,
+      marginTop: 12,
+      padding: 12,
+      borderRadius: 10,
+      backgroundColor: '#FFE4E6',
+    },
+    errorBannerText: {
+      color: '#881337',
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    stateContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    scrollContent: {
+      padding: 16,
+      paddingBottom: 48,
+      gap: 12,
+    },
+    dayCard: {
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 14,
+      padding: 14,
+      gap: 8,
+    },
+    dayHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    dayHeaderTitle: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: theme.text,
+      textTransform: 'capitalize',
+    },
+    todayBadge: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: '#20b87b',
+      textTransform: 'uppercase',
+    },
+    metaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    metaText: {
+      fontSize: 13,
+      color: theme.muted,
+      fontWeight: '600',
+    },
+    absentRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    absentText: {
+      fontSize: 13,
+      color: theme.error,
+      fontWeight: '600',
+    },
+    noAppointmentsText: {
+      fontSize: 13,
+      color: theme.muted,
+    },
+    appointmentRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingVertical: 6,
+      borderTopWidth: 1,
+      borderTopColor: theme.border,
+    },
+    colorBar: {
+      width: 3,
+      height: 20,
+      borderRadius: 2,
+    },
+    appointmentTime: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: theme.text,
+      width: 42,
+    },
+    appointmentLabel: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: theme.text,
+      flex: 1,
+    },
+    appointmentClient: {
+      fontSize: 12,
+      color: theme.muted,
+      maxWidth: 100,
+    },
+  });

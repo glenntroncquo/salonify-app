@@ -1,11 +1,16 @@
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { Pressable } from '@/components/pressable-scale';
+import { AppIcon } from '@/components/app-icon';
+import { HeaderButton } from '@/components/header-button';
+import { SwipeableRow } from '@/components/swipeable-row';
 import { useFocusEffect } from '@react-navigation/native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ManagedTreatment, PriceOption, deletePriceOption, fetchTreatment, updateTreatment } from '@/lib/api/treatments';
 import { COLOR_MAP, TREATMENT_COLORS, TreatmentColor } from '@/lib/treatment-colors';
 
@@ -13,6 +18,9 @@ export default function TreatmentDetailScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const colorScheme = useColorScheme() ?? 'light';
+  const theme = Colors[colorScheme];
+  const styles = createStyles(theme);
 
   const [treatment, setTreatment] = React.useState<ManagedTreatment | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -94,33 +102,38 @@ export default function TreatmentDetailScreen() {
     }
   };
 
+  const screenOptions = (
+    <Stack.Screen
+      options={{
+        headerShown: true,
+        title: treatment?.name || t('treatment.title'),
+        headerRight: () => (
+          <HeaderButton onPress={handleSave} disabled={saving || !name.trim()} hitSlop={8}>
+            {saving ? (
+              <ActivityIndicator size="small" color={theme.text} />
+            ) : (
+              <Text style={[styles.saveText, !name.trim() && styles.saveTextDisabled]}>{t('client.save')}</Text>
+            )}
+          </HeaderButton>
+        ),
+      }}
+    />
+  );
+
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
+        {screenOptions}
         <View style={styles.stateContainer}>
-          <ActivityIndicator size="large" color="#1b1b1b" />
+          <ActivityIndicator size="large" color={theme.text} />
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <MaterialIcons name="arrow-back" size={24} color="#1b1b1b" />
-        </Pressable>
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          {treatment?.name || t('treatment.title')}
-        </Text>
-        <Pressable onPress={handleSave} disabled={saving || !name.trim()} hitSlop={8}>
-          {saving ? (
-            <ActivityIndicator size="small" color="#1b1b1b" />
-          ) : (
-            <Text style={[styles.saveText, !name.trim() && styles.saveTextDisabled]}>{t('client.save')}</Text>
-          )}
-        </Pressable>
-      </View>
+    <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
+      {screenOptions}
 
       {error ? (
         <View style={styles.errorBanner}>
@@ -153,7 +166,7 @@ export default function TreatmentDetailScreen() {
                   color === option && styles.colorSwatchSelected,
                 ]}
                 onPress={() => setColor(option)}>
-                {color === option ? <MaterialIcons name="check" size={16} color="#ffffff" /> : null}
+                {color === option ? <AppIcon name="check" size={16} color="#ffffff" /> : null}
               </Pressable>
             ))}
           </View>
@@ -170,17 +183,16 @@ export default function TreatmentDetailScreen() {
             <Text style={styles.emptyText}>{t('treatment.noPriceOptions')}</Text>
           ) : (
             priceOptions.map((option) => (
-              <Pressable key={option.id} style={styles.optionRow} onPress={() => openEditOption(option)}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.optionName}>{option.name}</Text>
-                  <Text style={styles.optionSubtitle}>
-                    {`${option.duration_in_minutes} ${t('appointment.minutesShort')} · €${option.price}`}
-                  </Text>
-                </View>
-                <Pressable onPress={() => handleDeleteOption(option)} hitSlop={8}>
-                  <MaterialIcons name="close" size={20} color="#8b8b8b" />
+              <SwipeableRow key={option.id} onDelete={() => handleDeleteOption(option)} deleteLabel={t('common.delete')}>
+                <Pressable style={styles.optionRow} onPress={() => openEditOption(option)}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.optionName}>{option.name}</Text>
+                    <Text style={styles.optionSubtitle}>
+                      {`${option.duration_in_minutes} ${t('appointment.minutesShort')} · €${option.price}`}
+                    </Text>
+                  </View>
                 </Pressable>
-              </Pressable>
+              </SwipeableRow>
             ))
           )}
           <Pressable style={{ marginTop: 8 }} onPress={openAddOption}>
@@ -192,127 +204,128 @@ export default function TreatmentDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1b1b1b',
-  },
-  saveText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#20b87b',
-  },
-  saveTextDisabled: {
-    color: '#c6c6c6',
-  },
-  errorBanner: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    padding: 12,
-    borderRadius: 10,
-    backgroundColor: '#FFE4E6',
-  },
-  errorBannerText: {
-    color: '#881337',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  stateContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 48,
-    gap: 24,
-  },
-  section: {
-    gap: 10,
-  },
-  sectionLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#8b8b8b',
-    textTransform: 'uppercase',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#e7e7e7',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: '#1b1b1b',
-    marginBottom: 8,
-  },
-  multilineInput: {
-    minHeight: 70,
-    textAlignVertical: 'top',
-  },
-  colorRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 8,
-  },
-  colorSwatch: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  colorSwatchSelected: {
-    borderWidth: 2,
-    borderColor: '#1b1b1b',
-  },
-  activeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#8b8b8b',
-  },
-  addLink: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#20b87b',
-  },
-  optionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  optionName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1b1b1b',
-  },
-  optionSubtitle: {
-    fontSize: 13,
-    color: '#8b8b8b',
-    marginTop: 2,
-  },
-});
+const createStyles = (theme: typeof Colors.light) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    headerTitle: {
+      flex: 1,
+      fontSize: 16,
+      fontWeight: '700',
+      color: theme.text,
+    },
+    saveText: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: '#20b87b',
+    },
+    saveTextDisabled: {
+      color: theme.muted,
+    },
+    errorBanner: {
+      marginHorizontal: 16,
+      marginTop: 12,
+      padding: 12,
+      borderRadius: 10,
+      backgroundColor: '#FFE4E6',
+    },
+    errorBannerText: {
+      color: '#881337',
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    stateContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    scrollContent: {
+      padding: 16,
+      paddingBottom: 48,
+      gap: 24,
+    },
+    section: {
+      gap: 10,
+    },
+    sectionLabel: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: theme.muted,
+      textTransform: 'uppercase',
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      fontSize: 15,
+      color: theme.text,
+      marginBottom: 8,
+    },
+    multilineInput: {
+      minHeight: 70,
+      textAlignVertical: 'top',
+    },
+    colorRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 10,
+      marginBottom: 8,
+    },
+    colorSwatch: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    colorSwatchSelected: {
+      borderWidth: 2,
+      borderColor: theme.text,
+    },
+    activeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    emptyText: {
+      fontSize: 14,
+      color: theme.muted,
+    },
+    addLink: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: '#20b87b',
+    },
+    optionRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingVertical: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    optionName: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    optionSubtitle: {
+      fontSize: 13,
+      color: theme.muted,
+      marginTop: 2,
+    },
+  });

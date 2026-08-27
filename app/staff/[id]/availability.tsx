@@ -1,12 +1,14 @@
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { HeaderButton } from '@/components/header-button';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DateTimeField } from '@/components/date-time-field';
+import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import i18n from '@/lib/i18n';
 import {
   AvailabilitySlot,
@@ -54,6 +56,9 @@ export default function StaffAvailabilityScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { companyId } = useAuth();
+  const colorScheme = useColorScheme() ?? 'light';
+  const theme = Colors[colorScheme];
+  const styles = createStyles(theme);
 
   const [days, setDays] = React.useState<Record<number, DayState>>(() => {
     const initial: Record<number, DayState> = {};
@@ -156,31 +161,38 @@ export default function StaffAvailabilityScreen() {
 
   const weekdaysLong = i18n.t('calendar.weekdaysLong', { returnObjects: true }) as string[];
 
+  const screenOptions = (
+    <Stack.Screen
+      options={{
+        headerShown: true,
+        title: t('staff.availability'),
+        headerRight: () => (
+          <HeaderButton onPress={handleSave} disabled={saving} hitSlop={8}>
+            {saving ? (
+              <ActivityIndicator size="small" color={theme.text} />
+            ) : (
+              <Text style={styles.saveText}>{t('client.save')}</Text>
+            )}
+          </HeaderButton>
+        ),
+      }}
+    />
+  );
+
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
+        {screenOptions}
         <View style={styles.stateContainer}>
-          <ActivityIndicator size="large" color="#1b1b1b" />
+          <ActivityIndicator size="large" color={theme.text} />
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <MaterialIcons name="arrow-back" size={24} color="#1b1b1b" />
-        </Pressable>
-        <Text style={styles.headerTitle}>{t('staff.availability')}</Text>
-        <Pressable onPress={handleSave} disabled={saving} hitSlop={8}>
-          {saving ? (
-            <ActivityIndicator size="small" color="#1b1b1b" />
-          ) : (
-            <Text style={styles.saveText}>{t('client.save')}</Text>
-          )}
-        </Pressable>
-      </View>
+    <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
+      {screenOptions}
 
       {error ? (
         <View style={styles.errorBanner}>
@@ -235,83 +247,84 @@ export default function StaffAvailabilityScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1b1b1b',
-  },
-  saveText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#20b87b',
-  },
-  errorBanner: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    padding: 12,
-    borderRadius: 10,
-    backgroundColor: '#FFE4E6',
-  },
-  errorBannerText: {
-    color: '#881337',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  stateContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 48,
-  },
-  dayRow: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    gap: 8,
-  },
-  dayHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  dayLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1b1b1b',
-  },
-  timeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  timeSeparator: {
-    fontSize: 14,
-    color: '#8b8b8b',
-  },
-  dayOffText: {
-    fontSize: 13,
-    color: '#9a9a9a',
-  },
-  multipleHint: {
-    fontSize: 13,
-    color: '#9a9a9a',
-    fontStyle: 'italic',
-  },
-});
+const createStyles = (theme: typeof Colors.light) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    headerTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: theme.text,
+    },
+    saveText: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: '#20b87b',
+    },
+    errorBanner: {
+      marginHorizontal: 16,
+      marginTop: 12,
+      padding: 12,
+      borderRadius: 10,
+      backgroundColor: '#FFE4E6',
+    },
+    errorBannerText: {
+      color: '#881337',
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    stateContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    scrollContent: {
+      padding: 16,
+      paddingBottom: 48,
+    },
+    dayRow: {
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+      gap: 8,
+    },
+    dayHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    dayLabel: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    timeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    timeSeparator: {
+      fontSize: 14,
+      color: theme.muted,
+    },
+    dayOffText: {
+      fontSize: 13,
+      color: theme.muted,
+    },
+    multipleHint: {
+      fontSize: 13,
+      color: theme.muted,
+      fontStyle: 'italic',
+    },
+  });

@@ -1,13 +1,14 @@
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useFocusEffect } from '@react-navigation/native';
-import { useRouter } from 'expo-router';
+import { Stack } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { MonthlyBarChart } from '@/components/monthly-bar-chart';
+import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { fetchMonthlyAppointments, fetchMonthlyClients, fetchRevenue, MonthlyCountData, RevenueData } from '@/lib/api/dashboard';
 
 import { getMonthShortLabel } from '../(tabs)/calendar/date-utils';
@@ -16,8 +17,10 @@ const RECENT_MONTHS = 6;
 
 export default function DashboardScreen() {
   const { t } = useTranslation();
-  const router = useRouter();
   const { companyId } = useAuth();
+  const colorScheme = useColorScheme() ?? 'light';
+  const theme = Colors[colorScheme];
+  const styles = createStyles(theme);
 
   const [revenue, setRevenue] = React.useState<RevenueData | null>(null);
   const [appointments, setAppointments] = React.useState<MonthlyCountData | null>(null);
@@ -56,14 +59,8 @@ export default function DashboardScreen() {
   const showNoCompanyState = !loading && !companyId;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <MaterialIcons name="arrow-back" size={24} color="#1b1b1b" />
-        </Pressable>
-        <Text style={styles.headerTitle}>{t('dashboard.title')}</Text>
-        <View style={{ width: 24 }} />
-      </View>
+    <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
+      <Stack.Screen options={{ headerShown: true, title: t('dashboard.title') }} />
 
       {error ? (
         <View style={styles.errorBanner}>
@@ -73,7 +70,7 @@ export default function DashboardScreen() {
 
       {loading ? (
         <View style={styles.stateContainer}>
-          <ActivityIndicator size="large" color="#1b1b1b" />
+          <ActivityIndicator size="large" color={theme.text} />
         </View>
       ) : showNoCompanyState ? (
         <View style={styles.stateContainer}>
@@ -92,8 +89,8 @@ export default function DashboardScreen() {
                   values: [m.revenue, m.revenueExclVat],
                 }))}
                 series={[
-                  { label: t('dashboard.revenueGross'), color: '#1b1b1b' },
-                  { label: t('dashboard.revenueNet'), color: '#c6c6c6' },
+                  { label: t('dashboard.revenueGross'), color: theme.text },
+                  { label: t('dashboard.revenueNet'), color: theme.muted },
                 ]}
                 formatValue={(value) => `€${value.toFixed(0)}`}
               />
@@ -110,7 +107,7 @@ export default function DashboardScreen() {
                   label: getMonthShortLabel(m.monthIndex),
                   values: [m.count],
                 }))}
-                series={[{ label: t('dashboard.appointments'), color: '#1b1b1b' }]}
+                series={[{ label: t('dashboard.appointments'), color: theme.text }]}
                 formatValue={(value) => String(Math.round(value))}
               />
             </View>
@@ -126,7 +123,7 @@ export default function DashboardScreen() {
                   label: getMonthShortLabel(m.monthIndex),
                   values: [m.count],
                 }))}
-                series={[{ label: t('dashboard.clients'), color: '#1b1b1b' }]}
+                series={[{ label: t('dashboard.clients'), color: theme.text }]}
                 formatValue={(value) => String(Math.round(value))}
               />
             </View>
@@ -137,72 +134,73 @@ export default function DashboardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1b1b1b',
-  },
-  errorBanner: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    padding: 12,
-    borderRadius: 10,
-    backgroundColor: '#FFE4E6',
-  },
-  errorBannerText: {
-    color: '#881337',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  stateContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stateText: {
-    fontSize: 15,
-    color: '#8b8b8b',
-  },
-  scrollContent: {
-    padding: 16,
-    gap: 20,
-    paddingBottom: 48,
-  },
-  card: {
-    borderWidth: 1,
-    borderColor: '#f0f0f0',
-    borderRadius: 16,
-    padding: 16,
-  },
-  cardLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#8b8b8b',
-    textTransform: 'uppercase',
-  },
-  cardHeadline: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1b1b1b',
-    marginTop: 4,
-  },
-  cardHint: {
-    fontSize: 12,
-    color: '#9a9a9a',
-    marginBottom: 16,
-  },
-});
+const createStyles = (theme: typeof Colors.light) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    headerTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: theme.text,
+    },
+    errorBanner: {
+      marginHorizontal: 16,
+      marginTop: 12,
+      padding: 12,
+      borderRadius: 10,
+      backgroundColor: '#FFE4E6',
+    },
+    errorBannerText: {
+      color: '#881337',
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    stateContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    stateText: {
+      fontSize: 15,
+      color: theme.muted,
+    },
+    scrollContent: {
+      padding: 16,
+      gap: 20,
+      paddingBottom: 48,
+    },
+    card: {
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 16,
+      padding: 16,
+    },
+    cardLabel: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: theme.muted,
+      textTransform: 'uppercase',
+    },
+    cardHeadline: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: theme.text,
+      marginTop: 4,
+    },
+    cardHint: {
+      fontSize: 12,
+      color: theme.muted,
+      marginBottom: 16,
+    },
+  });

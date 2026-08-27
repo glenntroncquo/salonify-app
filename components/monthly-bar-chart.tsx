@@ -1,6 +1,9 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+
 export type BarChartSeries = {
   label: string;
   color: string;
@@ -23,6 +26,9 @@ export function MonthlyBarChart({
   series: BarChartSeries[];
   formatValue: (value: number) => string;
 }) {
+  const colorScheme = useColorScheme() ?? 'light';
+  const theme = Colors[colorScheme];
+  const styles = createStyles(theme);
   const maxValue = Math.max(1, ...data.flatMap((d) => d.values));
 
   return (
@@ -38,7 +44,7 @@ export function MonthlyBarChart({
                     styles.bar,
                     {
                       height: Math.max(2, (value / maxValue) * CHART_HEIGHT),
-                      backgroundColor: series[seriesIndex]?.color ?? '#1b1b1b',
+                      backgroundColor: series[seriesIndex]?.color ?? theme.text,
                     },
                   ]}
                 />
@@ -65,55 +71,56 @@ export function MonthlyBarChart({
   );
 }
 
-const styles = StyleSheet.create({
-  chartRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    height: CHART_HEIGHT + 24,
-  },
-  barGroup: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 6,
-  },
-  barsContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 3,
-    height: CHART_HEIGHT,
-  },
-  bar: {
-    width: 10,
-    borderRadius: 3,
-  },
-  barLabel: {
-    fontSize: 11,
-    color: '#8b8b8b',
-  },
-  legendRow: {
-    flexDirection: 'row',
-    gap: 16,
-    marginTop: 12,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  legendText: {
-    fontSize: 12,
-    color: '#8b8b8b',
-  },
-  maxValueHint: {
-    marginTop: 4,
-    fontSize: 11,
-    color: '#c6c6c6',
-    textAlign: 'right',
-  },
-});
+const createStyles = (theme: typeof Colors.light) =>
+  StyleSheet.create({
+    chartRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      justifyContent: 'space-between',
+      height: CHART_HEIGHT + 24,
+    },
+    barGroup: {
+      flex: 1,
+      alignItems: 'center',
+      gap: 6,
+    },
+    barsContainer: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      gap: 3,
+      height: CHART_HEIGHT,
+    },
+    bar: {
+      width: 10,
+      borderRadius: 3,
+    },
+    barLabel: {
+      fontSize: 11,
+      color: theme.muted,
+    },
+    legendRow: {
+      flexDirection: 'row',
+      gap: 16,
+      marginTop: 12,
+    },
+    legendItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    legendDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+    },
+    legendText: {
+      fontSize: 12,
+      color: theme.muted,
+    },
+    maxValueHint: {
+      marginTop: 4,
+      fontSize: 11,
+      color: theme.muted,
+      textAlign: 'right',
+    },
+  });
