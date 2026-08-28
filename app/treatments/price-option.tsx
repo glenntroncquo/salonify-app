@@ -1,15 +1,35 @@
 import { AppIcon } from '@/components/app-icon';
 import { HeaderButton } from '@/components/header-button';
+import {
+  PhaseBlockEditor,
+  defaultEditorPhases,
+  editorPhasesFromDrafts,
+  type EditorPhase,
+} from '@/components/phase-block-editor';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { createServiceVariant, updateServiceVariant } from '@/lib/api/services';
+import {
+  createServiceVariant,
+  fetchService,
+  phasesForEditor,
+  updateServiceVariant,
+} from '@/lib/api/services';
 
 export default function PriceOptionScreen() {
   const { t } = useTranslation();
@@ -19,7 +39,6 @@ export default function PriceOptionScreen() {
     optionId?: string;
     name?: string;
     price?: string;
-    duration?: string;
   }>();
   const { companyId } = useAuth();
   const colorScheme = useColorScheme() ?? 'light';
@@ -28,17 +47,52 @@ export default function PriceOptionScreen() {
   const isEditing = Boolean(params.optionId);
   const [poName, setPoName] = React.useState(params.name ?? '');
   const [poPrice, setPoPrice] = React.useState(params.price ?? '');
-  const [poDuration, setPoDuration] = React.useState(params.duration ?? '');
+  const [phases, setPhases] = React.useState<EditorPhase[]>(defaultEditorPhases);
+  const [serviceColor, setServiceColor] = React.useState<string | null>(null);
+  const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  const canSave = poName.trim().length > 0 && !saving;
+  React.useEffect(() => {
+    if (!params.treatmentId) {
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    fetchService(params.treatmentId)
+      .then((service) => {
+        if (cancelled) return;
+        setServiceColor(service?.color ?? null);
+        if (params.optionId) {
+          const variant = service?.service_variant.find((item) => item.id === params.optionId);
+          if (variant) {
+            setPoName(variant.name);
+            setPoPrice(String(variant.price));
+            setPhases(editorPhasesFromDrafts(phasesForEditor(variant)));
+          }
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : t('service.failedToLoad'));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [params.treatmentId, params.optionId, t]);
+
+  const hasBusy = phases.some((phase) => phase.phase_type === 'busy');
+  const canSave = poName.trim().length > 0 && hasBusy && !saving && !loading;
 
   const handleSave = async () => {
-    if (!params.treatmentId || !companyId || !poName.trim()) return;
+    if (!params.treatmentId || !companyId || !poName.trim() || !hasBusy) {
+      if (!hasBusy) setError(t('service.keepOneBusy'));
+      return;
+    }
     const price = Number(poPrice);
-    const duration = Number(poDuration);
-    if (!Number.isFinite(price) || !Number.isFinite(duration)) {
+    if (!Number.isFinite(price)) {
       setError(t('service.failedToSaveOption'));
       return;
     }
@@ -46,10 +100,18 @@ export default function PriceOptionScreen() {
     setSaving(true);
     setError(null);
     try {
+      const payload = {
+        name: poName.trim(),
+        price,
+        phases: phases.map((phase) => ({
+          phase_type: phase.phase_type,
+          duration_minutes: phase.duration_minutes,
+        })),
+      };
       if (params.optionId) {
-        await updateServiceVariant(params.optionId, companyId, { name: poName.trim(), price, durationInMinutes: duration });
+        await updateServiceVariant(params.optionId, companyId, payload);
       } else {
-        await createServiceVariant(params.treatmentId, companyId, { name: poName.trim(), price, durationInMinutes: duration });
+        await createServiceVariant(params.treatmentId, companyId, payload);
       }
       router.back();
     } catch {
@@ -88,31 +150,38 @@ export default function PriceOptionScreen() {
         </View>
       ) : null}
 
-      <View style={styles.body}>
-        <TextInput
-          style={[styles.input, { borderColor: theme.border, color: theme.text }]}
-          placeholder={t('service.optionName')}
-          placeholderTextColor={theme.muted}
-          value={poName}
-          onChangeText={setPoName}
-        />
-        <TextInput
-          style={[styles.input, { borderColor: theme.border, color: theme.text }]}
-          placeholder={t('service.price')}
-          placeholderTextColor={theme.muted}
-          value={poPrice}
-          onChangeText={setPoPrice}
-          keyboardType="decimal-pad"
-        />
-        <TextInput
-          style={[styles.input, { borderColor: theme.border, color: theme.text }]}
-          placeholder={t('service.durationMinutes')}
-          placeholderTextColor={theme.muted}
-          value={poDuration}
-          onChangeText={setPoDuration}
-          keyboardType="number-pad"
-        />
-      </View>
+      {loading ? (
+        <View style={styles.loading}>
+          <ActivityIndicator size="large" color={theme.text} />
+        </View>
+      ) : (
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={88}>
+          <ScrollView
+            contentContainerStyle={styles.body}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag">
+            <TextInput
+              style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+              placeholder={t('service.optionName')}
+              placeholderTextColor={theme.muted}
+              value={poName}
+              onChangeText={setPoName}
+            />
+            <TextInput
+              style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+              placeholder={t('service.price')}
+              placeholderTextColor={theme.muted}
+              value={poPrice}
+              onChangeText={setPoPrice}
+              keyboardType="decimal-pad"
+            />
+            <PhaseBlockEditor phases={phases} onChange={setPhases} serviceColor={serviceColor} theme={theme} />
+          </ScrollView>
+        </KeyboardAvoidingView>
+      )}
     </SafeAreaView>
   );
 }
@@ -121,17 +190,8 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+  flex: {
+    flex: 1,
   },
   saveText: {
     fontSize: 16,
@@ -147,8 +207,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
+  loading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   body: {
     padding: 16,
+    paddingBottom: 48,
     gap: 4,
   },
   input: {

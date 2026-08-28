@@ -180,44 +180,111 @@ export async function reorderServices(orderedIds: string[]): Promise<void> {
   if (failed?.error) throw failed.error;
 }
 
+export type PhaseDraft = {
+  phase_type: 'busy' | 'free';
+  duration_minutes: number;
+};
+
 export type ServiceVariantFields = {
   name: string;
   price: number;
-  durationInMinutes: number;
+  phases: PhaseDraft[];
 };
 
-async function replaceSingleBusyPhase(
+export function clientDurationFromPhases(phases: PhaseDraft[]): number {
+  return phases.reduce((sum, phase) => sum + Math.max(0, Number(phase.duration_minutes) || 0), 0);
+}
+
+export function staffDurationFromPhases(phases: PhaseDraft[]): number {
+  return phases
+    .filter((phase) => phase.phase_type === 'busy')
+    .reduce((sum, phase) => sum + Math.max(0, Number(phase.duration_minutes) || 0), 0);
+}
+
+/**
+ * When a variant has no phase rows, reconstruct the old two-duration shape:
+ * busy = staff/actual duration, trailing free = leftover client duration.
+ */
+export function inferPhasesFromDurations(
+  clientDuration: number,
+  staffDuration: number | null
+): ServiceVariantPhase[] {
+  const client = Math.max(0, Number(clientDuration) || 0);
+  const staff = Math.max(0, Number(staffDuration) || 0);
+  const busyMinutes = staff > 0 ? staff : client || 30;
+  const freeMinutes = Math.max(0, client - busyMinutes);
+  const phases: ServiceVariantPhase[] = [
+    { sequence: 0, phase_type: 'busy', duration_minutes: busyMinutes },
+  ];
+  if (freeMinutes > 0) {
+    phases.push({ sequence: 1, phase_type: 'free', duration_minutes: freeMinutes });
+  }
+  return phases;
+}
+
+export function phasesForEditor(variant: Pick<ServiceVariant, 'client_duration_minutes' | 'staff_duration_minutes' | 'service_variant_phase'>): ServiceVariantPhase[] {
+  const existing = sortPhases(variant.service_variant_phase);
+  if (existing.length > 0) return existing;
+  return inferPhasesFromDurations(variant.client_duration_minutes, variant.staff_duration_minutes);
+}
+
+function normalizePhaseDrafts(phases: PhaseDraft[]): ServiceVariantPhase[] {
+  const normalized = phases
+    .map((phase) => ({
+      phase_type: phase.phase_type === 'free' ? ('free' as const) : ('busy' as const),
+      duration_minutes: Math.max(1, Math.round(Number(phase.duration_minutes) || 0)),
+    }))
+    .filter((phase) => phase.duration_minutes > 0);
+
+  if (!normalized.some((phase) => phase.phase_type === 'busy')) {
+    throw new Error('At least one busy phase is required');
+  }
+
+  return normalized.map((phase, sequence) => ({ ...phase, sequence }));
+}
+
+async function replaceVariantPhases(
   variantId: string,
   companyId: string,
-  durationMinutes: number
+  phases: ServiceVariantPhase[]
 ): Promise<void> {
-  const { data: phases, error: loadError } = await supabase
+  const { data: existing, error: loadError } = await supabase
     .from('service_variant_phase')
-    .select('id, sequence, phase_type')
-    .eq('service_variant_id', variantId)
-    .order('sequence', { ascending: true });
-
+    .select('id')
+    .eq('service_variant_id', variantId);
   if (loadError) throw loadError;
 
-  const rows = phases ?? [];
-  if (rows.length === 1 && rows[0].phase_type === 'busy') {
-    const { error } = await supabase
+  const { data: inserted, error: insertError } = await supabase
+    .from('service_variant_phase')
+    .insert(
+      phases.map((phase) => ({
+        company_id: companyId,
+        service_variant_id: variantId,
+        sequence: 1000 + phase.sequence,
+        phase_type: phase.phase_type,
+        duration_minutes: phase.duration_minutes,
+      }))
+    )
+    .select('id');
+  if (insertError) throw insertError;
+
+  if (existing && existing.length > 0) {
+    const { error: deleteError } = await supabase
       .from('service_variant_phase')
-      .update({ duration_minutes: durationMinutes })
-      .eq('id', rows[0].id);
-    if (error) throw error;
-    return;
+      .delete()
+      .in(
+        'id',
+        existing.map((row) => row.id)
+      );
+    if (deleteError) throw deleteError;
   }
-  if (rows.length === 0) {
-    const { error } = await supabase.from('service_variant_phase').insert({
-      company_id: companyId,
-      service_variant_id: variantId,
-      sequence: 0,
-      phase_type: 'busy',
-      duration_minutes: durationMinutes,
-    });
-    if (error) throw error;
-  }
+
+  const relabel = (inserted ?? []).map((row, index) =>
+    supabase.from('service_variant_phase').update({ sequence: index }).eq('id', row.id)
+  );
+  const results = await Promise.all(relabel);
+  const failed = results.find((result) => result.error);
+  if (failed?.error) throw failed.error;
 }
 
 export async function createServiceVariant(
@@ -225,6 +292,10 @@ export async function createServiceVariant(
   companyId: string,
   fields: ServiceVariantFields
 ): Promise<ServiceVariant> {
+  const phases = normalizePhaseDrafts(fields.phases);
+  const clientDuration = clientDurationFromPhases(phases);
+  const staffDuration = staffDurationFromPhases(phases);
+
   const { data, error } = await supabase
     .from('service_variant')
     .insert({
@@ -232,8 +303,8 @@ export async function createServiceVariant(
       company_id: companyId,
       name: fields.name,
       price: fields.price,
-      client_duration_minutes: fields.durationInMinutes,
-      staff_duration_minutes: fields.durationInMinutes,
+      client_duration_minutes: clientDuration,
+      staff_duration_minutes: staffDuration,
       is_active: true,
       is_deleted: false,
     })
@@ -242,18 +313,20 @@ export async function createServiceVariant(
 
   if (error) throw error;
 
-  const { error: phaseError } = await supabase.from('service_variant_phase').insert({
-    company_id: companyId,
-    service_variant_id: data.id,
-    sequence: 0,
-    phase_type: 'busy',
-    duration_minutes: fields.durationInMinutes,
-  });
+  const { error: phaseError } = await supabase.from('service_variant_phase').insert(
+    phases.map((phase) => ({
+      company_id: companyId,
+      service_variant_id: data.id,
+      sequence: phase.sequence,
+      phase_type: phase.phase_type,
+      duration_minutes: phase.duration_minutes,
+    }))
+  );
   if (phaseError) throw phaseError;
 
   return {
     ...data,
-    service_variant_phase: [{ sequence: 0, phase_type: 'busy', duration_minutes: fields.durationInMinutes }],
+    service_variant_phase: phases,
   };
 }
 
@@ -270,16 +343,19 @@ export async function updateServiceVariant(
   } = {};
   if (fields.name !== undefined) patch.name = fields.name;
   if (fields.price !== undefined) patch.price = fields.price;
-  if (fields.durationInMinutes !== undefined) {
-    patch.client_duration_minutes = fields.durationInMinutes;
-    patch.staff_duration_minutes = fields.durationInMinutes;
+
+  let phases: ServiceVariantPhase[] | null = null;
+  if (fields.phases !== undefined) {
+    phases = normalizePhaseDrafts(fields.phases);
+    patch.client_duration_minutes = clientDurationFromPhases(phases);
+    patch.staff_duration_minutes = staffDurationFromPhases(phases);
   }
 
   const { error } = await supabase.from('service_variant').update(patch).eq('id', variantId);
   if (error) throw error;
 
-  if (fields.durationInMinutes !== undefined) {
-    await replaceSingleBusyPhase(variantId, companyId, fields.durationInMinutes);
+  if (phases) {
+    await replaceVariantPhases(variantId, companyId, phases);
   }
 }
 
@@ -290,8 +366,14 @@ export async function deleteServiceVariant(variantId: string): Promise<void> {
 
 export function variantDurationMinutes(variant: Pick<ServiceVariant, 'client_duration_minutes' | 'service_variant_phase'>): number {
   const phases = variant.service_variant_phase ?? [];
-  if (phases.length > 0) {
-    return phases.reduce((sum, phase) => sum + Number(phase.duration_minutes), 0);
-  }
+  if (phases.length > 0) return clientDurationFromPhases(phases);
   return Number(variant.client_duration_minutes) || 0;
+}
+
+export function variantStaffDurationMinutes(
+  variant: Pick<ServiceVariant, 'staff_duration_minutes' | 'service_variant_phase'>
+): number {
+  const phases = variant.service_variant_phase ?? [];
+  if (phases.length > 0) return staffDurationFromPhases(phases);
+  return Number(variant.staff_duration_minutes) || 0;
 }

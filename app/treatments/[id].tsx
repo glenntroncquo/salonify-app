@@ -18,8 +18,22 @@ import {
   fetchService,
   updateService,
   variantDurationMinutes,
+  variantStaffDurationMinutes,
 } from '@/lib/api/services';
 import { COLOR_MAP, TREATMENT_COLORS, TreatmentColor } from '@/lib/treatment-colors';
+
+function formatVariantSubtitle(
+  option: ServiceVariant,
+  t: (key: string) => string
+): string {
+  const clientMinutes = variantDurationMinutes(option);
+  const staffMinutes = variantStaffDurationMinutes(option);
+  const duration =
+    staffMinutes > 0 && staffMinutes !== clientMinutes
+      ? `${clientMinutes} ${t('appointment.minutesShort')} · ${staffMinutes} ${t('service.phaseBusy').toLowerCase()}`
+      : `${clientMinutes} ${t('appointment.minutesShort')}`;
+  return `${duration} · €${option.price}`;
+}
 
 export default function TreatmentDetailScreen() {
   const { t } = useTranslation();
@@ -95,7 +109,6 @@ export default function TreatmentDetailScreen() {
         optionId: option.id,
         name: option.name,
         price: String(option.price),
-        duration: String(variantDurationMinutes(option)),
       },
     });
   };
@@ -194,9 +207,7 @@ export default function TreatmentDetailScreen() {
                 <Pressable style={styles.optionRow} onPress={() => openEditOption(option)}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.optionName}>{option.name}</Text>
-                    <Text style={styles.optionSubtitle}>
-                      {`${variantDurationMinutes(option)} ${t('appointment.minutesShort')} · €${option.price}`}
-                    </Text>
+                    <Text style={styles.optionSubtitle}>{formatVariantSubtitle(option, t)}</Text>
                   </View>
                 </Pressable>
               </SwipeableRow>
