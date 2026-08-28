@@ -19,8 +19,10 @@ function formatDateTime(value: string) {
 }
 
 function itemName(item: OrderDetail['order_item'][number]) {
-  if (item.treatment?.name && item.price_option?.name) return `${item.treatment.name} · ${item.price_option.name}`;
-  return item.treatment?.name ?? item.product?.name ?? '—';
+  const serviceName = item.appointment_segment?.service?.name ?? item.treatment?.name;
+  const variantName = item.appointment_segment?.service_variant?.name ?? item.price_option?.name;
+  if (serviceName && variantName) return `${serviceName} · ${variantName}`;
+  return serviceName ?? item.product?.name ?? '—';
 }
 
 export default function OrderDetailScreen() {
@@ -72,7 +74,7 @@ export default function OrderDetailScreen() {
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>{t('appointment.treatments')}</Text>
+            <Text style={styles.sectionLabel}>{t('appointment.services')}</Text>
             {order.order_item.map((item) => (
               <View key={item.id} style={styles.itemRow}>
                 <Text style={styles.itemName}>{itemName(item)}</Text>

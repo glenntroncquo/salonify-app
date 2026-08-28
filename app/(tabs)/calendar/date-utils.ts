@@ -90,11 +90,12 @@ export function formatTime(iso: string) {
 }
 
 /**
- * Builds the appointment `start`/`end` string format the backend expects:
- * local wall-clock date/time parts with a literal "Z" suffix (not a real UTC
- * conversion). `formatTime` above reads appointments back the same way (local
- * getters against this same fake-UTC string), so writes must match this
- * exact shape or newly-created appointments will render at the wrong time.
+ * Builds the appointment `start`/`end` string format the backend still expects
+ * on the vestigial appointment columns: local wall-clock date/time parts with a
+ * literal "Z" suffix (not a real UTC conversion).
+ *
+ * Calendar display uses appointment_segment.starts_at/ends_at (timestamptz) via
+ * `formatTime`, so those render at the correct local wall-clock time.
  */
 export function toFakeUtcISOString(date: Date, hours: number, minutes: number) {
   const y = date.getFullYear();

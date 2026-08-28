@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { createTreatment } from '@/lib/api/treatments';
+import { createService } from '@/lib/api/services';
 import { COLOR_MAP, TREATMENT_COLORS, TreatmentColor } from '@/lib/treatment-colors';
 
 export default function NewTreatmentScreen() {
@@ -34,10 +34,10 @@ export default function NewTreatmentScreen() {
     setSaving(true);
     setErrorMessage(null);
     try {
-      const treatment = await createTreatment(companyId, { name: name.trim(), color, description: description.trim() });
-      router.replace({ pathname: '/treatments/[id]', params: { id: treatment.id } });
+      const service = await createService(companyId, { name: name.trim(), color, description: description.trim() });
+      router.replace({ pathname: '/treatments/[id]', params: { id: service.id } });
     } catch {
-      setErrorMessage(t('treatment.failedToSave'));
+      setErrorMessage(t('service.failedToSave'));
     } finally {
       setSaving(false);
     }
@@ -48,7 +48,7 @@ export default function NewTreatmentScreen() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: t('treatment.addNew'),
+          title: t('service.addNew'),
           headerLeft: () => (
             <HeaderButton onPress={() => router.back()} hitSlop={8}>
               <AppIcon name="close" size={18} color={theme.text} />
@@ -73,16 +73,16 @@ export default function NewTreatmentScreen() {
       ) : null}
 
       <View style={styles.form}>
-        <TextInput style={styles.input} placeholder={t('treatment.name')} value={name} onChangeText={setName} />
+        <TextInput style={styles.input} placeholder={t('service.name')} value={name} onChangeText={setName} />
         <TextInput
           style={[styles.input, styles.multilineInput]}
-          placeholder={t('treatment.descriptionPlaceholder')}
+          placeholder={t('service.descriptionPlaceholder')}
           value={description}
           onChangeText={setDescription}
           multiline
         />
 
-        <Text style={styles.sectionLabel}>{t('treatment.color')}</Text>
+        <Text style={styles.sectionLabel}>{t('service.color')}</Text>
         <View style={styles.colorRow}>
           {TREATMENT_COLORS.map((option) => (
             <Pressable

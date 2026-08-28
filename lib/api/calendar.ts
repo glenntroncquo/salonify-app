@@ -1,5 +1,28 @@
 import { supabase } from '@/lib/supabase';
 
+export type AppointmentSegmentRow = {
+  id: string;
+  sequence: number;
+  staff_id: string;
+  starts_at: string;
+  ends_at: string;
+  service: {
+    id: string;
+    name: string;
+    color: string | null;
+  } | null;
+  service_variant: {
+    id: string;
+    name: string;
+  } | null;
+  staff: {
+    id: string;
+    first_name: string | null;
+    last_name: string | null;
+    image_path: string | null;
+  } | null;
+};
+
 export type AppointmentRow = {
   id: string;
   start: string;
@@ -18,27 +41,7 @@ export type AppointmentRow = {
     last_name: string | null;
     image_path: string | null;
   } | null;
-  appointment_treatment: Array<{
-    id: string;
-    treatment: {
-      id: string;
-      name: string;
-      color: string | null;
-    };
-    price_option: {
-      id: string;
-      name: string;
-    };
-  }>;
-  treatment: {
-    id: string;
-    name: string;
-    color: string | null;
-  } | null;
-  price_option: {
-    id: string;
-    name: string;
-  } | null;
+  appointment_segment: AppointmentSegmentRow[];
 };
 
 export type StaffMember = {
@@ -56,10 +59,20 @@ const APPOINTMENT_SELECT = `
   staff_notes,
   client:client_id ( id, first_name, last_name, email ),
   staff:staff_id ( id, first_name, last_name, image_path ),
-  appointment_treatment ( id, treatment: treatment_id ( id, name, color ), price_option: price_option_id ( id, name ) ),
-  treatment:treatment_id ( id, name, color ),
-  price_option:price_option_id ( id, name )
+  appointment_segment (
+    id, sequence, staff_id, starts_at, ends_at,
+    service: service_id ( id, name, color ),
+    service_variant: service_variant_id ( id, name ),
+    staff: staff_id ( id, first_name, last_name, image_path )
+  )
 `;
+
+function sortSegments(appointments: AppointmentRow[]): AppointmentRow[] {
+  return appointments.map((appointment) => ({
+    ...appointment,
+    appointment_segment: [...(appointment.appointment_segment ?? [])].sort((a, b) => a.sequence - b.sequence),
+  }));
+}
 
 /**
  * Fetches appointments starting within a single calendar month (local time).
@@ -84,14 +97,15 @@ export async function fetchAppointmentsForMonth(
     .lt('start', monthEnd.toISOString());
 
   if (error) throw error;
-  return (data as unknown as AppointmentRow[]) ?? [];
+  return sortSegments((data as unknown as AppointmentRow[]) ?? []);
 }
 
 export async function fetchAppointmentById(appointmentId: string): Promise<AppointmentRow | null> {
   const { data, error } = await supabase.from('appointment').select(APPOINTMENT_SELECT).eq('id', appointmentId).single();
 
   if (error) throw error;
-  return (data as unknown as AppointmentRow) ?? null;
+  const row = data as unknown as AppointmentRow | null;
+  return row ? sortSegments([row])[0] : null;
 }
 
 export async function fetchStaff(companyId: string): Promise<StaffMember[]> {
@@ -116,10 +130,13 @@ export async function fetchClientAppointments(clientId: string, companyId: strin
     .order('start', { ascending: false });
 
   if (error) throw error;
-  return (data as unknown as AppointmentRow[]) ?? [];
+  return sortSegments((data as unknown as AppointmentRow[]) ?? []);
 }
 
-/** A single staff member's appointments within a date range (for the staff schedule/roster view). */
+/**
+ * A single staff member's segments within a date range (staff schedule/roster).
+ * Filters on appointment_segment.staff_id — not the vestigial appointment.staff_id.
+ */
 export async function fetchStaffAppointments(
   staffId: string,
   companyId: string,
@@ -127,14 +144,72 @@ export async function fetchStaffAppointments(
   rangeEndExclusive: Date
 ): Promise<AppointmentRow[]> {
   const { data, error } = await supabase
-    .from('appointment')
-    .select(APPOINTMENT_SELECT)
+    .from('appointment_segment')
+    .select(
+      `
+      id, sequence, staff_id, starts_at, ends_at,
+      service: service_id ( id, name, color ),
+      service_variant: service_variant_id ( id, name ),
+      staff: staff_id ( id, first_name, last_name, image_path ),
+      appointment: appointment_id (
+        id, start, end, notes, staff_notes, is_canceled,
+        client: client_id ( id, first_name, last_name, email ),
+        staff: staff_id ( id, first_name, last_name, image_path )
+      )
+    `
+    )
     .eq('company_id', companyId)
     .eq('staff_id', staffId)
-    .eq('is_canceled', false)
-    .gte('start', rangeStart.toISOString())
-    .lt('start', rangeEndExclusive.toISOString());
+    .gte('starts_at', rangeStart.toISOString())
+    .lt('starts_at', rangeEndExclusive.toISOString());
 
   if (error) throw error;
-  return (data as unknown as AppointmentRow[]) ?? [];
+
+  const byAppointment = new Map<string, AppointmentRow>();
+  for (const row of (data as unknown as StaffSegmentQueryRow[]) ?? []) {
+    const appointment = row.appointment;
+    if (!appointment || appointment.is_canceled) continue;
+
+    const segment: AppointmentSegmentRow = {
+      id: row.id,
+      sequence: row.sequence,
+      staff_id: row.staff_id,
+      starts_at: row.starts_at,
+      ends_at: row.ends_at,
+      service: row.service,
+      service_variant: row.service_variant,
+      staff: row.staff,
+    };
+
+    const existing = byAppointment.get(appointment.id);
+    if (existing) {
+      existing.appointment_segment.push(segment);
+    } else {
+      byAppointment.set(appointment.id, {
+        id: appointment.id,
+        start: appointment.start,
+        end: appointment.end,
+        notes: appointment.notes,
+        staff_notes: appointment.staff_notes,
+        client: appointment.client,
+        staff: appointment.staff,
+        appointment_segment: [segment],
+      });
+    }
+  }
+
+  return sortSegments([...byAppointment.values()]);
 }
+
+type StaffSegmentQueryRow = AppointmentSegmentRow & {
+  appointment: {
+    id: string;
+    start: string;
+    end: string;
+    notes: string | null;
+    staff_notes: string | null;
+    is_canceled: boolean;
+    client: AppointmentRow['client'];
+    staff: AppointmentRow['staff'];
+  } | null;
+};

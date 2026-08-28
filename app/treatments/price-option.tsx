@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { createPriceOption, updatePriceOption } from '@/lib/api/treatments';
+import { createServiceVariant, updateServiceVariant } from '@/lib/api/services';
 
 export default function PriceOptionScreen() {
   const { t } = useTranslation();
@@ -39,7 +39,7 @@ export default function PriceOptionScreen() {
     const price = Number(poPrice);
     const duration = Number(poDuration);
     if (!Number.isFinite(price) || !Number.isFinite(duration)) {
-      setError(t('treatment.failedToSaveOption'));
+      setError(t('service.failedToSaveOption'));
       return;
     }
 
@@ -47,13 +47,13 @@ export default function PriceOptionScreen() {
     setError(null);
     try {
       if (params.optionId) {
-        await updatePriceOption(params.optionId, { name: poName.trim(), price, durationInMinutes: duration });
+        await updateServiceVariant(params.optionId, companyId, { name: poName.trim(), price, durationInMinutes: duration });
       } else {
-        await createPriceOption(params.treatmentId, companyId, { name: poName.trim(), price, durationInMinutes: duration });
+        await createServiceVariant(params.treatmentId, companyId, { name: poName.trim(), price, durationInMinutes: duration });
       }
       router.back();
     } catch {
-      setError(t('treatment.failedToSaveOption'));
+      setError(t('service.failedToSaveOption'));
     } finally {
       setSaving(false);
     }
@@ -64,7 +64,7 @@ export default function PriceOptionScreen() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: isEditing ? t('treatment.editPriceOption') : t('treatment.addPriceOption'),
+          title: isEditing ? t('service.editVariant') : t('service.addVariant'),
           headerLeft: () => (
             <HeaderButton onPress={() => router.back()} hitSlop={8}>
               <AppIcon name="close" size={18} color={theme.text} />
@@ -91,14 +91,14 @@ export default function PriceOptionScreen() {
       <View style={styles.body}>
         <TextInput
           style={[styles.input, { borderColor: theme.border, color: theme.text }]}
-          placeholder={t('treatment.optionName')}
+          placeholder={t('service.optionName')}
           placeholderTextColor={theme.muted}
           value={poName}
           onChangeText={setPoName}
         />
         <TextInput
           style={[styles.input, { borderColor: theme.border, color: theme.text }]}
-          placeholder={t('treatment.price')}
+          placeholder={t('service.price')}
           placeholderTextColor={theme.muted}
           value={poPrice}
           onChangeText={setPoPrice}
@@ -106,7 +106,7 @@ export default function PriceOptionScreen() {
         />
         <TextInput
           style={[styles.input, { borderColor: theme.border, color: theme.text }]}
-          placeholder={t('treatment.durationMinutes')}
+          placeholder={t('service.durationMinutes')}
           placeholderTextColor={theme.muted}
           value={poDuration}
           onChangeText={setPoDuration}

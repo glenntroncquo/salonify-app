@@ -102,7 +102,7 @@ export default function DayScreen() {
           ) : (
             events.map((event) => (
               <Pressable
-                key={event.appointmentId}
+                key={event.id}
                 style={styles.row}
                 onPress={() => router.push({ pathname: '/appointment/[id]', params: { id: event.appointmentId } })}>
                 <View style={[styles.colorBar, { backgroundColor: event.color }]} />

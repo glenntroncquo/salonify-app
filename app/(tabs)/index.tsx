@@ -438,7 +438,7 @@ export default function CalendarScreen() {
               isToday: dateKey === todayKey,
             });
             dayEvents.forEach((event) => {
-              items.push({ kind: 'row', key: event.appointmentId, dateKey, event });
+              items.push({ kind: 'row', key: event.id, dateKey, event });
             });
           });
       });
@@ -586,7 +586,7 @@ export default function CalendarScreen() {
 
                     <View style={styles.eventStack}>
                       {visibleEvents.map((event) => (
-                        <View key={event.appointmentId} style={[styles.eventPill, { backgroundColor: event.bgColor }]}>
+                        <View key={event.id} style={[styles.eventPill, { backgroundColor: event.bgColor }]}>
                           <Text style={[styles.eventText, { color: event.textColor }]} numberOfLines={1}>
                             {event.label}
                           </Text>
@@ -767,7 +767,7 @@ export default function CalendarScreen() {
                             </Pressable>
                             <ScrollView style={styles.weekAgendaEvents} nestedScrollEnabled directionalLockEnabled showsVerticalScrollIndicator>
                               {day.appointments.map((event) => (
-                                <View key={event.appointmentId} style={styles.weekAgendaEventRow}>
+                                <View key={event.id} style={styles.weekAgendaEventRow}>
                                   <View style={[styles.weekAgendaColorBar, { backgroundColor: event.color }]} />
                                   <Text style={styles.weekAgendaTime}>{event.startTime}</Text>
                                   <Text style={styles.weekAgendaTitle} numberOfLines={1}>

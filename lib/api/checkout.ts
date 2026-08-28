@@ -2,31 +2,23 @@ import { FunctionsHttpError } from '@supabase/supabase-js';
 
 import { supabase } from '@/lib/supabase';
 
-type CheckoutPriceOption = {
-  id: string;
-  name: string;
-  price: number;
-  vat_rate: number | null;
-};
-
 export type CheckoutAppointment = {
   id: string;
   client_id: string | null;
   client: { id: string; first_name: string | null; last_name: string | null } | null;
-  appointment_treatment: Array<{
+  appointment_segment: Array<{
     id: string;
-    treatment_id: string;
-    treatment: { id: string; name: string } | null;
-    price_option: CheckoutPriceOption | null;
+    service_id: string;
+    service_variant_id: string;
+    service: { id: string; name: string } | null;
+    service_variant: { id: string; name: string; price: number; vat_rate: number | null } | null;
   }>;
-  treatment_id: string | null;
-  price_option: CheckoutPriceOption | null;
 };
 
 export type CheckoutLineItem = {
-  appointmentTreatmentId?: string;
-  treatmentId: string;
-  priceOptionId: string;
+  appointmentSegmentId: string;
+  serviceId: string;
+  serviceVariantId: string;
   name: string;
   price: number;
   vatRate: number;
@@ -36,9 +28,11 @@ const CHECKOUT_APPOINTMENT_SELECT = `
   id,
   client_id,
   client:client_id ( id, first_name, last_name ),
-  appointment_treatment ( id, treatment_id, treatment:treatment_id ( id, name ), price_option:price_option_id ( id, name, price, vat_rate ) ),
-  treatment_id,
-  price_option:price_option_id ( id, name, price, vat_rate )
+  appointment_segment (
+    id, service_id, service_variant_id,
+    service:service_id ( id, name ),
+    service_variant:service_variant_id ( id, name, price, vat_rate )
+  )
 `;
 
 export async function fetchAppointmentForCheckout(appointmentId: string): Promise<CheckoutAppointment | null> {
@@ -52,32 +46,17 @@ export async function fetchAppointmentForCheckout(appointmentId: string): Promis
   return data as unknown as CheckoutAppointment | null;
 }
 
-/** Flattens the appointment_treatment array, falling back to the legacy single treatment_id/price_option columns. */
 export function checkoutLineItems(appointment: CheckoutAppointment): CheckoutLineItem[] {
-  if (appointment.appointment_treatment?.length > 0) {
-    return appointment.appointment_treatment
-      .filter((at) => at.treatment && at.price_option)
-      .map((at) => ({
-        appointmentTreatmentId: at.id,
-        treatmentId: at.treatment_id,
-        priceOptionId: at.price_option!.id,
-        name: at.treatment!.name,
-        price: at.price_option!.price,
-        vatRate: at.price_option!.vat_rate ?? 0,
-      }));
-  }
-  if (appointment.treatment_id && appointment.price_option) {
-    return [
-      {
-        treatmentId: appointment.treatment_id,
-        priceOptionId: appointment.price_option.id,
-        name: appointment.price_option.name,
-        price: appointment.price_option.price,
-        vatRate: appointment.price_option.vat_rate ?? 0,
-      },
-    ];
-  }
-  return [];
+  return (appointment.appointment_segment ?? [])
+    .filter((segment) => segment.service && segment.service_variant)
+    .map((segment) => ({
+      appointmentSegmentId: segment.id,
+      serviceId: segment.service_id,
+      serviceVariantId: segment.service_variant_id,
+      name: segment.service!.name,
+      price: Number(segment.service_variant!.price),
+      vatRate: segment.service_variant!.vat_rate ?? 0,
+    }));
 }
 
 export type CheckoutPaymentType = 'cash' | 'card' | 'invoice' | 'bank_transfer';
@@ -92,15 +71,20 @@ export type CreateOrderPayload = {
 };
 
 export async function createOrderWithPayment(payload: CreateOrderPayload): Promise<{ order_number?: string }> {
-  const { data, error } = await supabase.functions.invoke('create-order-with-payment-v3', {
+  const { data, error } = await supabase.functions.invoke('order-create', {
     body: {
       company_id: payload.companyId,
       appointment_id: payload.appointmentId,
       client_id: payload.clientId,
       treatments: payload.lineItems.map((item) => ({
-        appointment_treatment_id: item.appointmentTreatmentId,
-        treatment_id: item.treatmentId,
-        price_option_id: item.priceOptionId,
+        // order-create still validates the legacy field names; IDs are the new
+        // service / service_variant / appointment_segment rows (backfill kept 1:1).
+        appointment_treatment_id: item.appointmentSegmentId,
+        appointment_segment_id: item.appointmentSegmentId,
+        treatment_id: item.serviceId,
+        service_id: item.serviceId,
+        price_option_id: item.serviceVariantId,
+        service_variant_id: item.serviceVariantId,
         quantity: 1,
         unit_price: item.price,
         vat_rate: item.vatRate,
@@ -126,5 +110,10 @@ export async function createOrderWithPayment(payload: CreateOrderPayload): Promi
     throw error;
   }
 
-  return data ?? {};
+  const orderNumber =
+    data?.order_number ??
+    data?.data?.order_number ??
+    data?.data?.order_id ??
+    data?.order_id;
+  return { order_number: orderNumber };
 }

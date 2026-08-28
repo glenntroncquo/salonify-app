@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { ManagedTreatment, fetchAllTreatments, reorderTreatments, updateTreatment } from '@/lib/api/treatments';
+import { ManagedService, fetchAllServices, reorderServices, updateService } from '@/lib/api/services';
 import { COLOR_MAP, mapTreatmentColorToEventColor } from '@/lib/treatment-colors';
 
 export default function TreatmentsScreen() {
@@ -29,7 +29,7 @@ export default function TreatmentsScreen() {
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);
 
-  const [treatments, setTreatments] = React.useState<ManagedTreatment[]>([]);
+  const [services, setServices] = React.useState<ManagedService[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [refreshing, setRefreshing] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -40,11 +40,11 @@ export default function TreatmentsScreen() {
       return;
     }
     try {
-      const data = await fetchAllTreatments(companyId);
-      setTreatments(data);
+      const data = await fetchAllServices(companyId);
+      setServices(data);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('treatment.failedToLoad'));
+      setError(err instanceof Error ? err.message : t('service.failedToLoad'));
     } finally {
       setLoading(false);
     }
@@ -65,30 +65,30 @@ export default function TreatmentsScreen() {
   const handleMove = React.useCallback(
     async (index: number, direction: -1 | 1) => {
       const targetIndex = index + direction;
-      if (targetIndex < 0 || targetIndex >= treatments.length) return;
+      if (targetIndex < 0 || targetIndex >= services.length) return;
 
-      const reordered = [...treatments];
+      const reordered = [...services];
       [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
-      setTreatments(reordered);
+      setServices(reordered);
 
       try {
-        await reorderTreatments(reordered.map((item) => item.id));
+        await reorderServices(reordered.map((item) => item.id));
       } catch {
-        setError(t('treatment.failedToReorder'));
+        setError(t('service.failedToReorder'));
         load();
       }
     },
-    [treatments, load, t]
+    [services, load, t]
   );
 
   const handleToggleActive = React.useCallback(
-    async (treatment: ManagedTreatment) => {
-      const nextActive = !treatment.is_active;
-      setTreatments((prev) => prev.map((item) => (item.id === treatment.id ? { ...item, is_active: nextActive } : item)));
+    async (service: ManagedService) => {
+      const nextActive = !service.is_active;
+      setServices((prev) => prev.map((item) => (item.id === service.id ? { ...item, is_active: nextActive } : item)));
       try {
-        await updateTreatment(treatment.id, { isActive: nextActive });
+        await updateService(service.id, { isActive: nextActive });
       } catch {
-        setError(t('treatment.failedToSave'));
+        setError(t('service.failedToSave'));
         load();
       }
     },
@@ -99,7 +99,7 @@ export default function TreatmentsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
-      <Stack.Screen options={{ headerShown: true, title: t('treatment.title') }} />
+      <Stack.Screen options={{ headerShown: true, title: t('service.title') }} />
 
       {error ? (
         <View style={styles.errorBanner}>
@@ -117,18 +117,18 @@ export default function TreatmentsScreen() {
         </View>
       ) : (
         <FlatList
-          data={treatments}
+          data={services}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
           ListEmptyComponent={
             <View style={styles.stateContainer}>
-              <Text style={styles.stateText}>{t('treatment.noTreatments')}</Text>
+              <Text style={styles.stateText}>{t('service.noServices')}</Text>
             </View>
           }
           renderItem={({ item, index }) => {
             const eventColor = mapTreatmentColorToEventColor(item.color, item.name);
-            const optionsCount = item.price_option?.length ?? 0;
+            const optionsCount = item.service_variant?.length ?? 0;
             return (
               <View style={styles.row}>
                 <View style={styles.reorderCol}>
@@ -140,12 +140,12 @@ export default function TreatmentsScreen() {
                   </Pressable>
                   <Pressable
                     style={styles.reorderButton}
-                    disabled={index === treatments.length - 1}
+                    disabled={index === services.length - 1}
                     onPress={() => handleMove(index, 1)}>
                     <AppIcon
                       name="arrowDown"
                       size={20}
-                      color={index === treatments.length - 1 ? theme.border : theme.text}
+                      color={index === services.length - 1 ? theme.border : theme.text}
                     />
                   </Pressable>
                 </View>
@@ -158,8 +158,8 @@ export default function TreatmentsScreen() {
                     <Text style={[styles.rowName, !item.is_active && styles.rowNameInactive]}>{item.name}</Text>
                     <Text style={styles.rowSubtitle}>
                       {optionsCount === 1
-                        ? t('treatment.oneOption')
-                        : t('treatment.optionsCount', { count: optionsCount })}
+                        ? t('service.oneOption')
+                        : t('service.optionsCount', { count: optionsCount })}
                     </Text>
                   </View>
                   <AppIcon name="chevronRight" size={22} color={theme.muted} />
@@ -169,7 +169,7 @@ export default function TreatmentsScreen() {
                   style={[styles.activeBadge, item.is_active ? styles.activeBadgeOn : styles.activeBadgeOff]}
                   onPress={() => handleToggleActive(item)}>
                   <Text style={[styles.activeBadgeText, item.is_active ? styles.activeBadgeTextOn : styles.activeBadgeTextOff]}>
-                    {item.is_active ? t('treatment.active') : t('treatment.inactive')}
+                    {item.is_active ? t('service.active') : t('service.inactive')}
                   </Text>
                 </Pressable>
               </View>

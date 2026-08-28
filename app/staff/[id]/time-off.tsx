@@ -10,7 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { UnavailabilityBlock, deleteUnavailability, fetchUnavailability } from '@/lib/api/staff';
+import { ScheduleException, deleteTimeOff, fetchTimeOff } from '@/lib/api/staff';
 
 function formatDateLabel(date: Date) {
   const y = date.getFullYear();
@@ -34,7 +34,7 @@ export default function StaffTimeOffScreen() {
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);
 
-  const [blocks, setBlocks] = React.useState<UnavailabilityBlock[]>([]);
+  const [blocks, setBlocks] = React.useState<ScheduleException[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -44,7 +44,7 @@ export default function StaffTimeOffScreen() {
       return;
     }
     try {
-      const data = await fetchUnavailability(id, companyId);
+      const data = await fetchTimeOff(id, companyId);
       setBlocks(data);
       setError(null);
     } catch (err) {
@@ -62,7 +62,7 @@ export default function StaffTimeOffScreen() {
 
   const handleDelete = async (blockId: string) => {
     try {
-      await deleteUnavailability(blockId);
+      await deleteTimeOff(blockId);
       setBlocks((prev) => prev.filter((item) => item.id !== blockId));
     } catch {
       setError(t('staff.failedToDeleteTimeOff'));
@@ -89,8 +89,8 @@ export default function StaffTimeOffScreen() {
             <Text style={styles.emptyText}>{t('staff.noTimeOff')}</Text>
           ) : (
             blocks.map((block) => {
-              const start = block.start ? new Date(block.start) : null;
-              const end = block.end ? new Date(block.end) : null;
+              const start = block.starts_at ? new Date(block.starts_at) : null;
+              const end = block.ends_at ? new Date(block.ends_at) : null;
               return (
                 <SwipeableRow key={block.id} onDelete={() => handleDelete(block.id)} deleteLabel={t('common.delete')}>
                   <View style={styles.blockRow}>
