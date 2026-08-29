@@ -85,12 +85,19 @@ export async function createAppointment(payload: CreateAppointmentPayload): Prom
     .insert({
       company_id: payload.companyId,
       client_id: clientId,
+      // Vestigial columns stay NOT NULL on the live table.
       staff_id: primaryStaffId,
+      start: fakeZ(start),
+      end: fakeZ(end),
+      // Legacy catalog FKs point at treatment / price_option. New variants exist
+      // only in service_variant — writing those IDs here raises
+      // appointment_price_option_id_fkey. Leave them null; segments carry the
+      // real service / service_variant ids.
+      treatment_id: null,
+      price_option_id: null,
       price: totalPrice,
       notes: payload.notes || null,
       duration_in_minutes: totalMinutes,
-      start: fakeZ(start),
-      end: fakeZ(end),
       actual_start: fakeZ(start),
       actual_end: fakeZ(end),
       allow_overlap: true,

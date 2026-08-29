@@ -41,6 +41,7 @@ const MIN_PHASE_MINUTES = 5;
 
 export function parsePhaseType(value: string | null | undefined): PhaseType {
   if (value === 'free' || value === 'buffer' || value === 'busy') return value;
+  // Unknown values fall back to busy. Never map buffer → busy.
   return 'busy';
 }
 
