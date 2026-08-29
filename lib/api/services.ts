@@ -1,8 +1,10 @@
 import { supabase } from '@/lib/supabase';
 
+export type PhaseType = 'busy' | 'free' | 'buffer';
+
 export type ServiceVariantPhase = {
   sequence: number;
-  phase_type: 'busy' | 'free';
+  phase_type: PhaseType;
   duration_minutes: number;
 };
 
@@ -35,8 +37,20 @@ const BOOKING_SERVICE_SELECT = `
   )
 `;
 
+const MIN_PHASE_MINUTES = 5;
+
+export function parsePhaseType(value: string | null | undefined): PhaseType {
+  if (value === 'free' || value === 'buffer' || value === 'busy') return value;
+  return 'busy';
+}
+
 function sortPhases(phases: ServiceVariantPhase[] | null | undefined): ServiceVariantPhase[] {
-  return [...(phases ?? [])].sort((a, b) => a.sequence - b.sequence);
+  return [...(phases ?? [])]
+    .map((phase) => ({
+      ...phase,
+      phase_type: parsePhaseType(phase.phase_type),
+    }))
+    .sort((a, b) => a.sequence - b.sequence);
 }
 
 function normalizeVariant(variant: ServiceVariant): ServiceVariant {
@@ -181,7 +195,7 @@ export async function reorderServices(orderedIds: string[]): Promise<void> {
 }
 
 export type PhaseDraft = {
-  phase_type: 'busy' | 'free';
+  phase_type: PhaseType;
   duration_minutes: number;
 };
 
@@ -191,19 +205,33 @@ export type ServiceVariantFields = {
   phases: PhaseDraft[];
 };
 
-export function clientDurationFromPhases(phases: PhaseDraft[]): number {
-  return phases.reduce((sum, phase) => sum + Math.max(0, Number(phase.duration_minutes) || 0), 0);
+function phaseMinutes(phase: PhaseDraft): number {
+  return Math.max(0, Number(phase.duration_minutes) || 0);
 }
 
+/** Client-facing time: busy (present) + free (inwerktijd). Buffer is hidden. */
+export function clientDurationFromPhases(phases: PhaseDraft[]): number {
+  return phases
+    .filter((phase) => phase.phase_type === 'busy' || phase.phase_type === 'free')
+    .reduce((sum, phase) => sum + phaseMinutes(phase), 0);
+}
+
+/** Staff-locked time: busy + buffer (cleanup). Free does not lock staff. */
 export function staffDurationFromPhases(phases: PhaseDraft[]): number {
   return phases
-    .filter((phase) => phase.phase_type === 'busy')
-    .reduce((sum, phase) => sum + Math.max(0, Number(phase.duration_minutes) || 0), 0);
+    .filter((phase) => phase.phase_type === 'busy' || phase.phase_type === 'buffer')
+    .reduce((sum, phase) => sum + phaseMinutes(phase), 0);
+}
+
+/** Wall-clock span of the whole variant (busy + free + buffer). */
+export function spanDurationFromPhases(phases: PhaseDraft[]): number {
+  return phases.reduce((sum, phase) => sum + phaseMinutes(phase), 0);
 }
 
 /**
  * When a variant has no phase rows, reconstruct the old two-duration shape:
  * busy = staff/actual duration, trailing free = leftover client duration.
+ * Do not invent a buffer.
  */
 export function inferPhasesFromDurations(
   clientDuration: number,
@@ -222,7 +250,9 @@ export function inferPhasesFromDurations(
   return phases;
 }
 
-export function phasesForEditor(variant: Pick<ServiceVariant, 'client_duration_minutes' | 'staff_duration_minutes' | 'service_variant_phase'>): ServiceVariantPhase[] {
+export function phasesForEditor(
+  variant: Pick<ServiceVariant, 'client_duration_minutes' | 'staff_duration_minutes' | 'service_variant_phase'>
+): ServiceVariantPhase[] {
   const existing = sortPhases(variant.service_variant_phase);
   if (existing.length > 0) return existing;
   return inferPhasesFromDurations(variant.client_duration_minutes, variant.staff_duration_minutes);
@@ -231,8 +261,8 @@ export function phasesForEditor(variant: Pick<ServiceVariant, 'client_duration_m
 function normalizePhaseDrafts(phases: PhaseDraft[]): ServiceVariantPhase[] {
   const normalized = phases
     .map((phase) => ({
-      phase_type: phase.phase_type === 'free' ? ('free' as const) : ('busy' as const),
-      duration_minutes: Math.max(1, Math.round(Number(phase.duration_minutes) || 0)),
+      phase_type: parsePhaseType(phase.phase_type),
+      duration_minutes: Math.max(MIN_PHASE_MINUTES, Math.round(Number(phase.duration_minutes) || 0)),
     }))
     .filter((phase) => phase.duration_minutes > 0);
 
@@ -364,7 +394,9 @@ export async function deleteServiceVariant(variantId: string): Promise<void> {
   if (error) throw error;
 }
 
-export function variantDurationMinutes(variant: Pick<ServiceVariant, 'client_duration_minutes' | 'service_variant_phase'>): number {
+export function variantDurationMinutes(
+  variant: Pick<ServiceVariant, 'client_duration_minutes' | 'service_variant_phase'>
+): number {
   const phases = variant.service_variant_phase ?? [];
   if (phases.length > 0) return clientDurationFromPhases(phases);
   return Number(variant.client_duration_minutes) || 0;
@@ -376,4 +408,11 @@ export function variantStaffDurationMinutes(
   const phases = variant.service_variant_phase ?? [];
   if (phases.length > 0) return staffDurationFromPhases(phases);
   return Number(variant.staff_duration_minutes) || 0;
+}
+
+export function variantSpanDurationMinutes(
+  variant: Pick<ServiceVariant, 'client_duration_minutes' | 'staff_duration_minutes' | 'service_variant_phase'>
+): number {
+  const phases = phasesForEditor(variant);
+  return spanDurationFromPhases(phases);
 }

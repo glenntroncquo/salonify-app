@@ -27,6 +27,13 @@ function addMinutes(date: Date, minutes: number): Date {
   return new Date(date.getTime() + minutes * 60_000);
 }
 
+function segmentSpanMinutes(segment: CreateAppointmentSegment): number {
+  if (segment.phases.length > 0) {
+    return segment.phases.reduce((sum, phase) => sum + Math.max(0, Number(phase.duration_minutes) || 0), 0);
+  }
+  return segment.durationMinutes;
+}
+
 function fakeZ(date: Date): string {
   return toFakeUtcISOString(date, date.getHours(), date.getMinutes());
 }
@@ -69,7 +76,7 @@ export async function createAppointment(payload: CreateAppointmentPayload): Prom
   const clientId = await resolveClientId(payload);
   const start = payload.start;
   const totalPrice = payload.segments.reduce((sum, segment) => sum + Number(segment.price), 0);
-  const totalMinutes = payload.segments.reduce((sum, segment) => sum + segment.durationMinutes, 0);
+  const totalMinutes = payload.segments.reduce((sum, segment) => sum + segmentSpanMinutes(segment), 0);
   const end = addMinutes(start, totalMinutes);
   const primaryStaffId = payload.segments[0].staffId;
 

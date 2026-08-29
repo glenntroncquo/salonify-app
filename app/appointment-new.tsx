@@ -27,8 +27,10 @@ import { fetchStaff, StaffMember } from '@/lib/api/calendar';
 import { ClientSearchResult, searchClients } from '@/lib/api/clients';
 import {
   fetchServices,
+  phasesForEditor,
   ServiceVariant,
   ServiceWithVariants,
+  spanDurationFromPhases,
   variantDurationMinutes,
 } from '@/lib/api/services';
 import { getInitialsFromLabel } from '@/lib/text';
@@ -176,6 +178,7 @@ export default function NewAppointmentScreen() {
         return;
       }
       Haptics.selectionAsync();
+      const phases = phasesForEditor(variant);
       setCart((prev) => [
         ...prev,
         {
@@ -185,9 +188,9 @@ export default function NewAppointmentScreen() {
           color: service.color,
           variantName: variant.name,
           price: variant.price,
-          durationMinutes: variantDurationMinutes(variant),
+          durationMinutes: spanDurationFromPhases(phases),
           staffId,
-          phases: variant.service_variant_phase ?? [],
+          phases,
         },
       ]);
       setScreen('form');

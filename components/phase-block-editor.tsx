@@ -2,19 +2,22 @@ import { Pressable } from '@/components/pressable-scale';
 import { Colors } from '@/constants/theme';
 import {
   clientDurationFromPhases,
+  parsePhaseType,
   staffDurationFromPhases,
   type PhaseDraft,
+  type PhaseType,
 } from '@/lib/api/services';
 import { COLOR_BG_MAP, COLOR_MAP, COLOR_TEXT_MAP, mapTreatmentColorToEventColor } from '@/lib/treatment-colors';
 import React from 'react';
-import { Pressable as RNPressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 export type EditorPhase = PhaseDraft & { key: string };
 
 const STEP_MINUTES = 5;
-const MIN_MINUTES = 1;
+const MIN_MINUTES = 5;
 const DEFAULT_BLOCK_MINUTES = 30;
+const PHASE_TYPES: PhaseType[] = ['busy', 'free', 'buffer'];
 
 let phaseKeySeq = 0;
 export function createPhaseKey(): string {
@@ -30,21 +33,32 @@ export function editorPhasesFromDrafts(phases: PhaseDraft[]): EditorPhase[] {
   if (phases.length === 0) return defaultEditorPhases();
   return phases.map((phase) => ({
     key: createPhaseKey(),
-    phase_type: phase.phase_type,
+    phase_type: parsePhaseType(phase.phase_type),
     duration_minutes: Math.max(MIN_MINUTES, Number(phase.duration_minutes) || DEFAULT_BLOCK_MINUTES),
   }));
 }
 
-function Hatch({ color }: { color: string }) {
+function withAlpha(hex: string, alpha: number): string {
+  const raw = hex.replace('#', '');
+  if (raw.length !== 6) return hex;
+  const red = Number.parseInt(raw.slice(0, 2), 16);
+  const green = Number.parseInt(raw.slice(2, 4), 16);
+  const blue = Number.parseInt(raw.slice(4, 6), 16);
+  return `rgba(${red},${green},${blue},${alpha})`;
+}
+
+function StripeOverlay({ color, dashed }: { color: string; dashed?: boolean }) {
+  const count = dashed ? 10 : 14;
+  const step = dashed ? 12 : 10;
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      {Array.from({ length: 14 }, (_, index) => (
+      {Array.from({ length: count }, (_, index) => (
         <View
           key={index}
           style={[
-            styles.hatchStripe,
+            dashed ? styles.dashStripe : styles.hatchStripe,
             {
-              left: index * 10 - 24,
+              left: index * step - 24,
               backgroundColor: color,
             },
           ]}
@@ -63,84 +77,60 @@ type Props = {
 
 export function PhaseBlockEditor({ phases, onChange, serviceColor, theme }: Props) {
   const { t } = useTranslation();
-  const [selectedKey, setSelectedKey] = React.useState<string | null>(phases[0]?.key ?? null);
-  const [pickingType, setPickingType] = React.useState(false);
   const [notice, setNotice] = React.useState<string | null>(null);
-  const [minutesText, setMinutesText] = React.useState(String(phases[0]?.duration_minutes ?? DEFAULT_BLOCK_MINUTES));
 
   const eventColor = mapTreatmentColorToEventColor(serviceColor);
   const busyColor = COLOR_MAP[eventColor];
   const freeFill = COLOR_BG_MAP[eventColor];
   const freeText = COLOR_TEXT_MAP[eventColor];
+  const bufferFill = withAlpha(busyColor, 0.16);
+  const bufferStripe = withAlpha(busyColor, 0.45);
 
-  const selectedIndex = phases.findIndex((phase) => phase.key === selectedKey);
-  const selected = selectedIndex >= 0 ? phases[selectedIndex] : null;
   const busyCount = phases.filter((phase) => phase.phase_type === 'busy').length;
   const clientMinutes = clientDurationFromPhases(phases);
   const staffMinutes = staffDurationFromPhases(phases);
-
-  React.useEffect(() => {
-    if (selectedKey && phases.some((phase) => phase.key === selectedKey)) return;
-    setSelectedKey(phases[0]?.key ?? null);
-  }, [phases, selectedKey]);
-
-  React.useEffect(() => {
-    const current = phases.find((phase) => phase.key === selectedKey);
-    if (current) setMinutesText(String(current.duration_minutes));
-  }, [selectedKey, phases]);
 
   const updateAt = (index: number, patch: Partial<EditorPhase>) => {
     onChange(phases.map((phase, phaseIndex) => (phaseIndex === index ? { ...phase, ...patch } : phase)));
   };
 
-  const handleSelect = (key: string) => {
-    setSelectedKey(key);
-    setPickingType(false);
-    setNotice(null);
-  };
-
-  const handleTypeChange = (nextType: 'busy' | 'free') => {
-    if (!selected || selectedIndex < 0) return;
-    if (selected.phase_type === 'busy' && nextType === 'free' && busyCount <= 1) {
+  const handleTypeChange = (index: number, nextType: PhaseType) => {
+    const current = phases[index];
+    if (!current || current.phase_type === nextType) return;
+    if (current.phase_type === 'busy' && nextType !== 'busy' && busyCount <= 1) {
       setNotice(t('service.keepOneBusy'));
       return;
     }
     setNotice(null);
-    updateAt(selectedIndex, { phase_type: nextType });
+    updateAt(index, { phase_type: nextType });
   };
 
-  const handleMinutes = (next: number) => {
-    if (!selected || selectedIndex < 0) return;
-    const minutes = Math.max(MIN_MINUTES, Math.round(next) || MIN_MINUTES);
-    setMinutesText(String(minutes));
-    updateAt(selectedIndex, { duration_minutes: minutes });
+  const handleMinutes = (index: number, next: number) => {
+    const minutes = Math.max(MIN_MINUTES, Math.round(next / STEP_MINUTES) * STEP_MINUTES);
+    updateAt(index, { duration_minutes: minutes });
   };
 
-  const handleDelete = () => {
-    if (!selected || selectedIndex < 0) return;
-    if (selected.phase_type === 'busy' && busyCount <= 1) {
+  const handleDelete = (index: number) => {
+    const current = phases[index];
+    if (!current) return;
+    if (current.phase_type === 'busy' && busyCount <= 1) {
       setNotice(t('service.keepOneBusy'));
       return;
     }
-    const next = phases.filter((_, index) => index !== selectedIndex);
-    onChange(next);
-    const fallback = next[Math.min(selectedIndex, next.length - 1)];
-    setSelectedKey(fallback?.key ?? null);
     setNotice(null);
+    onChange(phases.filter((_, phaseIndex) => phaseIndex !== index));
   };
 
-  const handleAdd = (phaseType: 'busy' | 'free') => {
-    const insertAt = selectedIndex >= 0 ? selectedIndex + 1 : phases.length;
-    const nextPhase: EditorPhase = {
-      key: createPhaseKey(),
-      phase_type: phaseType,
-      duration_minutes: DEFAULT_BLOCK_MINUTES,
-    };
-    const next = [...phases.slice(0, insertAt), nextPhase, ...phases.slice(insertAt)];
-    onChange(next);
-    setSelectedKey(nextPhase.key);
-    setPickingType(false);
+  const handleAdd = (phaseType: PhaseType) => {
     setNotice(null);
+    onChange([
+      ...phases,
+      {
+        key: createPhaseKey(),
+        phase_type: phaseType,
+        duration_minutes: DEFAULT_BLOCK_MINUTES,
+      },
+    ]);
   };
 
   return (
@@ -149,122 +139,109 @@ export function PhaseBlockEditor({ phases, onChange, serviceColor, theme }: Prop
 
       <View style={[styles.bar, { backgroundColor: theme.surface, borderColor: theme.border }]}>
         {phases.map((phase) => {
-          const isSelected = phase.key === selectedKey;
+          const showLabel = phase.duration_minutes >= 10 || phases.length <= 4;
           const isBusy = phase.phase_type === 'busy';
-          const showLabel = phase.duration_minutes >= 15 || phases.length <= 3;
+          const isFree = phase.phase_type === 'free';
+          const backgroundColor = isBusy ? busyColor : isFree ? freeFill : bufferFill;
+          const labelColor = isBusy ? '#ffffff' : isFree ? freeText : theme.muted;
           return (
-            <RNPressable
+            <View
               key={phase.key}
-              onPress={() => handleSelect(phase.key)}
               style={[
-                styles.block,
+                styles.barSegment,
                 {
                   flexGrow: phase.duration_minutes,
                   flexShrink: 1,
-                  backgroundColor: isBusy ? busyColor : freeFill,
-                  borderColor: isSelected ? theme.text : 'transparent',
-                  zIndex: isSelected ? 1 : 0,
+                  backgroundColor,
+                  borderColor: phase.phase_type === 'buffer' ? withAlpha(busyColor, 0.4) : 'transparent',
+                  borderStyle: phase.phase_type === 'buffer' ? 'dashed' : 'solid',
                 },
               ]}>
-              {!isBusy ? <Hatch color={busyColor} /> : null}
+              {isFree ? <StripeOverlay color={busyColor} /> : null}
+              {phase.phase_type === 'buffer' ? <StripeOverlay color={bufferStripe} dashed /> : null}
               {showLabel ? (
-                <Text
-                  numberOfLines={1}
-                  style={[
-                    styles.blockLabel,
-                    { color: isBusy ? '#ffffff' : freeText },
-                  ]}>
+                <Text numberOfLines={1} style={[styles.barLabel, { color: labelColor }]}>
                   {`${phase.duration_minutes}`}
                 </Text>
               ) : null}
-            </RNPressable>
+            </View>
           );
         })}
       </View>
 
       <View style={styles.totalsRow}>
         <View style={[styles.totalChip, { borderColor: theme.border, backgroundColor: theme.surface }]}>
-          <Text style={[styles.totalLabel, { color: theme.muted }]}>{t('service.clientTime')}</Text>
           <Text style={[styles.totalValue, { color: theme.text }]}>
-            {`${clientMinutes} ${t('appointment.minutesShort')}`}
+            {t('service.clientSees', { minutes: clientMinutes })}
           </Text>
         </View>
         <View style={[styles.totalChip, { borderColor: theme.border, backgroundColor: theme.surface }]}>
-          <Text style={[styles.totalLabel, { color: theme.muted }]}>{t('service.staffTime')}</Text>
           <Text style={[styles.totalValue, { color: theme.text }]}>
-            {`${staffMinutes} ${t('appointment.minutesShort')}`}
+            {t('service.staffOccupied', { minutes: staffMinutes })}
           </Text>
         </View>
       </View>
 
-      {selected ? (
-        <View style={[styles.editorCard, { borderColor: theme.border, backgroundColor: theme.surface }]}>
+      {phases.map((phase, index) => (
+        <View key={phase.key} style={[styles.rowCard, { borderColor: theme.border, backgroundColor: theme.surface }]}>
           <View style={styles.typeRow}>
-            <TypeChip
-              label={t('service.phaseBusy')}
-              selected={selected.phase_type === 'busy'}
-              theme={theme}
-              onPress={() => handleTypeChange('busy')}
-            />
-            <TypeChip
-              label={t('service.phaseFree')}
-              selected={selected.phase_type === 'free'}
-              theme={theme}
-              onPress={() => handleTypeChange('free')}
-            />
+            {PHASE_TYPES.map((type) => (
+              <TypeChip
+                key={type}
+                label={t(phaseTypeLabelKey(type))}
+                selected={phase.phase_type === type}
+                theme={theme}
+                onPress={() => handleTypeChange(index, type)}
+              />
+            ))}
+            <Pressable
+              onPress={() => handleDelete(index)}
+              hitSlop={8}
+              style={[styles.deleteButton, { borderColor: theme.border }]}>
+              <Text style={[styles.deleteText, { color: theme.error }]}>{t('common.delete')}</Text>
+            </Pressable>
           </View>
-          {selected.phase_type === 'free' ? (
+
+          {phase.phase_type === 'free' ? (
             <Text style={[styles.hint, { color: theme.muted }]}>{t('service.phaseFreeHint')}</Text>
+          ) : null}
+          {phase.phase_type === 'buffer' ? (
+            <Text style={[styles.hint, { color: theme.muted }]}>{t('service.phaseBufferHint')}</Text>
           ) : null}
 
           <View style={styles.stepperRow}>
             <Pressable
               style={[styles.stepperButton, { borderColor: theme.border, backgroundColor: theme.background }]}
-              onPress={() => handleMinutes(selected.duration_minutes - STEP_MINUTES)}>
-              <Text style={[styles.stepperButtonText, { color: theme.text }]}>−{STEP_MINUTES}</Text>
+              onPress={() => handleMinutes(index, phase.duration_minutes - STEP_MINUTES)}>
+              <Text style={[styles.stepperButtonText, { color: theme.text }]}>{`−${STEP_MINUTES}`}</Text>
             </Pressable>
-            <View style={styles.minutesField}>
-              <TextInput
-                style={[styles.minutesInput, { color: theme.text, borderColor: theme.border, backgroundColor: theme.background }]}
-                keyboardType="number-pad"
-                value={minutesText}
-                onChangeText={setMinutesText}
-                onBlur={() => {
-                  const parsed = Number(minutesText.replace(/[^\d]/g, ''));
-                  handleMinutes(Number.isFinite(parsed) && parsed > 0 ? parsed : selected.duration_minutes);
-                }}
-              />
-              <Text style={[styles.minutesUnit, { color: theme.muted }]}>{t('appointment.minutesShort')}</Text>
-            </View>
+            <Text style={[styles.minutesValue, { color: theme.text }]}>
+              {`${phase.duration_minutes} ${t('appointment.minutesShort')}`}
+            </Text>
             <Pressable
               style={[styles.stepperButton, { borderColor: theme.border, backgroundColor: theme.background }]}
-              onPress={() => handleMinutes(selected.duration_minutes + STEP_MINUTES)}>
-              <Text style={[styles.stepperButtonText, { color: theme.text }]}>+{STEP_MINUTES}</Text>
+              onPress={() => handleMinutes(index, phase.duration_minutes + STEP_MINUTES)}>
+              <Text style={[styles.stepperButtonText, { color: theme.text }]}>{`+${STEP_MINUTES}`}</Text>
             </Pressable>
           </View>
-
-          <Pressable onPress={handleDelete} hitSlop={8} style={styles.deleteRow}>
-            <Text style={[styles.deleteText, { color: theme.error }]}>{t('common.delete')}</Text>
-          </Pressable>
         </View>
-      ) : (
-        <Text style={[styles.hint, { color: theme.muted }]}>{t('service.tapBlock')}</Text>
-      )}
+      ))}
 
       {notice ? <Text style={[styles.notice, { color: theme.error }]}>{notice}</Text> : null}
 
-      {pickingType ? (
-        <View style={styles.typeRow}>
-          <TypeChip label={t('service.phaseBusy')} selected={false} theme={theme} onPress={() => handleAdd('busy')} />
-          <TypeChip label={t('service.phaseFree')} selected={false} theme={theme} onPress={() => handleAdd('free')} />
-        </View>
-      ) : (
-        <Pressable onPress={() => setPickingType(true)} hitSlop={8}>
-          <Text style={styles.addLink}>{t('service.addBlock')}</Text>
-        </Pressable>
-      )}
+      <View style={styles.addRow}>
+        <AddButton label={t('service.addBusy')} theme={theme} onPress={() => handleAdd('busy')} />
+        <AddButton label={t('service.addFree')} theme={theme} onPress={() => handleAdd('free')} />
+        <AddButton label={t('service.addBuffer')} theme={theme} onPress={() => handleAdd('buffer')} />
+      </View>
     </View>
   );
+}
+
+function phaseTypeLabelKey(type: PhaseType): string {
+  if (type === 'free') return 'service.phaseFree';
+  if (type === 'buffer') return 'service.phaseBuffer';
+  return 'service.phaseBusy';
 }
 
 function TypeChip({
@@ -291,6 +268,24 @@ function TypeChip({
   );
 }
 
+function AddButton({
+  label,
+  theme,
+  onPress,
+}: {
+  label: string;
+  theme: typeof Colors.light;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[styles.addButton, { borderColor: theme.border, backgroundColor: theme.surface }]}>
+      <Text style={[styles.addButtonText, { color: theme.text }]}>{label}</Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   wrap: {
     gap: 12,
@@ -308,15 +303,14 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     gap: 2,
   },
-  block: {
-    minWidth: 36,
+  barSegment: {
+    minWidth: 28,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: 'transparent',
+    borderWidth: 1.5,
   },
-  blockLabel: {
+  barLabel: {
     fontSize: 12,
     fontWeight: '700',
   },
@@ -328,28 +322,28 @@ const styles = StyleSheet.create({
     opacity: 0.28,
     transform: [{ rotate: '28deg' }],
   },
+  dashStripe: {
+    position: 'absolute',
+    top: -16,
+    width: 1.5,
+    height: 76,
+    opacity: 0.55,
+    transform: [{ rotate: '28deg' }],
+  },
   totalsRow: {
-    flexDirection: 'row',
     gap: 8,
   },
   totalChip: {
-    flex: 1,
     borderWidth: 1,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    gap: 2,
-  },
-  totalLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
   },
   totalValue: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
   },
-  editorCard: {
+  rowCard: {
     borderWidth: 1,
     borderRadius: 14,
     padding: 12,
@@ -357,18 +351,30 @@ const styles = StyleSheet.create({
   },
   typeRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
+    alignItems: 'center',
   },
   typeChip: {
-    flex: 1,
     borderWidth: 1,
     borderRadius: 18,
     paddingVertical: 10,
+    paddingHorizontal: 12,
+    minWidth: 72,
     alignItems: 'center',
   },
   typeChipText: {
     fontSize: 14,
     fontWeight: '700',
+  },
+  deleteButton: {
+    marginLeft: 'auto',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  deleteText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   hint: {
     fontSize: 13,
@@ -394,37 +400,28 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
   },
-  minutesField: {
+  minutesValue: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  minutesInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
     fontSize: 16,
     fontWeight: '700',
     textAlign: 'center',
   },
-  minutesUnit: {
-    fontSize: 13,
-    fontWeight: '600',
+  addRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
   },
-  deleteRow: {
-    alignSelf: 'flex-start',
-    paddingVertical: 4,
+  addButton: {
+    flexGrow: 1,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    minWidth: 96,
   },
-  deleteText: {
+  addButtonText: {
     fontSize: 14,
-    fontWeight: '600',
-  },
-  addLink: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#20b87b',
+    fontWeight: '700',
   },
 });

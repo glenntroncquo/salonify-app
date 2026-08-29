@@ -30,7 +30,7 @@ function formatVariantSubtitle(
   const staffMinutes = variantStaffDurationMinutes(option);
   const duration =
     staffMinutes > 0 && staffMinutes !== clientMinutes
-      ? `${clientMinutes} ${t('appointment.minutesShort')} · ${staffMinutes} ${t('service.phaseBusy').toLowerCase()}`
+      ? `${clientMinutes} ${t('appointment.minutesShort')} · ${staffMinutes} ${t('appointment.minutesShort')}`
       : `${clientMinutes} ${t('appointment.minutesShort')}`;
   return `${duration} · €${option.price}`;
 }
