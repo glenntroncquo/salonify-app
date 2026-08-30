@@ -19,8 +19,8 @@ function formatDateTime(value: string) {
 }
 
 function itemName(item: OrderDetail['order_item'][number]) {
-  const serviceName = item.appointment_segment?.service?.name ?? item.treatment?.name;
-  const variantName = item.appointment_segment?.service_variant?.name ?? item.price_option?.name;
+  const serviceName = item.appointment_segment?.service?.name;
+  const variantName = item.appointment_segment?.service_variant?.name;
   if (serviceName && variantName) return `${serviceName} · ${variantName}`;
   return serviceName ?? item.product?.name ?? '—';
 }

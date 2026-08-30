@@ -152,7 +152,7 @@ export default function TreatmentsScreen() {
 
                 <Pressable
                   style={styles.rowContent}
-                  onPress={() => router.push({ pathname: '/treatments/[id]', params: { id: item.id } })}>
+                  onPress={() => router.push({ pathname: '/services/[id]', params: { id: item.id } })}>
                   <View style={[styles.colorDot, { backgroundColor: COLOR_MAP[eventColor] }]} />
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.rowName, !item.is_active && styles.rowNameInactive]}>{item.name}</Text>
@@ -179,7 +179,7 @@ export default function TreatmentsScreen() {
       )}
 
       {!showNoCompanyState ? (
-        <TouchableOpacity style={styles.fab} onPress={() => router.push('/treatments/new')}>
+        <TouchableOpacity style={styles.fab} onPress={() => router.push('/services/new')}>
           <AppIcon name="add" size={26} color={theme.text} />
         </TouchableOpacity>
       ) : null}

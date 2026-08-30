@@ -35,7 +35,7 @@ export default function NewTreatmentScreen() {
     setErrorMessage(null);
     try {
       const service = await createService(companyId, { name: name.trim(), color, description: description.trim() });
-      router.replace({ pathname: '/treatments/[id]', params: { id: service.id } });
+      router.replace({ pathname: '/services/[id]', params: { id: service.id } });
     } catch {
       setErrorMessage(t('service.failedToSave'));
     } finally {

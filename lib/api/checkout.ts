@@ -77,13 +77,8 @@ export async function createOrderWithPayment(payload: CreateOrderPayload): Promi
       appointment_id: payload.appointmentId,
       client_id: payload.clientId,
       treatments: payload.lineItems.map((item) => ({
-        // order-create still validates the legacy field names; IDs are the new
-        // service / service_variant / appointment_segment rows (backfill kept 1:1).
-        appointment_treatment_id: item.appointmentSegmentId,
         appointment_segment_id: item.appointmentSegmentId,
-        treatment_id: item.serviceId,
         service_id: item.serviceId,
-        price_option_id: item.serviceVariantId,
         service_variant_id: item.serviceVariantId,
         quantity: 1,
         unit_price: item.price,

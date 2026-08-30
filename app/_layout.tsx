@@ -68,10 +68,10 @@ function RootNavigator() {
         <Stack.Screen name="appointment/[id]" options={{ presentation: 'modal' }} />
         <Stack.Screen name="client/[id]" />
         <Stack.Screen name="client/new" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="treatments/index" />
-        <Stack.Screen name="treatments/[id]" />
-        <Stack.Screen name="treatments/new" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="treatments/price-option" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="services/index" />
+        <Stack.Screen name="services/[id]" />
+        <Stack.Screen name="services/new" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="services/price-option" options={{ presentation: 'modal' }} />
         <Stack.Screen name="staff/index" />
         <Stack.Screen name="staff/[id]" />
         <Stack.Screen name="staff/new" options={{ presentation: 'modal' }} />

@@ -38,8 +38,6 @@ export type OrderDetail = OrderListItem & {
       service: { name: string } | null;
       service_variant: { name: string } | null;
     } | null;
-    treatment: { name: string } | null;
-    price_option: { name: string } | null;
     product: { name: string } | null;
   }>;
   payment: Array<{
@@ -61,8 +59,6 @@ const ORDER_DETAIL_SELECT = `
       service:service_id ( name ),
       service_variant:service_variant_id ( name )
     ),
-    treatment:treatment_id ( name ),
-    price_option:price_option_id ( name ),
     product:product_id ( name )
   ),
   payment ( id, payment_method, amount_gross, status, payment_status, paid_at )
