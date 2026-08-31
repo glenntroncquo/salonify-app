@@ -1,6 +1,6 @@
-import { toFakeUtcISOString } from '@/app/(tabs)/calendar/date-utils';
+import { FunctionsHttpError } from '@supabase/supabase-js';
+
 import { supabase } from '@/lib/supabase';
-import { createClient } from '@/lib/api/clients';
 import { ServiceVariantPhase } from '@/lib/api/services';
 
 export type CreateAppointmentSegment = {
@@ -23,154 +23,60 @@ export type CreateAppointmentPayload = {
   clientId?: string;
 };
 
-function addMinutes(date: Date, minutes: number): Date {
-  return new Date(date.getTime() + minutes * 60_000);
-}
-
-function segmentSpanMinutes(segment: CreateAppointmentSegment): number {
-  if (segment.phases.length > 0) {
-    return segment.phases.reduce((sum, phase) => sum + Math.max(0, Number(phase.duration_minutes) || 0), 0);
-  }
-  return segment.durationMinutes;
-}
-
-function fakeZ(date: Date): string {
-  return toFakeUtcISOString(date, date.getHours(), date.getMinutes());
-}
-
-async function resolveClientId(payload: CreateAppointmentPayload): Promise<string> {
-  if (payload.clientId) return payload.clientId;
-
-  const email = payload.email.trim();
-  if (email) {
-    const { data: existing, error } = await supabase
-      .from('client')
-      .select('id')
-      .eq('email', email)
-      .limit(1)
-      .maybeSingle();
-    if (error) throw error;
-    if (existing?.id) {
-      const { error: linkError } = await supabase
-        .from('client_company')
-        .insert({ client_id: existing.id, company_id: payload.companyId, is_active: true });
-      if (linkError && !/duplicate|unique/i.test(linkError.message)) throw linkError;
-      return existing.id;
+async function functionErrorMessage(error: unknown): Promise<string> {
+  if (error instanceof FunctionsHttpError) {
+    try {
+      const body = await error.context.json();
+      if (typeof body?.error === 'string') return body.error;
+      if (typeof body?.message === 'string') return body.message;
+    } catch {
+      // Body wasn't JSON — fall back to the generic message.
     }
+    return error.message;
   }
-
-  const created = await createClient(payload.companyId, {
-    firstName: payload.firstName,
-    lastName: payload.lastName,
-    email,
-    phone: '',
-  });
-  return created.id;
+  if (error instanceof Error) return error.message;
+  return 'Booking failed';
 }
 
+/**
+ * Staff booking goes through folded v1 `appointment-create-staff`.
+ * After the backend fold that slug is the new-table implementation
+ * (was `appointment-create-staff-v2`). Payload is services / variants
+ * only — no treatmentId / priceOptionId aliases.
+ */
 export async function createAppointment(payload: CreateAppointmentPayload): Promise<{ id?: string; clientId?: string }> {
   if (payload.segments.length === 0) {
     throw new Error('At least one service is required');
   }
 
-  const clientId = await resolveClientId(payload);
-  const start = payload.start;
-  const totalPrice = payload.segments.reduce((sum, segment) => sum + Number(segment.price), 0);
-  const totalMinutes = payload.segments.reduce((sum, segment) => sum + segmentSpanMinutes(segment), 0);
-  const end = addMinutes(start, totalMinutes);
   const primaryStaffId = payload.segments[0].staffId;
+  const totalPrice = payload.segments.reduce((sum, segment) => sum + Number(segment.price), 0);
 
-  const { data: appointment, error: appointmentError } = await supabase
-    .from('appointment')
-    .insert({
-      company_id: payload.companyId,
-      client_id: clientId,
-      // Vestigial columns stay NOT NULL on the live table.
-      staff_id: primaryStaffId,
-      start: fakeZ(start),
-      end: fakeZ(end),
-      // Legacy catalog FKs point at treatment / price_option. New variants exist
-      // only in service_variant — writing those IDs here raises
-      // appointment_price_option_id_fkey. Leave them null; segments carry the
-      // real service / service_variant ids.
-      treatment_id: null,
-      price_option_id: null,
+  const { data, error } = await supabase.functions.invoke('appointment-create-staff', {
+    body: {
+      start: payload.start.toISOString(),
+      staffId: primaryStaffId,
+      companyId: payload.companyId,
+      services: payload.segments.map((segment) => ({
+        serviceId: segment.serviceId,
+        serviceVariantId: segment.serviceVariantId,
+        staffId: segment.staffId,
+      })),
       price: totalPrice,
-      notes: payload.notes || null,
-      duration_in_minutes: totalMinutes,
-      actual_start: fakeZ(start),
-      actual_end: fakeZ(end),
-      allow_overlap: true,
-      status: 'scheduled',
-      is_canceled: false,
-    })
-    .select('id')
-    .single();
+      firstName: payload.firstName,
+      lastName: payload.lastName,
+      email: payload.email,
+      notes: payload.notes,
+      imageData: null,
+    },
+  });
 
-  if (appointmentError) throw appointmentError;
-
-  try {
-    let cursor = start;
-    for (let sequence = 0; sequence < payload.segments.length; sequence += 1) {
-      const segment = payload.segments[sequence];
-      const phases =
-        segment.phases.length > 0
-          ? [...segment.phases].sort((a, b) => a.sequence - b.sequence)
-          : [{ sequence: 0, phase_type: 'busy' as const, duration_minutes: segment.durationMinutes }];
-
-      const segmentStart = cursor;
-      let phaseCursor = cursor;
-      const instantiated = phases.map((phase, phaseIndex) => {
-        const phaseStart = phaseCursor;
-        const phaseEnd = addMinutes(phaseStart, Number(phase.duration_minutes));
-        phaseCursor = phaseEnd;
-        return {
-          sequence: phase.sequence ?? phaseIndex,
-          phase_type: phase.phase_type,
-          starts_at: phaseStart.toISOString(),
-          ends_at: phaseEnd.toISOString(),
-        };
-      });
-      const segmentEnd = phaseCursor;
-      cursor = segmentEnd;
-
-      const { data: inserted, error: segmentError } = await supabase
-        .from('appointment_segment')
-        .insert({
-          company_id: payload.companyId,
-          appointment_id: appointment.id,
-          service_id: segment.serviceId,
-          service_variant_id: segment.serviceVariantId,
-          staff_id: segment.staffId,
-          sequence,
-          starts_at: segmentStart.toISOString(),
-          ends_at: segmentEnd.toISOString(),
-          price: segment.price,
-          allow_overlap: true,
-        })
-        .select('id')
-        .single();
-
-      if (segmentError) throw segmentError;
-
-      const { error: phaseError } = await supabase.from('appointment_segment_phase').insert(
-        instantiated.map((phase) => ({
-          company_id: payload.companyId,
-          appointment_segment_id: inserted.id,
-          staff_id: segment.staffId,
-          sequence: phase.sequence,
-          phase_type: phase.phase_type,
-          starts_at: phase.starts_at,
-          ends_at: phase.ends_at,
-          allow_overlap: true,
-        }))
-      );
-      if (phaseError) throw phaseError;
-    }
-  } catch (error) {
-    await supabase.from('appointment').delete().eq('id', appointment.id);
-    throw error;
+  if (error) {
+    throw new Error(await functionErrorMessage(error));
   }
 
-  return { id: appointment.id, clientId };
+  return {
+    id: data?.booking_id ?? data?.id,
+    clientId: data?.client_id ?? data?.clientId,
+  };
 }

@@ -113,7 +113,7 @@ export default function MoreScreen() {
           <ThemedText style={styles.manageRowText}>{t('more.staff')}</ThemedText>
           <AppIcon name="chevronRight" size={20} color={theme.muted} />
         </Pressable>
-        <Pressable style={styles.manageRow} onPress={() => router.push('/treatments')}>
+        <Pressable style={styles.manageRow} onPress={() => router.push('/services')}>
           <ThemedText style={styles.manageRowText}>{t('more.services')}</ThemedText>
           <AppIcon name="chevronRight" size={20} color={theme.muted} />
         </Pressable>

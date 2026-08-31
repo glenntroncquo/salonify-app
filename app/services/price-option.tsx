@@ -35,7 +35,7 @@ export default function PriceOptionScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const params = useLocalSearchParams<{
-    treatmentId: string;
+    serviceId: string;
     optionId?: string;
     name?: string;
     price?: string;
@@ -54,12 +54,12 @@ export default function PriceOptionScreen() {
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (!params.treatmentId) {
+    if (!params.serviceId) {
       setLoading(false);
       return;
     }
     let cancelled = false;
-    fetchService(params.treatmentId)
+    fetchService(params.serviceId)
       .then((service) => {
         if (cancelled) return;
         setServiceColor(service?.color ?? null);
@@ -81,13 +81,13 @@ export default function PriceOptionScreen() {
     return () => {
       cancelled = true;
     };
-  }, [params.treatmentId, params.optionId, t]);
+  }, [params.serviceId, params.optionId, t]);
 
   const hasBusy = phases.some((phase) => phase.phase_type === 'busy');
   const canSave = poName.trim().length > 0 && hasBusy && !saving && !loading;
 
   const handleSave = async () => {
-    if (!params.treatmentId || !companyId || !poName.trim() || !hasBusy) {
+    if (!params.serviceId || !companyId || !poName.trim() || !hasBusy) {
       if (!hasBusy) setError(t('service.keepOneBusy'));
       return;
     }
@@ -111,7 +111,7 @@ export default function PriceOptionScreen() {
       if (params.optionId) {
         await updateServiceVariant(params.optionId, companyId, payload);
       } else {
-        await createServiceVariant(params.treatmentId, companyId, payload);
+        await createServiceVariant(params.serviceId, companyId, payload);
       }
       router.back();
     } catch {

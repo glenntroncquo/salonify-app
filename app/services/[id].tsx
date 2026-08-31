@@ -98,14 +98,14 @@ export default function TreatmentDetailScreen() {
   };
 
   const openAddOption = () => {
-    router.push({ pathname: '/treatments/price-option', params: { treatmentId: id } });
+    router.push({ pathname: '/services/price-option', params: { serviceId: id } });
   };
 
   const openEditOption = (option: ServiceVariant) => {
     router.push({
-      pathname: '/treatments/price-option',
+      pathname: '/services/price-option',
       params: {
-        treatmentId: id,
+        serviceId: id,
         optionId: option.id,
         name: option.name,
         price: String(option.price),
