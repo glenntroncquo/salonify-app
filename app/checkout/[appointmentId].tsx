@@ -150,12 +150,12 @@ export default function CheckoutScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>{t('appointment.treatments')}</Text>
+          <Text style={styles.sectionLabel}>{t('appointment.services')}</Text>
           {lineItems.length === 0 ? (
             <Text style={styles.emptyText}>{t('checkout.noLineItems')}</Text>
           ) : (
             lineItems.map((item, index) => (
-              <View key={`${item.treatmentId}-${index}`} style={styles.lineItemRow}>
+              <View key={`${item.appointmentSegmentId}-${index}`} style={styles.lineItemRow}>
                 <Text style={styles.lineItemName}>{item.name}</Text>
                 <Text style={styles.lineItemPrice}>{`€${item.price.toFixed(2)}`}</Text>
               </View>

@@ -25,23 +25,32 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { createAppointment } from '@/lib/api/appointment-create';
 import { fetchStaff, StaffMember } from '@/lib/api/calendar';
 import { ClientSearchResult, searchClients } from '@/lib/api/clients';
-import { fetchTreatments, PriceOption, TreatmentWithOptions } from '@/lib/api/treatments';
+import {
+  fetchServices,
+  phasesForEditor,
+  ServiceVariant,
+  ServiceWithVariants,
+  spanDurationFromPhases,
+  variantDurationMinutes,
+} from '@/lib/api/services';
 import { getInitialsFromLabel } from '@/lib/text';
 import { COLOR_MAP, mapTreatmentColorToEventColor } from '@/lib/treatment-colors';
 
-import { getMonthShortLabel, toFakeUtcISOString } from './(tabs)/calendar/date-utils';
+import { getMonthShortLabel } from './(tabs)/calendar/date-utils';
 
 type CartItem = {
-  treatmentId: string;
-  priceOptionId: string;
-  treatmentName: string;
+  serviceId: string;
+  serviceVariantId: string;
+  serviceName: string;
   color: string | null;
-  priceOptionName: string;
+  variantName: string;
   price: number;
   durationMinutes: number;
+  staffId: string;
+  phases: ServiceVariant['service_variant_phase'];
 };
 
-type Screen = 'form' | 'treatments' | 'treatmentOptions';
+type Screen = 'form' | 'services' | 'serviceOptions';
 
 function formatDateForInput(date: Date) {
   const y = date.getFullYear();
@@ -90,13 +99,13 @@ export default function NewAppointmentScreen() {
   const theme = Colors[colorScheme];
 
   const [screen, setScreen] = React.useState<Screen>('form');
-  const [pickedTreatment, setPickedTreatment] = React.useState<TreatmentWithOptions | null>(null);
+  const [pickedService, setPickedService] = React.useState<ServiceWithVariants | null>(null);
 
   const [staffList, setStaffList] = React.useState<StaffMember[]>([]);
   const [staffLoading, setStaffLoading] = React.useState(true);
   const [staffId, setStaffId] = React.useState<string | null>(null);
 
-  const [treatmentsList, setTreatmentsList] = React.useState<TreatmentWithOptions[]>([]);
+  const [servicesList, setServicesList] = React.useState<ServiceWithVariants[]>([]);
   const [cart, setCart] = React.useState<CartItem[]>([]);
 
   const [clientSearchTerm, setClientSearchTerm] = React.useState('');
@@ -126,9 +135,9 @@ export default function NewAppointmentScreen() {
       .catch(() => setStaffList([]))
       .finally(() => setStaffLoading(false));
 
-    fetchTreatments(companyId)
-      .then(setTreatmentsList)
-      .catch(() => setTreatmentsList([]));
+    fetchServices(companyId)
+      .then(setServicesList)
+      .catch(() => setServicesList([]));
   }, [companyId]);
 
   React.useEffect(
@@ -161,23 +170,34 @@ export default function NewAppointmentScreen() {
     }, 350);
   }, []);
 
-  const handleAddTreatment = React.useCallback((treatment: TreatmentWithOptions, option: PriceOption) => {
-    Haptics.selectionAsync();
-    setCart((prev) => [
-      ...prev,
-      {
-        treatmentId: treatment.id,
-        priceOptionId: option.id,
-        treatmentName: treatment.name,
-        color: treatment.color,
-        priceOptionName: option.name,
-        price: option.price,
-        durationMinutes: option.duration_in_minutes,
-      },
-    ]);
-    setScreen('form');
-    setPickedTreatment(null);
-  }, []);
+  const handleAddService = React.useCallback(
+    (service: ServiceWithVariants, variant: ServiceVariant) => {
+      if (!staffId) {
+        setErrorMessage(t('appointment.validationMissingFields'));
+        setScreen('form');
+        return;
+      }
+      Haptics.selectionAsync();
+      const phases = phasesForEditor(variant);
+      setCart((prev) => [
+        ...prev,
+        {
+          serviceId: service.id,
+          serviceVariantId: variant.id,
+          serviceName: service.name,
+          color: service.color,
+          variantName: variant.name,
+          price: variant.price,
+          durationMinutes: spanDurationFromPhases(phases),
+          staffId,
+          phases,
+        },
+      ]);
+      setScreen('form');
+      setPickedService(null);
+    },
+    [staffId, t]
+  );
 
   const totalMinutes = cart.reduce((sum, item) => sum + item.durationMinutes, 0);
   const endDate = React.useMemo(() => {
@@ -190,10 +210,15 @@ export default function NewAppointmentScreen() {
   const firstNameValue = selectedClient?.first_name ?? newFirstName.trim();
   const lastNameValue = selectedClient?.last_name ?? newLastName.trim();
   const hasClientIdentity = Boolean(selectedClient) || firstNameValue.length > 0;
-  const canSave = Boolean(staffId) && cart.length > 0 && emailValue.length > 0 && hasClientIdentity && !submitting;
+  const canSave =
+    cart.length > 0 &&
+    cart.every((item) => Boolean(item.staffId)) &&
+    emailValue.length > 0 &&
+    hasClientIdentity &&
+    !submitting;
 
   const handleSave = React.useCallback(async () => {
-    if (!companyId || !staffId || cart.length === 0 || !emailValue || !hasClientIdentity) {
+    if (!companyId || cart.length === 0 || !emailValue || !hasClientIdentity || cart.some((item) => !item.staffId)) {
       setErrorMessage(t('appointment.validationMissingFields'));
       return;
     }
@@ -202,10 +227,17 @@ export default function NewAppointmentScreen() {
     setErrorMessage(null);
     try {
       await createAppointment({
-        start: toFakeUtcISOString(startDate, startDate.getHours(), startDate.getMinutes()),
-        staffId,
+        start: startDate,
         companyId,
-        treatments: cart.map((item) => ({ treatmentId: item.treatmentId, priceOptionId: item.priceOptionId })),
+        clientId: selectedClient?.id,
+        segments: cart.map((item) => ({
+          serviceId: item.serviceId,
+          serviceVariantId: item.serviceVariantId,
+          staffId: item.staffId,
+          price: item.price,
+          phases: item.phases,
+          durationMinutes: item.durationMinutes,
+        })),
         firstName: firstNameValue,
         lastName: lastNameValue,
         email: emailValue,
@@ -231,7 +263,6 @@ export default function NewAppointmentScreen() {
     }
   }, [
     companyId,
-    staffId,
     cart,
     emailValue,
     hasClientIdentity,
@@ -239,6 +270,7 @@ export default function NewAppointmentScreen() {
     lastNameValue,
     notes,
     startDate,
+    selectedClient,
     router,
     t,
   ]);
@@ -310,12 +342,12 @@ export default function NewAppointmentScreen() {
   };
 
   const screenOptions = (() => {
-    if (screen === 'treatments') {
+    if (screen === 'services') {
       return (
         <Stack.Screen
           options={{
             headerShown: true,
-            title: t('appointment.selectTreatment'),
+            title: t('appointment.selectService'),
             headerLeft: () => (
               <HeaderButton onPress={() => setScreen('form')} hitSlop={8}>
                 <AppIcon name="back" size={22} color={theme.text} />
@@ -325,17 +357,17 @@ export default function NewAppointmentScreen() {
         />
       );
     }
-    if (screen === 'treatmentOptions') {
+    if (screen === 'serviceOptions') {
       return (
         <Stack.Screen
           options={{
             headerShown: true,
-            title: pickedTreatment?.name ?? '',
+            title: pickedService?.name ?? '',
             headerLeft: () => (
               <HeaderButton
                 onPress={() => {
-                  setPickedTreatment(null);
-                  setScreen('treatments');
+                  setPickedService(null);
+                  setScreen('services');
                 }}
                 hitSlop={8}>
                 <AppIcon name="back" size={22} color={theme.text} />
@@ -379,38 +411,38 @@ export default function NewAppointmentScreen() {
         </View>
       ) : null}
 
-      {screen === 'treatments' ? (
+      {screen === 'services' ? (
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          {treatmentsList.map((treatment) => (
+          {servicesList.map((service) => (
             <Pressable
-              key={treatment.id}
+              key={service.id}
               style={[styles.pickerRow, { borderBottomColor: theme.border }]}
               onPress={() => {
-                setPickedTreatment(treatment);
-                setScreen('treatmentOptions');
+                setPickedService(service);
+                setScreen('serviceOptions');
               }}>
               <View
                 style={[
                   styles.colorDot,
-                  { backgroundColor: COLOR_MAP[mapTreatmentColorToEventColor(treatment.color, treatment.name)] },
+                  { backgroundColor: COLOR_MAP[mapTreatmentColorToEventColor(service.color, service.name)] },
                 ]}
               />
-              <Text style={[styles.pickerRowText, { color: theme.text }]}>{treatment.name}</Text>
+              <Text style={[styles.pickerRowText, { color: theme.text }]}>{service.name}</Text>
               <AppIcon name="chevronRight" size={20} color={theme.muted} />
             </Pressable>
           ))}
         </ScrollView>
-      ) : screen === 'treatmentOptions' && pickedTreatment ? (
+      ) : screen === 'serviceOptions' && pickedService ? (
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          {pickedTreatment.price_option.map((option) => (
+          {pickedService.service_variant.map((variant) => (
             <Pressable
-              key={option.id}
+              key={variant.id}
               style={[styles.pickerRow, { borderBottomColor: theme.border }]}
-              onPress={() => handleAddTreatment(pickedTreatment, option)}>
+              onPress={() => handleAddService(pickedService, variant)}>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.pickerRowText, { color: theme.text }]}>{option.name}</Text>
+                <Text style={[styles.pickerRowText, { color: theme.text }]}>{variant.name}</Text>
                 <Text style={[styles.selectedClientEmail, { color: theme.muted }]}>
-                  {`${option.duration_in_minutes} ${t('appointment.minutesShort')} · €${option.price}`}
+                  {`${variantDurationMinutes(variant)} ${t('appointment.minutesShort')} · €${variant.price}`}
                 </Text>
               </View>
             </Pressable>
@@ -501,7 +533,7 @@ export default function NewAppointmentScreen() {
 
           {/* Staff */}
           <View style={styles.section}>
-            <Text style={[styles.sectionLabel, { color: theme.muted }]}>{t('appointment.staffMember')}</Text>
+            <Text style={[styles.sectionLabel, { color: theme.muted }]}>{t('appointment.defaultStaff')}</Text>
             {staffLoading ? (
               <ActivityIndicator color={theme.muted} />
             ) : (
@@ -532,25 +564,48 @@ export default function NewAppointmentScreen() {
             )}
           </View>
 
-          {/* Treatments */}
+          {/* Services */}
           <View style={styles.section}>
-            <Text style={[styles.sectionLabel, { color: theme.muted }]}>{t('appointment.treatments')}</Text>
+            <Text style={[styles.sectionLabel, { color: theme.muted }]}>{t('appointment.services')}</Text>
             {cart.length === 0 ? (
-              <Text style={[styles.noResultsText, { color: theme.muted }]}>{t('appointment.noTreatmentsAdded')}</Text>
+              <Text style={[styles.noResultsText, { color: theme.muted }]}>{t('appointment.noServicesAdded')}</Text>
             ) : (
               cart.map((item, index) => (
-                <View key={`${item.treatmentId}-${item.priceOptionId}-${index}`} style={[styles.cartRow, { borderBottomColor: theme.border }]}>
+                <View key={`${item.serviceId}-${item.serviceVariantId}-${index}`} style={[styles.cartRow, { borderBottomColor: theme.border }]}>
                   <View
                     style={[
                       styles.colorDot,
-                      { backgroundColor: COLOR_MAP[mapTreatmentColorToEventColor(item.color, item.treatmentName)] },
+                      { backgroundColor: COLOR_MAP[mapTreatmentColorToEventColor(item.color, item.serviceName)] },
                     ]}
                   />
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.pickerRowText, { color: theme.text }]}>{item.treatmentName}</Text>
+                    <Text style={[styles.pickerRowText, { color: theme.text }]}>{item.serviceName}</Text>
                     <Text style={[styles.selectedClientEmail, { color: theme.muted }]}>
-                      {`${item.priceOptionName} · ${item.durationMinutes} ${t('appointment.minutesShort')} · €${item.price}`}
+                      {`${item.variantName} · ${item.durationMinutes} ${t('appointment.minutesShort')} · €${item.price}`}
                     </Text>
+                    <View style={styles.staffRow}>
+                      {staffList.map((staff) => {
+                        const name = `${staff.first_name ?? ''} ${staff.last_name ?? ''}`.trim() || t('calendar.employee');
+                        const isSelected = item.staffId === staff.id;
+                        return (
+                          <Pressable
+                            key={staff.id}
+                            style={[
+                              styles.staffChip,
+                              { borderColor: theme.border, backgroundColor: theme.surface },
+                              isSelected && { backgroundColor: theme.tint, borderColor: theme.tint },
+                            ]}
+                            onPress={() => {
+                              Haptics.selectionAsync();
+                              setCart((prev) =>
+                                prev.map((row, rowIndex) => (rowIndex === index ? { ...row, staffId: staff.id } : row))
+                              );
+                            }}>
+                            <Text style={[styles.staffChipText, { color: isSelected ? theme.onTint : theme.text }]}>{name}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
                   </View>
                   <Pressable onPress={() => setCart((prev) => prev.filter((_, i) => i !== index))} hitSlop={8}>
                     <AppIcon name="close" size={20} color={theme.muted} />
@@ -558,8 +613,16 @@ export default function NewAppointmentScreen() {
                 </View>
               ))
             )}
-            <Pressable style={{ marginTop: 8 }} onPress={() => setScreen('treatments')}>
-              <Text style={[styles.changeLink, { color: theme.tint }]}>{t('appointment.addTreatment')}</Text>
+            <Pressable
+              style={{ marginTop: 8 }}
+              onPress={() => {
+                if (!staffId) {
+                  setErrorMessage(t('appointment.validationMissingFields'));
+                  return;
+                }
+                setScreen('services');
+              }}>
+              <Text style={[styles.changeLink, { color: theme.tint }]}>{t('appointment.addService')}</Text>
             </Pressable>
           </View>
 

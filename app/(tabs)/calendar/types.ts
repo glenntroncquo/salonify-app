@@ -11,6 +11,8 @@ export type CalendarWeek = {
 };
 
 export type EventItem = {
+  /** Segment id when exploded for the calendar; appointment id for combined history rows. */
+  id: string;
   appointmentId: string;
   label: string;
   /** Saturated accent color — used for thin bars/dots. */

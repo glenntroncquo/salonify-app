@@ -11,12 +11,12 @@ import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import i18n from '@/lib/i18n';
 import {
-  AvailabilitySlot,
-  createRecurringAvailability,
-  deleteAvailability,
-  fetchRecurringAvailability,
-  parseNaiveTime,
-  updateRecurringAvailability,
+  ScheduleRule,
+  createScheduleRule,
+  deleteScheduleRule,
+  fetchScheduleRules,
+  parseTimeOfDay,
+  updateScheduleRule,
 } from '@/lib/api/staff';
 
 // Displayed Monday-first for a natural work-week view; values are the
@@ -27,7 +27,7 @@ type DayState = {
   working: boolean;
   start: Date;
   end: Date;
-  existingId: number | null;
+  existingId: string | null;
   multiple: boolean;
 };
 
@@ -77,8 +77,8 @@ export default function StaffAvailabilityScreen() {
       return;
     }
     try {
-      const slots = await fetchRecurringAvailability(id, companyId);
-      const byDay = new Map<number, AvailabilitySlot[]>();
+      const slots = await fetchScheduleRules(id, companyId);
+      const byDay = new Map<number, ScheduleRule[]>();
       slots.forEach((slot) => {
         const list = byDay.get(slot.day_of_week) ?? [];
         list.push(slot);
@@ -92,8 +92,8 @@ export default function StaffAvailabilityScreen() {
           next[day] = defaultDayState();
         } else if (slotsForDay.length === 1) {
           const slot = slotsForDay[0];
-          const startTime = parseNaiveTime(slot.start);
-          const endTime = parseNaiveTime(slot.end);
+          const startTime = parseTimeOfDay(slot.start_time);
+          const endTime = parseTimeOfDay(slot.end_time);
           next[day] = {
             working: true,
             start: timeAt(startTime.hours, startTime.minutes),
@@ -129,7 +129,7 @@ export default function StaffAvailabilityScreen() {
           if (state.multiple) return;
 
           if (state.working && state.existingId) {
-            await updateRecurringAvailability(
+            await updateScheduleRule(
               state.existingId,
               state.start.getHours(),
               state.start.getMinutes(),
@@ -137,7 +137,7 @@ export default function StaffAvailabilityScreen() {
               state.end.getMinutes()
             );
           } else if (state.working && !state.existingId) {
-            await createRecurringAvailability(
+            await createScheduleRule(
               id,
               companyId,
               day,
@@ -147,7 +147,7 @@ export default function StaffAvailabilityScreen() {
               state.end.getMinutes()
             );
           } else if (!state.working && state.existingId) {
-            await deleteAvailability(state.existingId);
+            await deleteScheduleRule(state.existingId);
           }
         })
       );

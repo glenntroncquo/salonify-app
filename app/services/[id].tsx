@@ -11,8 +11,29 @@ import { useTranslation } from 'react-i18next';
 
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { ManagedTreatment, PriceOption, deletePriceOption, fetchTreatment, updateTreatment } from '@/lib/api/treatments';
+import {
+  ManagedService,
+  ServiceVariant,
+  deleteServiceVariant,
+  fetchService,
+  updateService,
+  variantDurationMinutes,
+  variantStaffDurationMinutes,
+} from '@/lib/api/services';
 import { COLOR_MAP, TREATMENT_COLORS, TreatmentColor } from '@/lib/treatment-colors';
+
+function formatVariantSubtitle(
+  option: ServiceVariant,
+  t: (key: string) => string
+): string {
+  const clientMinutes = variantDurationMinutes(option);
+  const staffMinutes = variantStaffDurationMinutes(option);
+  const duration =
+    staffMinutes > 0 && staffMinutes !== clientMinutes
+      ? `${clientMinutes} ${t('appointment.minutesShort')} · ${staffMinutes} ${t('appointment.minutesShort')}`
+      : `${clientMinutes} ${t('appointment.minutesShort')}`;
+  return `${duration} · €${option.price}`;
+}
 
 export default function TreatmentDetailScreen() {
   const { t } = useTranslation();
@@ -22,7 +43,7 @@ export default function TreatmentDetailScreen() {
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);
 
-  const [treatment, setTreatment] = React.useState<ManagedTreatment | null>(null);
+  const [service, setService] = React.useState<ManagedService | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
@@ -32,7 +53,7 @@ export default function TreatmentDetailScreen() {
   const [color, setColor] = React.useState<string>(TREATMENT_COLORS[0]);
   const [isActive, setIsActive] = React.useState(true);
 
-  const [priceOptions, setPriceOptions] = React.useState<PriceOption[]>([]);
+  const [variants, setVariants] = React.useState<ServiceVariant[]>([]);
 
   const load = React.useCallback(async () => {
     if (!id) {
@@ -40,18 +61,18 @@ export default function TreatmentDetailScreen() {
       return;
     }
     try {
-      const data = await fetchTreatment(id);
-      setTreatment(data);
+      const data = await fetchService(id);
+      setService(data);
       if (data) {
         setName(data.name);
         setDescription(data.description ?? '');
         setColor(data.color ?? TREATMENT_COLORS[0]);
         setIsActive(Boolean(data.is_active));
-        setPriceOptions(data.price_option ?? []);
+        setVariants(data.service_variant ?? []);
       }
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('treatment.failedToLoad'));
+      setError(err instanceof Error ? err.message : t('service.failedToLoad'));
     } finally {
       setLoading(false);
     }
@@ -67,38 +88,37 @@ export default function TreatmentDetailScreen() {
     if (!id || !name.trim()) return;
     setSaving(true);
     try {
-      await updateTreatment(id, { name: name.trim(), description, color, isActive });
+      await updateService(id, { name: name.trim(), description, color, isActive });
       router.back();
     } catch {
-      setError(t('treatment.failedToSave'));
+      setError(t('service.failedToSave'));
     } finally {
       setSaving(false);
     }
   };
 
   const openAddOption = () => {
-    router.push({ pathname: '/treatments/price-option', params: { treatmentId: id } });
+    router.push({ pathname: '/services/price-option', params: { serviceId: id } });
   };
 
-  const openEditOption = (option: PriceOption) => {
+  const openEditOption = (option: ServiceVariant) => {
     router.push({
-      pathname: '/treatments/price-option',
+      pathname: '/services/price-option',
       params: {
-        treatmentId: id,
+        serviceId: id,
         optionId: option.id,
         name: option.name,
         price: String(option.price),
-        duration: String(option.duration_in_minutes),
       },
     });
   };
 
-  const handleDeleteOption = async (option: PriceOption) => {
+  const handleDeleteOption = async (option: ServiceVariant) => {
     try {
-      await deletePriceOption(option.id);
-      setPriceOptions((prev) => prev.filter((item) => item.id !== option.id));
+      await deleteServiceVariant(option.id);
+      setVariants((prev) => prev.filter((item) => item.id !== option.id));
     } catch {
-      setError(t('treatment.failedToDeleteOption'));
+      setError(t('service.failedToDeleteOption'));
     }
   };
 
@@ -106,7 +126,7 @@ export default function TreatmentDetailScreen() {
     <Stack.Screen
       options={{
         headerShown: true,
-        title: treatment?.name || t('treatment.title'),
+        title: service?.name || t('service.title'),
         headerRight: () => (
           <HeaderButton onPress={handleSave} disabled={saving || !name.trim()} hitSlop={8}>
             {saving ? (
@@ -143,19 +163,19 @@ export default function TreatmentDetailScreen() {
 
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>{t('treatment.name')}</Text>
-          <TextInput style={styles.input} value={name} onChangeText={setName} placeholder={t('treatment.name')} />
+          <Text style={styles.sectionLabel}>{t('service.name')}</Text>
+          <TextInput style={styles.input} value={name} onChangeText={setName} placeholder={t('service.name')} />
 
-          <Text style={styles.sectionLabel}>{t('treatment.description')}</Text>
+          <Text style={styles.sectionLabel}>{t('service.description')}</Text>
           <TextInput
             style={[styles.input, styles.multilineInput]}
             value={description}
             onChangeText={setDescription}
-            placeholder={t('treatment.descriptionPlaceholder')}
+            placeholder={t('service.descriptionPlaceholder')}
             multiline
           />
 
-          <Text style={styles.sectionLabel}>{t('treatment.color')}</Text>
+          <Text style={styles.sectionLabel}>{t('service.color')}</Text>
           <View style={styles.colorRow}>
             {TREATMENT_COLORS.map((option) => (
               <Pressable
@@ -172,31 +192,29 @@ export default function TreatmentDetailScreen() {
           </View>
 
           <View style={styles.activeRow}>
-            <Text style={styles.sectionLabel}>{t('treatment.active')}</Text>
+            <Text style={styles.sectionLabel}>{t('service.active')}</Text>
             <Switch value={isActive} onValueChange={setIsActive} />
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>{t('treatment.priceOptions')}</Text>
-          {priceOptions.length === 0 ? (
-            <Text style={styles.emptyText}>{t('treatment.noPriceOptions')}</Text>
+          <Text style={styles.sectionLabel}>{t('service.variants')}</Text>
+          {variants.length === 0 ? (
+            <Text style={styles.emptyText}>{t('service.noVariants')}</Text>
           ) : (
-            priceOptions.map((option) => (
+            variants.map((option) => (
               <SwipeableRow key={option.id} onDelete={() => handleDeleteOption(option)} deleteLabel={t('common.delete')}>
                 <Pressable style={styles.optionRow} onPress={() => openEditOption(option)}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.optionName}>{option.name}</Text>
-                    <Text style={styles.optionSubtitle}>
-                      {`${option.duration_in_minutes} ${t('appointment.minutesShort')} · €${option.price}`}
-                    </Text>
+                    <Text style={styles.optionSubtitle}>{formatVariantSubtitle(option, t)}</Text>
                   </View>
                 </Pressable>
               </SwipeableRow>
             ))
           )}
           <Pressable style={{ marginTop: 8 }} onPress={openAddOption}>
-            <Text style={styles.addLink}>{t('treatment.addPriceOption')}</Text>
+            <Text style={styles.addLink}>{t('service.addVariant')}</Text>
           </Pressable>
         </View>
       </ScrollView>

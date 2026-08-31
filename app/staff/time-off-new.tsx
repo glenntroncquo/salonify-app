@@ -10,7 +10,7 @@ import { DateTimeField } from '@/components/date-time-field';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { createUnavailability } from '@/lib/api/staff';
+import { createTimeOff } from '@/lib/api/staff';
 
 function formatDateLabel(date: Date) {
   const y = date.getFullYear();
@@ -56,7 +56,7 @@ export default function StaffTimeOffNewScreen() {
     setSaving(true);
     setError(null);
     try {
-      await createUnavailability(
+      await createTimeOff(
         staffId,
         companyId,
         date,

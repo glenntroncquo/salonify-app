@@ -200,7 +200,7 @@ export default function AppointmentDetailScreen() {
               <Text style={[styles.emptyText, { color: theme.muted }]}>{t('client.noHistory')}</Text>
             ) : (
               history.map((historyEvent) => (
-                <View key={historyEvent.appointmentId} style={[styles.historyRow, { borderBottomColor: theme.border }]}>
+                <View key={historyEvent.id} style={[styles.historyRow, { borderBottomColor: theme.border }]}>
                   <View style={[styles.historyColorBar, { backgroundColor: historyEvent.color }]} />
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.historyTitle, { color: theme.text }]}>{historyEvent.label}</Text>

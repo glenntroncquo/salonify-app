@@ -83,53 +83,41 @@ export async function updateStaff(staffId: string, fields: Partial<StaffFields>)
   if (error) throw error;
 }
 
-export type AvailabilitySlot = {
-  id: number;
+export type ScheduleRule = {
+  id: string;
   day_of_week: number;
-  start: string;
-  end: string;
-  recurring: boolean;
+  start_time: string;
+  end_time: string;
 };
 
-/**
- * `availability.start`/`end` are naive local datetime strings with no
- * timezone offset at all (not even the appointment table's fake "Z" suffix) —
- * confirmed from the web dialog's own insert code. Both the web UI and the
- * `get-availabilities*` edge functions always parse the full string and only
- * ever use the time-of-day portion, so the date part is disposable for
- * recurring rows; we just use today's date for it, matching web's own
- * behavior of using whatever date happened to be on screen.
- */
-function buildNaiveDateTime(hours: number, minutes: number): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
-  const hh = String(hours).padStart(2, '0');
-  const mm = String(minutes).padStart(2, '0');
-  return `${y}-${m}-${d}T${hh}:${mm}:00`;
+function padTime(value: number): string {
+  return String(value).padStart(2, '0');
 }
 
-export function parseNaiveTime(value: string): { hours: number; minutes: number } {
-  const timePart = value.split('T')[1] ?? '00:00:00';
+export function formatTimeOfDay(hours: number, minutes: number): string {
+  return `${padTime(hours)}:${padTime(minutes)}:00`;
+}
+
+export function parseTimeOfDay(value: string): { hours: number; minutes: number } {
+  const timePart = value.includes('T') ? (value.split('T')[1] ?? '00:00:00') : value;
   const [hh, mm] = timePart.split(':');
   return { hours: Number(hh) || 0, minutes: Number(mm) || 0 };
 }
 
-export async function fetchRecurringAvailability(staffId: string, companyId: string): Promise<AvailabilitySlot[]> {
+export async function fetchScheduleRules(staffId: string, companyId: string): Promise<ScheduleRule[]> {
   const { data, error } = await supabase
-    .from('availability')
-    .select('id, day_of_week, start, end, recurring')
+    .from('staff_schedule_rule')
+    .select('id, day_of_week, start_time, end_time')
     .eq('staff_id', staffId)
     .eq('company_id', companyId)
-    .eq('recurring', true)
+    .eq('is_active', true)
     .order('day_of_week', { ascending: true });
 
   if (error) throw error;
-  return (data as AvailabilitySlot[]) ?? [];
+  return (data as ScheduleRule[]) ?? [];
 }
 
-export async function createRecurringAvailability(
+export async function createScheduleRule(
   staffId: string,
   companyId: string,
   dayOfWeek: number,
@@ -138,56 +126,61 @@ export async function createRecurringAvailability(
   endHours: number,
   endMinutes: number
 ): Promise<void> {
-  const { error } = await supabase.from('availability').insert({
+  const { error } = await supabase.from('staff_schedule_rule').insert({
     staff_id: staffId,
     company_id: companyId,
     day_of_week: dayOfWeek,
-    recurring: true,
-    start: buildNaiveDateTime(startHours, startMinutes),
-    end: buildNaiveDateTime(endHours, endMinutes),
+    start_time: formatTimeOfDay(startHours, startMinutes),
+    end_time: formatTimeOfDay(endHours, endMinutes),
+    is_active: true,
   });
   if (error) throw error;
 }
 
-export async function updateRecurringAvailability(
-  id: number,
+export async function updateScheduleRule(
+  id: string,
   startHours: number,
   startMinutes: number,
   endHours: number,
   endMinutes: number
 ): Promise<void> {
   const { error } = await supabase
-    .from('availability')
-    .update({ start: buildNaiveDateTime(startHours, startMinutes), end: buildNaiveDateTime(endHours, endMinutes) })
+    .from('staff_schedule_rule')
+    .update({
+      start_time: formatTimeOfDay(startHours, startMinutes),
+      end_time: formatTimeOfDay(endHours, endMinutes),
+    })
     .eq('id', id);
   if (error) throw error;
 }
 
-export async function deleteAvailability(id: number): Promise<void> {
-  const { error } = await supabase.from('availability').delete().eq('id', id);
+export async function deleteScheduleRule(id: string): Promise<void> {
+  const { error } = await supabase.from('staff_schedule_rule').delete().eq('id', id);
   if (error) throw error;
 }
 
-export type UnavailabilityBlock = {
+export type ScheduleException = {
   id: string;
-  start: string | null;
-  end: string | null;
+  starts_at: string;
+  ends_at: string;
+  kind: 'unavailable' | 'available_addition';
 };
 
-export async function fetchUnavailability(staffId: string, companyId: string): Promise<UnavailabilityBlock[]> {
+export async function fetchTimeOff(staffId: string, companyId: string): Promise<ScheduleException[]> {
   const { data, error } = await supabase
-    .from('unavailability')
-    .select('id, start, end')
+    .from('staff_schedule_exception')
+    .select('id, starts_at, ends_at, kind')
     .eq('staff_id', staffId)
     .eq('company_id', companyId)
-    .order('start', { ascending: false });
+    .eq('kind', 'unavailable')
+    .order('starts_at', { ascending: false });
 
   if (error) throw error;
-  return data ?? [];
+  return (data as ScheduleException[]) ?? [];
 }
 
 /** Single calendar day only — the web dialog itself has no multi-day range picker. */
-export async function createUnavailability(
+export async function createTimeOff(
   staffId: string,
   companyId: string,
   date: Date,
@@ -202,17 +195,17 @@ export async function createUnavailability(
   const isEndOfDay = endHours === 23 && endMinutes === 59;
   end.setHours(endHours, endMinutes, isEndOfDay ? 59 : 0, 0);
 
-  const { error } = await supabase.from('unavailability').insert({
+  const { error } = await supabase.from('staff_schedule_exception').insert({
     staff_id: staffId,
     company_id: companyId,
-    start: start.toISOString(),
-    end: end.toISOString(),
-    created_at: new Date().toISOString(),
+    starts_at: start.toISOString(),
+    ends_at: end.toISOString(),
+    kind: 'unavailable',
   });
   if (error) throw error;
 }
 
-export async function deleteUnavailability(id: string): Promise<void> {
-  const { error } = await supabase.from('unavailability').delete().eq('id', id);
+export async function deleteTimeOff(id: string): Promise<void> {
+  const { error } = await supabase.from('staff_schedule_exception').delete().eq('id', id);
   if (error) throw error;
 }

@@ -34,8 +34,10 @@ export type OrderDetail = OrderListItem & {
     quantity: number | null;
     unit_price: number | null;
     total: number | null;
-    treatment: { name: string } | null;
-    price_option: { name: string } | null;
+    appointment_segment: {
+      service: { name: string } | null;
+      service_variant: { name: string } | null;
+    } | null;
     product: { name: string } | null;
   }>;
   payment: Array<{
@@ -51,7 +53,14 @@ export type OrderDetail = OrderListItem & {
 const ORDER_DETAIL_SELECT = `
   id, order_number, date, created_at, total_amount, subtotal, tax_amount, discount_amount, payment_status, status, notes,
   client:client_id ( id, first_name, last_name ),
-  order_item ( id, quantity, unit_price, total, treatment:treatment_id ( name ), price_option:price_option_id ( name ), product:product_id ( name ) ),
+  order_item (
+    id, quantity, unit_price, total,
+    appointment_segment:appointment_segment_id (
+      service:service_id ( name ),
+      service_variant:service_variant_id ( name )
+    ),
+    product:product_id ( name )
+  ),
   payment ( id, payment_method, amount_gross, status, payment_status, paid_at )
 `;
 

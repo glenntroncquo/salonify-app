@@ -142,6 +142,157 @@ export type Database = {
           },
         ]
       }
+      appointment_segment: {
+        Row: {
+          allow_overlap: boolean
+          appointment_id: string
+          company_id: string
+          created_at: string
+          ends_at: string
+          id: string
+          price: number | null
+          price_net: number | null
+          sequence: number
+          service_id: string
+          service_variant_id: string
+          staff_id: string
+          starts_at: string
+          updated_at: string | null
+        }
+        Insert: {
+          allow_overlap?: boolean
+          appointment_id: string
+          company_id: string
+          created_at?: string
+          ends_at: string
+          id?: string
+          price?: number | null
+          price_net?: number | null
+          sequence: number
+          service_id: string
+          service_variant_id: string
+          staff_id: string
+          starts_at: string
+          updated_at?: string | null
+        }
+        Update: {
+          allow_overlap?: boolean
+          appointment_id?: string
+          company_id?: string
+          created_at?: string
+          ends_at?: string
+          id?: string
+          price?: number | null
+          price_net?: number | null
+          sequence?: number
+          service_id?: string
+          service_variant_id?: string
+          staff_id?: string
+          starts_at?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_segment_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_segment_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_segment_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_segment_service_variant_id_fkey"
+            columns: ["service_variant_id"]
+            isOneToOne: false
+            referencedRelation: "service_variant"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_segment_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointment_segment_phase: {
+        Row: {
+          allow_overlap: boolean
+          appointment_segment_id: string
+          company_id: string
+          created_at: string
+          ends_at: string
+          id: string
+          phase_type: string
+          sequence: number
+          staff_id: string
+          starts_at: string
+          updated_at: string | null
+        }
+        Insert: {
+          allow_overlap?: boolean
+          appointment_segment_id: string
+          company_id: string
+          created_at?: string
+          ends_at: string
+          id?: string
+          phase_type: string
+          sequence: number
+          staff_id: string
+          starts_at: string
+          updated_at?: string | null
+        }
+        Update: {
+          allow_overlap?: boolean
+          appointment_segment_id?: string
+          company_id?: string
+          created_at?: string
+          ends_at?: string
+          id?: string
+          phase_type?: string
+          sequence?: number
+          staff_id?: string
+          starts_at?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_segment_phase_appointment_segment_id_fkey"
+            columns: ["appointment_segment_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_segment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_segment_phase_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_segment_phase_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointment_treatment: {
         Row: {
           appointment_id: string
@@ -544,6 +695,7 @@ export type Database = {
       order_item: {
         Row: {
           appointment_id: string | null
+          appointment_segment_id: string | null
           company_id: string
           created_at: string
           discount_amount: number | null
@@ -560,6 +712,7 @@ export type Database = {
         }
         Insert: {
           appointment_id?: string | null
+          appointment_segment_id?: string | null
           company_id: string
           created_at?: string
           discount_amount?: number | null
@@ -576,6 +729,7 @@ export type Database = {
         }
         Update: {
           appointment_id?: string | null
+          appointment_segment_id?: string | null
           company_id?: string
           created_at?: string
           discount_amount?: number | null
@@ -596,6 +750,13 @@ export type Database = {
             columns: ["appointment_id"]
             isOneToOne: false
             referencedRelation: "appointment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_item_appointment_segment_id_fkey"
+            columns: ["appointment_segment_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_segment"
             referencedColumns: ["id"]
           },
           {
@@ -847,6 +1008,7 @@ export type Database = {
       }
       product_category: {
         Row: {
+          company_id: string | null
           created_at: string
           id: string
           is_active: boolean | null
@@ -855,6 +1017,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          company_id?: string | null
           created_at?: string
           id?: string
           is_active?: boolean | null
@@ -863,6 +1026,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          company_id?: string | null
           created_at?: string
           id?: string
           is_active?: boolean | null
@@ -1002,6 +1166,182 @@ export type Database = {
           },
         ]
       }
+      service: {
+        Row: {
+          booking_interval_minutes: number | null
+          color: string | null
+          company_id: string
+          created_at: string
+          description: string | null
+          display_order: number | null
+          id: string
+          image_path: string | null
+          is_active: boolean | null
+          is_deleted: boolean | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          booking_interval_minutes?: number | null
+          color?: string | null
+          company_id: string
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          image_path?: string | null
+          is_active?: boolean | null
+          is_deleted?: boolean | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          booking_interval_minutes?: number | null
+          color?: string | null
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          image_path?: string | null
+          is_active?: boolean | null
+          is_deleted?: boolean | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_variant: {
+        Row: {
+          client_duration_minutes: number
+          company_id: string
+          created_at: string
+          display_order: number | null
+          id: string
+          image_path: string | null
+          is_active: boolean | null
+          is_deleted: boolean | null
+          max_price: number | null
+          name: string
+          price: number
+          price_net: number | null
+          service_id: string
+          staff_duration_minutes: number | null
+          updated_at: string | null
+          vat_rate: number | null
+        }
+        Insert: {
+          client_duration_minutes: number
+          company_id: string
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          image_path?: string | null
+          is_active?: boolean | null
+          is_deleted?: boolean | null
+          max_price?: number | null
+          name: string
+          price: number
+          price_net?: number | null
+          service_id: string
+          staff_duration_minutes?: number | null
+          updated_at?: string | null
+          vat_rate?: number | null
+        }
+        Update: {
+          client_duration_minutes?: number
+          company_id?: string
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          image_path?: string | null
+          is_active?: boolean | null
+          is_deleted?: boolean | null
+          max_price?: number | null
+          name?: string
+          price?: number
+          price_net?: number | null
+          service_id?: string
+          staff_duration_minutes?: number | null
+          updated_at?: string | null
+          vat_rate?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_variant_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_variant_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_variant_phase: {
+        Row: {
+          company_id: string
+          created_at: string
+          duration_minutes: number
+          id: string
+          label: string | null
+          phase_type: string
+          sequence: number
+          service_variant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          duration_minutes: number
+          id?: string
+          label?: string | null
+          phase_type: string
+          sequence: number
+          service_variant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          label?: string | null
+          phase_type?: string
+          sequence?: number
+          service_variant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_variant_phase_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_variant_phase_service_variant_id_fkey"
+            columns: ["service_variant_id"]
+            isOneToOne: false
+            referencedRelation: "service_variant"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       spatial_ref_sys: {
         Row: {
           auth_name: string | null
@@ -1095,19 +1435,19 @@ export type Database = {
         Row: {
           company_id: string
           created_at: string
-          staff_id: string | null
+          staff_id: string
           updated_at: string | null
         }
         Insert: {
           company_id: string
           created_at: string
-          staff_id?: string | null
+          staff_id: string
           updated_at?: string | null
         }
         Update: {
           company_id?: string
           created_at?: string
-          staff_id?: string | null
+          staff_id?: string
           updated_at?: string | null
         }
         Relationships: [
@@ -1186,6 +1526,209 @@ export type Database = {
           },
           {
             foreignKeyName: "staff_price_option_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_schedule_exception: {
+        Row: {
+          company_id: string
+          created_at: string
+          ends_at: string
+          id: string
+          kind: string
+          staff_id: string
+          starts_at: string
+          updated_at: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          ends_at: string
+          id?: string
+          kind: string
+          staff_id: string
+          starts_at: string
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          ends_at?: string
+          id?: string
+          kind?: string
+          staff_id?: string
+          starts_at?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_schedule_exception_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_schedule_exception_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_schedule_rule: {
+        Row: {
+          company_id: string
+          created_at: string
+          day_of_week: number
+          effective_from: string | null
+          effective_to: string | null
+          end_time: string
+          id: string
+          is_active: boolean
+          staff_id: string
+          start_time: string
+          updated_at: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          day_of_week: number
+          effective_from?: string | null
+          effective_to?: string | null
+          end_time: string
+          id?: string
+          is_active?: boolean
+          staff_id: string
+          start_time: string
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          day_of_week?: number
+          effective_from?: string | null
+          effective_to?: string | null
+          end_time?: string
+          id?: string
+          is_active?: boolean
+          staff_id?: string
+          start_time?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_schedule_rule_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_schedule_rule_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_service: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          service_id: string
+          staff_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          service_id: string
+          staff_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          service_id?: string
+          staff_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_service_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_service_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_service_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_service_variant: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          service_variant_id: string
+          staff_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          service_variant_id: string
+          staff_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          service_variant_id?: string
+          staff_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_service_variant_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "company"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_service_variant_service_variant_id_fkey"
+            columns: ["service_variant_id"]
+            isOneToOne: false
+            referencedRelation: "service_variant"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_service_variant_staff_id_fkey"
             columns: ["staff_id"]
             isOneToOne: false
             referencedRelation: "staff"
@@ -1304,6 +1847,7 @@ export type Database = {
           image_path: string | null
           interval: number | null
           is_active: boolean | null
+          is_deleted: boolean | null
           name: string
           order: number | null
           updated_at: string | null
@@ -1317,6 +1861,7 @@ export type Database = {
           image_path?: string | null
           interval?: number | null
           is_active?: boolean | null
+          is_deleted?: boolean | null
           name: string
           order?: number | null
           updated_at?: string | null
@@ -1330,6 +1875,7 @@ export type Database = {
           image_path?: string | null
           interval?: number | null
           is_active?: boolean | null
+          is_deleted?: boolean | null
           name?: string
           order?: number | null
           updated_at?: string | null
@@ -1590,23 +2136,42 @@ export type Database = {
             }
             Returns: Json
           }
-      create_appointment_staff: {
-        Args: {
-          p_actual_end: string
-          p_actual_start: string
-          p_client_id: string
-          p_company_id: string
-          p_duration_in_minutes: number
-          p_end: string
-          p_image_path: string
-          p_notes: string
-          p_price: number
-          p_staff_id: string
-          p_start: string
-          p_treatments: Json
-        }
-        Returns: Json
-      }
+      create_appointment_staff:
+        | {
+            Args: {
+              p_actual_end: string
+              p_actual_start: string
+              p_client_id: string
+              p_company_id: string
+              p_duration_in_minutes: number
+              p_end: string
+              p_image_path: string
+              p_notes: string
+              p_price: number
+              p_staff_id: string
+              p_start: string
+              p_treatments: Json
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_actual_end: string
+              p_actual_start: string
+              p_client_id: string
+              p_company_id: string
+              p_duration_in_minutes: number
+              p_end: string
+              p_image_path: string
+              p_notes: string
+              p_price: number
+              p_staff_id: string
+              p_staff_notes?: string
+              p_start: string
+              p_treatments: Json
+            }
+            Returns: Json
+          }
       create_appointment_with_referral: {
         Args: {
           p_actual_end: string
@@ -1834,6 +2399,16 @@ export type Database = {
       postgis_wagyu_version: { Args: never; Returns: string }
       search_clients: {
         Args: { search_term: string }
+        Returns: {
+          email: string
+          first_name: string
+          id: string
+          last_name: string
+          rank: number
+        }[]
+      }
+      search_clients_by_company: {
+        Args: { p_company_id?: string; search_term: string }
         Returns: {
           email: string
           first_name: string

@@ -14,25 +14,24 @@ import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { fetchStaffAppointments } from '@/lib/api/calendar';
 import {
-  AvailabilitySlot,
-  UnavailabilityBlock,
-  fetchRecurringAvailability,
-  fetchUnavailability,
-  parseNaiveTime,
+  ScheduleException,
+  ScheduleRule,
+  fetchScheduleRules,
+  fetchTimeOff,
+  parseTimeOfDay,
 } from '@/lib/api/staff';
 
-function formatSlotRange(slot: AvailabilitySlot) {
-  const start = parseNaiveTime(slot.start);
-  const end = parseNaiveTime(slot.end);
+function formatSlotRange(slot: ScheduleRule) {
+  const start = parseTimeOfDay(slot.start_time);
+  const end = parseTimeOfDay(slot.end_time);
   const fmt = (h: number, m: number) => `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
   return `${fmt(start.hours, start.minutes)} – ${fmt(end.hours, end.minutes)}`;
 }
 
-function unavailabilityOverlapsDay(block: UnavailabilityBlock, day: Date) {
-  if (!block.start || !block.end) return false;
+function exceptionOverlapsDay(block: ScheduleException, day: Date) {
   const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 0, 0, 0, 0);
   const dayEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 23, 59, 59, 999);
-  return new Date(block.start) <= dayEnd && new Date(block.end) >= dayStart;
+  return new Date(block.starts_at) <= dayEnd && new Date(block.ends_at) >= dayStart;
 }
 
 function formatTimeOfDay(value: string) {
@@ -49,8 +48,8 @@ export default function StaffScheduleScreen() {
   const styles = createStyles(theme);
 
   const [weekOffset, setWeekOffset] = React.useState(0);
-  const [availability, setAvailability] = React.useState<AvailabilitySlot[]>([]);
-  const [unavailability, setUnavailability] = React.useState<UnavailabilityBlock[]>([]);
+  const [availability, setAvailability] = React.useState<ScheduleRule[]>([]);
+  const [unavailability, setUnavailability] = React.useState<ScheduleException[]>([]);
   const [eventsByDateKey, setEventsByDateKey] = React.useState<Record<string, EventItem[]>>({});
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -60,7 +59,7 @@ export default function StaffScheduleScreen() {
   const weekNumber = React.useMemo(() => getISOWeekNumber(weekStart), [weekStart]);
 
   const availabilityBySlotDay = React.useMemo(() => {
-    const map = new Map<number, AvailabilitySlot[]>();
+    const map = new Map<number, ScheduleRule[]>();
     availability.forEach((slot) => {
       const list = map.get(slot.day_of_week) ?? [];
       list.push(slot);
@@ -77,8 +76,8 @@ export default function StaffScheduleScreen() {
     let cancelled = false;
     setLoading(true);
     Promise.all([
-      fetchRecurringAvailability(id, companyId),
-      fetchUnavailability(id, companyId),
+      fetchScheduleRules(id, companyId),
+      fetchTimeOff(id, companyId),
       fetchStaffAppointments(id, companyId, weekStart, addDays(weekStart, 7)),
     ])
       .then(([availabilityData, unavailabilityData, appointments]) => {
@@ -133,7 +132,7 @@ export default function StaffScheduleScreen() {
             const dateKey = toDateKey(day);
             const dayOfWeek = day.getDay();
             const slots = availabilityBySlotDay.get(dayOfWeek) ?? [];
-            const absences = unavailability.filter((block) => unavailabilityOverlapsDay(block, day));
+            const absences = unavailability.filter((block) => exceptionOverlapsDay(block, day));
             const events = eventsByDateKey[dateKey] ?? [];
             const isToday = dateKey === todayKey;
 
@@ -164,8 +163,8 @@ export default function StaffScheduleScreen() {
                   <View key={block.id} style={styles.absentRow}>
                     <AppIcon name="eventBusy" size={14} color={theme.error} />
                     <Text style={styles.absentText}>
-                      {block.start && block.end
-                        ? `${t('staff.absent')} · ${formatTimeOfDay(block.start)}–${formatTimeOfDay(block.end)}`
+                      {block.starts_at && block.ends_at
+                        ? `${t('staff.absent')} · ${formatTimeOfDay(block.starts_at)}–${formatTimeOfDay(block.ends_at)}`
                         : t('staff.absent')}
                     </Text>
                   </View>
@@ -175,7 +174,7 @@ export default function StaffScheduleScreen() {
                   <Text style={styles.noAppointmentsText}>{t('calendar.noAppointmentsToday')}</Text>
                 ) : (
                   events.map((event) => (
-                    <View key={event.appointmentId} style={styles.appointmentRow}>
+                    <View key={event.id} style={styles.appointmentRow}>
                       <View style={[styles.colorBar, { backgroundColor: event.color }]} />
                       <Text style={styles.appointmentTime}>{event.startTime}</Text>
                       <Text style={styles.appointmentLabel} numberOfLines={1}>

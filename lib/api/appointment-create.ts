@@ -1,45 +1,82 @@
 import { FunctionsHttpError } from '@supabase/supabase-js';
 
 import { supabase } from '@/lib/supabase';
+import { ServiceVariantPhase } from '@/lib/api/services';
 
-export type CreateAppointmentTreatment = {
-  treatmentId: string;
-  priceOptionId: string;
+export type CreateAppointmentSegment = {
+  serviceId: string;
+  serviceVariantId: string;
+  staffId: string;
+  price: number;
+  phases: ServiceVariantPhase[];
+  durationMinutes: number;
 };
 
 export type CreateAppointmentPayload = {
-  start: string;
-  staffId: string;
+  start: Date;
   companyId: string;
-  treatments: CreateAppointmentTreatment[];
+  segments: CreateAppointmentSegment[];
   firstName: string;
   lastName: string;
   email: string;
   notes: string;
+  clientId?: string;
 };
 
+async function functionErrorMessage(error: unknown): Promise<string> {
+  if (error instanceof FunctionsHttpError) {
+    try {
+      const body = await error.context.json();
+      if (typeof body?.error === 'string') return body.error;
+      if (typeof body?.message === 'string') return body.message;
+    } catch {
+      // Body wasn't JSON — fall back to the generic message.
+    }
+    return error.message;
+  }
+  if (error instanceof Error) return error.message;
+  return 'Booking failed';
+}
+
+/**
+ * Staff booking goes through folded v1 `appointment-create-staff`.
+ * After the backend fold that slug is the new-table implementation
+ * (was `appointment-create-staff-v2`). Payload is services / variants
+ * only — no treatmentId / priceOptionId aliases.
+ */
 export async function createAppointment(payload: CreateAppointmentPayload): Promise<{ id?: string; clientId?: string }> {
-  const { data, error } = await supabase.functions.invoke('create-staff-appointment-v2', {
-    body: { ...payload, imageData: null },
+  if (payload.segments.length === 0) {
+    throw new Error('At least one service is required');
+  }
+
+  const primaryStaffId = payload.segments[0].staffId;
+  const totalPrice = payload.segments.reduce((sum, segment) => sum + Number(segment.price), 0);
+
+  const { data, error } = await supabase.functions.invoke('appointment-create-staff', {
+    body: {
+      start: payload.start.toISOString(),
+      staffId: primaryStaffId,
+      companyId: payload.companyId,
+      services: payload.segments.map((segment) => ({
+        serviceId: segment.serviceId,
+        serviceVariantId: segment.serviceVariantId,
+        staffId: segment.staffId,
+      })),
+      price: totalPrice,
+      firstName: payload.firstName,
+      lastName: payload.lastName,
+      email: payload.email,
+      notes: payload.notes,
+      imageData: null,
+    },
   });
 
   if (error) {
-    // FunctionsHttpError's own `.message` is always the generic "non-2xx
-    // status code" string — the edge function's actual error detail lives
-    // in the response body, which we need to parse out to map to a specific
-    // user-facing message (conflict/availability/etc.) upstream.
-    if (error instanceof FunctionsHttpError) {
-      let detail = error.message;
-      try {
-        const body = await error.context.json();
-        if (typeof body?.error === 'string') detail = body.error;
-      } catch {
-        // Body wasn't JSON — fall back to the generic message.
-      }
-      throw new Error(detail);
-    }
-    throw error;
+    throw new Error(await functionErrorMessage(error));
   }
 
-  return data ?? {};
+  return {
+    id: data?.booking_id ?? data?.id,
+    clientId: data?.client_id ?? data?.clientId,
+  };
 }
