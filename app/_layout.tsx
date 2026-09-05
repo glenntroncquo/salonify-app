@@ -1,5 +1,12 @@
+import { CrashRecovery } from '@/components/crash-recovery';
+import { Colors } from '@/constants/theme';
+import { AuthProvider, useAuth } from '@/contexts/auth-context';
+import { ThemePreferenceProvider } from '@/contexts/theme-context';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import i18n, { initI18n } from '@/lib/i18n';
+import { initSentry, Sentry, setSentryStaffContext } from '@/lib/sentry';
 import { DarkTheme, DefaultTheme, ThemeProvider as NavThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
+import { ErrorBoundaryProps, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
@@ -7,11 +14,7 @@ import { I18nextProvider } from 'react-i18next';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
-import { AuthProvider, useAuth } from '@/contexts/auth-context';
-import { ThemePreferenceProvider } from '@/contexts/theme-context';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import i18n, { initI18n } from '@/lib/i18n';
+initSentry();
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -44,6 +47,24 @@ const AppDarkTheme = {
     notification: Colors.dark.error,
   },
 };
+
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  useEffect(() => {
+    Sentry.captureException(error);
+  }, [error]);
+
+  return <CrashRecovery onRetry={retry} />;
+}
+
+function SentryStaffContext() {
+  const { user, companyId } = useAuth();
+
+  useEffect(() => {
+    setSentryStaffContext(user?.id ?? null, companyId);
+  }, [user?.id, companyId]);
+
+  return null;
+}
 
 function RootNavigator() {
   const { session, loading } = useAuth();
@@ -102,7 +123,7 @@ function RootLayoutInner() {
   );
 }
 
-export default function RootLayout() {
+function RootLayout() {
   const [i18nReady, setI18nReady] = useState(false);
 
   useEffect(() => {
@@ -118,10 +139,15 @@ export default function RootLayout() {
       <I18nextProvider i18n={i18n}>
         <ThemePreferenceProvider>
           <AuthProvider>
-            <RootLayoutInner />
+            <SentryStaffContext />
+            <Sentry.ErrorBoundary fallback={({ resetError }) => <CrashRecovery onRetry={resetError} />}>
+              <RootLayoutInner />
+            </Sentry.ErrorBoundary>
           </AuthProvider>
         </ThemePreferenceProvider>
       </I18nextProvider>
     </GestureHandlerRootView>
   );
 }
+
+export default Sentry.wrap(RootLayout);

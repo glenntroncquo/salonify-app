@@ -239,5 +239,11 @@
   "profile": {
     "signOut": "Sair",
     "language": "Idioma"
+  },
+  "errorBoundary": {
+    "title": "Algo deu errado",
+    "message": "O aplicativo encontrou um problema. Você pode tentar novamente.",
+    "retry": "Tentar novamente",
+    "testCrash": "Testar falha (dev)"
   }
 }

@@ -239,5 +239,11 @@
   "profile": {
     "signOut": "Sign Out",
     "language": "Language"
+  },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "message": "The app ran into a problem. You can try again.",
+    "retry": "Try again",
+    "testCrash": "Test crash (dev)"
   }
 }

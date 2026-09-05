@@ -7,7 +7,9 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "upload:sourcemaps": "sentry-expo-upload-sourcemaps dist",
+    "eas-build-on-success": "node ./scripts/sentry-eas-on-success.js"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -16,6 +18,7 @@
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@react-navigation/elements": "^2.6.3",
     "@react-navigation/native": "^7.1.8",
+    "@sentry/react-native": "~7.2.0",
     "@shopify/flash-list": "2.0.2",
     "@supabase/supabase-js": "^2.110.8",
     "expo": "~54.0.33",

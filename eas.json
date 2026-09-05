@@ -8,6 +8,11 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "SENTRY_ORG": "gleami",
+        "SENTRY_PROJECT": "gleami",
+        "SENTRY_URL": "https://de.sentry.io/"
       }
     },
     "preview": {
@@ -15,10 +20,20 @@
       "autoIncrement": true,
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "SENTRY_ORG": "gleami",
+        "SENTRY_PROJECT": "gleami",
+        "SENTRY_URL": "https://de.sentry.io/"
       }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "SENTRY_ORG": "gleami",
+        "SENTRY_PROJECT": "gleami",
+        "SENTRY_URL": "https://de.sentry.io/"
+      }
     }
   },
   "submit": {
