@@ -15,6 +15,7 @@ export type CreateAppointmentSegment = {
 export type CreateAppointmentPayload = {
   start: Date;
   companyId: string;
+  locationId: string;
   segments: CreateAppointmentSegment[];
   firstName: string;
   lastName: string;
@@ -57,6 +58,7 @@ export async function createAppointment(payload: CreateAppointmentPayload): Prom
       start: payload.start.toISOString(),
       staffId: primaryStaffId,
       companyId: payload.companyId,
+      locationId: payload.locationId,
       services: payload.segments.map((segment) => ({
         serviceId: segment.serviceId,
         serviceVariantId: segment.serviceVariantId,

@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next';
 
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { createAppointment } from '@/lib/api/appointment-create';
 import { fetchStaff, StaffMember } from '@/lib/api/calendar';
@@ -95,6 +96,7 @@ export default function NewAppointmentScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ date?: string }>();
   const { companyId } = useAuth();
+  const { locationId } = useLocation();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
 
@@ -128,9 +130,9 @@ export default function NewAppointmentScreen() {
   const searchDebounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   React.useEffect(() => {
-    if (!companyId) return;
+    if (!companyId || !locationId) return;
     setStaffLoading(true);
-    fetchStaff(companyId)
+    fetchStaff(companyId, locationId)
       .then(setStaffList)
       .catch(() => setStaffList([]))
       .finally(() => setStaffLoading(false));
@@ -138,7 +140,7 @@ export default function NewAppointmentScreen() {
     fetchServices(companyId)
       .then(setServicesList)
       .catch(() => setServicesList([]));
-  }, [companyId]);
+  }, [companyId, locationId]);
 
   React.useEffect(
     () => () => {
@@ -218,7 +220,7 @@ export default function NewAppointmentScreen() {
     !submitting;
 
   const handleSave = React.useCallback(async () => {
-    if (!companyId || cart.length === 0 || !emailValue || !hasClientIdentity || cart.some((item) => !item.staffId)) {
+    if (!companyId || !locationId || cart.length === 0 || !emailValue || !hasClientIdentity || cart.some((item) => !item.staffId)) {
       setErrorMessage(t('appointment.validationMissingFields'));
       return;
     }
@@ -229,6 +231,7 @@ export default function NewAppointmentScreen() {
       await createAppointment({
         start: startDate,
         companyId,
+        locationId,
         clientId: selectedClient?.id,
         segments: cart.map((item) => ({
           serviceId: item.serviceId,
@@ -263,6 +266,7 @@ export default function NewAppointmentScreen() {
     }
   }, [
     companyId,
+    locationId,
     cart,
     emailValue,
     hasClientIdentity,

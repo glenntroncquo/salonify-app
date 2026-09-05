@@ -82,6 +82,7 @@ function sortSegments(appointments: AppointmentRow[]): AppointmentRow[] {
  */
 export async function fetchAppointmentsForMonth(
   companyId: string,
+  locationId: string,
   year: number,
   monthIndex: number
 ): Promise<AppointmentRow[]> {
@@ -92,6 +93,7 @@ export async function fetchAppointmentsForMonth(
     .from('appointment')
     .select(APPOINTMENT_SELECT)
     .eq('company_id', companyId)
+    .eq('location_id', locationId)
     .eq('is_canceled', false)
     .gte('start', monthStart.toISOString())
     .lt('start', monthEnd.toISOString());
@@ -108,7 +110,26 @@ export async function fetchAppointmentById(appointmentId: string): Promise<Appoi
   return row ? sortSegments([row])[0] : null;
 }
 
-export async function fetchStaff(companyId: string): Promise<StaffMember[]> {
+export async function fetchStaff(companyId: string, locationId?: string): Promise<StaffMember[]> {
+  if (locationId) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const live = supabase as any;
+    const { data: memberships, error: membershipError } = await live
+      .from('location_membership')
+      .select('staff:staff_id ( id, first_name, last_name, image_path )')
+      .eq('location_id', locationId)
+      .eq('is_active', true);
+    if (membershipError) throw membershipError;
+
+    const fromMembership = ((memberships as unknown as { staff: StaffMember | StaffMember[] | null }[]) ?? [])
+      .flatMap((row) => (Array.isArray(row.staff) ? row.staff : row.staff ? [row.staff] : []))
+      .filter((member) => Boolean(member.id));
+    const unique = new Map(fromMembership.map((member) => [member.id, member]));
+    if (unique.size > 0) {
+      return [...unique.values()].sort((a, b) => (a.first_name ?? '').localeCompare(b.first_name ?? ''));
+    }
+  }
+
   const { data, error } = await supabase
     .from('staff')
     .select('id, first_name, last_name, image_path')
@@ -141,9 +162,10 @@ export async function fetchStaffAppointments(
   staffId: string,
   companyId: string,
   rangeStart: Date,
-  rangeEndExclusive: Date
+  rangeEndExclusive: Date,
+  locationId?: string
 ): Promise<AppointmentRow[]> {
-  const { data, error } = await supabase
+  let query = supabase
     .from('appointment_segment')
     .select(
       `
@@ -162,6 +184,12 @@ export async function fetchStaffAppointments(
     .eq('staff_id', staffId)
     .gte('starts_at', rangeStart.toISOString())
     .lt('starts_at', rangeEndExclusive.toISOString());
+
+  if (locationId) {
+    query = query.eq('location_id', locationId);
+  }
+
+  const { data, error } = await query;
 
   if (error) throw error;
 

@@ -11,6 +11,7 @@ import { addDays, getISOWeekNumber, getMonthShortLabel, getWeekStartMonday, getW
 import { EventItem } from '@/app/(tabs)/calendar/types';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { fetchStaffAppointments } from '@/lib/api/calendar';
 import {
@@ -43,6 +44,7 @@ export default function StaffScheduleScreen() {
   const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { companyId } = useAuth();
+  const { locationId } = useLocation();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);
@@ -76,9 +78,9 @@ export default function StaffScheduleScreen() {
     let cancelled = false;
     setLoading(true);
     Promise.all([
-      fetchScheduleRules(id, companyId),
-      fetchTimeOff(id, companyId),
-      fetchStaffAppointments(id, companyId, weekStart, addDays(weekStart, 7)),
+      fetchScheduleRules(id, companyId, locationId ?? undefined),
+      fetchTimeOff(id, companyId, locationId ?? undefined),
+      fetchStaffAppointments(id, companyId, weekStart, addDays(weekStart, 7), locationId ?? undefined),
     ])
       .then(([availabilityData, unavailabilityData, appointments]) => {
         if (cancelled) return;
@@ -96,7 +98,7 @@ export default function StaffScheduleScreen() {
     return () => {
       cancelled = true;
     };
-  }, [id, companyId, weekStart, t]);
+  }, [id, companyId, locationId, weekStart, t]);
 
   const todayKey = toDateKey(new Date());
 

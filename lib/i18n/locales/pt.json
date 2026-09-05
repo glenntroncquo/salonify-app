@@ -24,6 +24,7 @@
     "weekLabel": "Semana {{number}}",
     "today": "Hoje",
     "noCompany": "Nenhuma empresa está vinculada à sua conta ainda.",
+    "noLocation": "Nenhuma localização está disponível para esta empresa ainda.",
     "retry": "Tentar novamente",
     "noAppointmentsFound": "Nenhum agendamento encontrado.",
     "noAppointmentsToday": "Nenhum agendamento neste dia.",

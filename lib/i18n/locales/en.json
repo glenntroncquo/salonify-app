@@ -24,6 +24,7 @@
     "weekLabel": "Week {{number}}",
     "today": "Today",
     "noCompany": "No company is linked to your account yet.",
+    "noLocation": "No location is available for this company yet.",
     "retry": "Retry",
     "noAppointmentsFound": "No appointments found.",
     "noAppointmentsToday": "No appointments on this day.",

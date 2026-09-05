@@ -1,6 +1,7 @@
 import { CrashRecovery } from '@/components/crash-recovery';
 import { Colors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/contexts/auth-context';
+import { LocationProvider } from '@/contexts/location-context';
 import { ThemePreferenceProvider } from '@/contexts/theme-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import i18n, { initI18n } from '@/lib/i18n';
@@ -139,10 +140,12 @@ function RootLayout() {
       <I18nextProvider i18n={i18n}>
         <ThemePreferenceProvider>
           <AuthProvider>
-            <SentryStaffContext />
-            <Sentry.ErrorBoundary fallback={({ resetError }) => <CrashRecovery onRetry={resetError} />}>
-              <RootLayoutInner />
-            </Sentry.ErrorBoundary>
+            <LocationProvider>
+              <SentryStaffContext />
+              <Sentry.ErrorBoundary fallback={({ resetError }) => <CrashRecovery onRetry={resetError} />}>
+                <RootLayoutInner />
+              </Sentry.ErrorBoundary>
+            </LocationProvider>
           </AuthProvider>
         </ThemePreferenceProvider>
       </I18nextProvider>

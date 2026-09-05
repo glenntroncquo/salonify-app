@@ -24,6 +24,7 @@
     "weekLabel": "Week {{number}}",
     "today": "Vandaag",
     "noCompany": "Er is nog geen bedrijf gekoppeld aan je account.",
+    "noLocation": "Er is nog geen locatie beschikbaar voor dit bedrijf.",
     "retry": "Opnieuw",
     "noAppointmentsFound": "Geen afspraken gevonden.",
     "noAppointmentsToday": "Geen afspraken op deze dag.",

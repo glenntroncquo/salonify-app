@@ -99,14 +99,16 @@ export function parseTimeOfDay(value: string): { hours: number; minutes: number 
   return { hours: Number(hh) || 0, minutes: Number(mm) || 0 };
 }
 
-export async function fetchScheduleRules(staffId: string, companyId: string): Promise<ScheduleRule[]> {
-  const { data, error } = await supabase
+export async function fetchScheduleRules(staffId: string, companyId: string, locationId?: string): Promise<ScheduleRule[]> {
+  let query = supabase
     .from('staff_schedule_rule')
     .select('id, day_of_week, start_time, end_time')
     .eq('staff_id', staffId)
     .eq('company_id', companyId)
     .eq('is_active', true)
     .order('day_of_week', { ascending: true });
+  if (locationId) query = query.eq('location_id', locationId);
+  const { data, error } = await query;
 
   if (error) throw error;
   return (data as ScheduleRule[]) ?? [];
@@ -119,11 +121,13 @@ export async function createScheduleRule(
   startHours: number,
   startMinutes: number,
   endHours: number,
-  endMinutes: number
+  endMinutes: number,
+  locationId: string
 ): Promise<void> {
   const { error } = await supabase.from('staff_schedule_rule').insert({
     staff_id: staffId,
     company_id: companyId,
+    location_id: locationId,
     day_of_week: dayOfWeek,
     start_time: formatTimeOfDay(startHours, startMinutes),
     end_time: formatTimeOfDay(endHours, endMinutes),
@@ -161,14 +165,16 @@ export type ScheduleException = {
   kind: 'unavailable' | 'available_addition';
 };
 
-export async function fetchTimeOff(staffId: string, companyId: string): Promise<ScheduleException[]> {
-  const { data, error } = await supabase
+export async function fetchTimeOff(staffId: string, companyId: string, locationId?: string): Promise<ScheduleException[]> {
+  let query = supabase
     .from('staff_schedule_exception')
     .select('id, starts_at, ends_at, kind')
     .eq('staff_id', staffId)
     .eq('company_id', companyId)
     .eq('kind', 'unavailable')
     .order('starts_at', { ascending: false });
+  if (locationId) query = query.eq('location_id', locationId);
+  const { data, error } = await query;
 
   if (error) throw error;
   return (data as ScheduleException[]) ?? [];
@@ -182,7 +188,8 @@ export async function createTimeOff(
   startHours: number,
   startMinutes: number,
   endHours: number,
-  endMinutes: number
+  endMinutes: number,
+  locationId: string
 ): Promise<void> {
   const start = new Date(date);
   start.setHours(startHours, startMinutes, 0, 0);
@@ -193,6 +200,7 @@ export async function createTimeOff(
   const { error } = await supabase.from('staff_schedule_exception').insert({
     staff_id: staffId,
     company_id: companyId,
+    location_id: locationId,
     starts_at: start.toISOString(),
     ends_at: end.toISOString(),
     kind: 'unavailable',

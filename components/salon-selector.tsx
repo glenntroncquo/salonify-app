@@ -5,69 +5,38 @@ import { AppIcon } from '@/components/app-icon';
 import { Pressable } from '@/components/pressable-scale';
 import { StaffAvatar } from '@/components/staff-avatar';
 import { Colors } from '@/constants/theme';
+import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-
-export type Salon = {
-  id: string;
-  name: string;
-  imagePath?: string | null;
-};
-
-// Placeholder data for a not-yet-built feature: a staff member can belong to
-// more than one company/location, and needs a way to say which one(s) they
-// want appointments from. Purely visual for now — selection doesn't filter
-// anything yet.
-const MOCK_SALONS: Salon[] = [
-  { id: 'salon', name: 'Salon' },
-  { id: 'personal', name: 'Personal' },
-];
 
 const THUMB_SIZE = 20;
 
-type Props = {
-  salons?: Salon[];
-};
-
-export function SalonSelector({ salons = MOCK_SALONS }: Props) {
+export function SalonSelector() {
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);
+  const { locations, locationId, showLocationPicker, setLocationId } = useLocation();
 
-  // Multi-select, all selected by default — matches "viewing everything I
-  // have access to" as the natural starting state.
-  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(() => new Set(salons.map((salon) => salon.id)));
-
-  const toggle = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
+  if (!showLocationPicker) return null;
 
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-      {salons.map((salon) => {
-        const isSelected = selectedIds.has(salon.id);
+      {locations.map((location) => {
+        const isSelected = location.id === locationId;
         return (
           <Pressable
-            key={salon.id}
+            key={location.id}
             style={[styles.chip, isSelected ? styles.chipSelected : styles.chipUnselected]}
-            onPress={() => toggle(salon.id)}>
+            onPress={() => setLocationId(location.id)}>
             <StaffAvatar
-              imagePath={salon.imagePath}
-              name={salon.name}
+              imagePath={location.image_url}
+              name={location.name}
               size={THUMB_SIZE}
               backgroundColor={isSelected ? theme.onTint : theme.border}
               textColor={isSelected ? theme.tint : theme.muted}
               fontSize={9}
             />
             <Text style={[styles.label, isSelected ? styles.labelSelected : styles.labelUnselected]} numberOfLines={1}>
-              {salon.name}
+              {location.name}
             </Text>
             {isSelected ? <AppIcon name="check" size={13} color={theme.onTint} /> : null}
           </Pressable>
