@@ -67,7 +67,7 @@ export function pickLocationId(locations: ShopLocation[], preferred: string | nu
   if (preferred && ids.includes(preferred)) return preferred;
   const primary = locations.find((location) => location.is_primary);
   if (primary) return primary.id;
-  return locations[0]?.id ?? preferred ?? null;
+  return locations[0]?.id ?? null;
 }
 
 async function withTimeout<T>(promise: Promise<T>, fallback: T | null): Promise<T | null> {
