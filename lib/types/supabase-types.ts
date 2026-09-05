@@ -34,6 +34,7 @@ export type Database = {
           id: string
           image_path: string | null
           is_canceled: boolean
+          location_id: string
           notes: string | null
           price: number
           price_option_id: string | null
@@ -66,6 +67,7 @@ export type Database = {
           id?: string
           image_path?: string | null
           is_canceled?: boolean
+          location_id?: string
           notes?: string | null
           price: number
           price_option_id?: string | null
@@ -98,6 +100,7 @@ export type Database = {
           id?: string
           image_path?: string | null
           is_canceled?: boolean
+          location_id?: string
           notes?: string | null
           price?: number
           price_option_id?: string | null
@@ -150,6 +153,7 @@ export type Database = {
           created_at: string
           ends_at: string
           id: string
+          location_id: string
           price: number | null
           price_net: number | null
           sequence: number
@@ -166,6 +170,7 @@ export type Database = {
           created_at?: string
           ends_at: string
           id?: string
+          location_id?: string
           price?: number | null
           price_net?: number | null
           sequence: number
@@ -182,6 +187,7 @@ export type Database = {
           created_at?: string
           ends_at?: string
           id?: string
+          location_id?: string
           price?: number | null
           price_net?: number | null
           sequence?: number
@@ -506,6 +512,7 @@ export type Database = {
           geo_location: unknown
           id: string
           image_url: string | null
+          multi_location_enabled: boolean
           name: string
           postal_code: string | null
           reader_id: string | null
@@ -524,6 +531,7 @@ export type Database = {
           geo_location?: unknown
           id?: string
           image_url?: string | null
+          multi_location_enabled?: boolean
           name: string
           postal_code?: string | null
           reader_id?: string | null
@@ -542,6 +550,7 @@ export type Database = {
           geo_location?: unknown
           id?: string
           image_url?: string | null
+          multi_location_enabled?: boolean
           name?: string
           postal_code?: string | null
           reader_id?: string | null
@@ -1540,6 +1549,7 @@ export type Database = {
           ends_at: string
           id: string
           kind: string
+          location_id: string
           staff_id: string
           starts_at: string
           updated_at: string | null
@@ -1550,6 +1560,7 @@ export type Database = {
           ends_at: string
           id?: string
           kind: string
+          location_id?: string
           staff_id: string
           starts_at: string
           updated_at?: string | null
@@ -1560,6 +1571,7 @@ export type Database = {
           ends_at?: string
           id?: string
           kind?: string
+          location_id?: string
           staff_id?: string
           starts_at?: string
           updated_at?: string | null
@@ -1591,6 +1603,7 @@ export type Database = {
           end_time: string
           id: string
           is_active: boolean
+          location_id: string
           staff_id: string
           start_time: string
           updated_at: string | null
@@ -1604,6 +1617,7 @@ export type Database = {
           end_time: string
           id?: string
           is_active?: boolean
+          location_id?: string
           staff_id: string
           start_time: string
           updated_at?: string | null
@@ -1617,6 +1631,7 @@ export type Database = {
           end_time?: string
           id?: string
           is_active?: boolean
+          location_id?: string
           staff_id?: string
           start_time?: string
           updated_at?: string | null
@@ -2326,6 +2341,31 @@ export type Database = {
       geomfromewkt: { Args: { "": string }; Returns: unknown }
       gettransactionid: { Args: never; Returns: unknown }
       longtransactionsenabled: { Args: never; Returns: boolean }
+      my_company_ids: { Args: never; Returns: string[] }
+      my_location_ids: { Args: never; Returns: string[] }
+      my_locations: {
+        Args: never
+        Returns: {
+          company_id: string
+          id: string
+          image_url: string | null
+          is_active: boolean
+          is_primary: boolean
+          name: string
+        }[]
+      }
+      my_memberships: {
+        Args: never
+        Returns: {
+          company_id: string
+          is_active: boolean
+          location_id: string | null
+          role_id: string
+          role_name: string
+          role_scope: string
+          source: string
+        }[]
+      }
       nearby_companies: {
         Args: { radius_m?: number; user_lat: number; user_lon: number }
         Returns: {

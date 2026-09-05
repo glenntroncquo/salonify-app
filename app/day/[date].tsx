@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { StaffAvatar } from '@/components/staff-avatar';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { fetchAppointmentsForMonth, fetchStaff } from '@/lib/api/calendar';
 
@@ -30,6 +31,7 @@ export default function DayScreen() {
   const router = useRouter();
   const { date, staffId: staffIdParam } = useLocalSearchParams<{ date: string; staffId?: string }>();
   const { companyId } = useAuth();
+  const { locationId } = useLocation();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
 
@@ -38,21 +40,21 @@ export default function DayScreen() {
   const [loading, setLoading] = React.useState(true);
 
   const load = React.useCallback(async () => {
-    if (!date || !companyId) {
+    if (!date || !companyId || !locationId) {
       setLoading(false);
       return;
     }
     setLoading(true);
     const target = new Date(date);
     const [appointments, staff] = await Promise.all([
-      fetchAppointmentsForMonth(companyId, target.getFullYear(), target.getMonth()),
-      fetchStaff(companyId),
+      fetchAppointmentsForMonth(companyId, locationId, target.getFullYear(), target.getMonth()),
+      fetchStaff(companyId, locationId),
     ]);
     const byDateKey = groupAppointmentsByDateKey(appointments, staffIdParam || null);
     setEvents(byDateKey[date] ?? []);
     setStaffImageById(new Map(staff.map((member) => [member.id, member.image_path])));
     setLoading(false);
-  }, [date, companyId, staffIdParam]);
+  }, [date, companyId, locationId, staffIdParam]);
 
   React.useEffect(() => {
     load();

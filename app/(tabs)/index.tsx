@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next';
 import { StaffAvatar } from '@/components/staff-avatar';
 import { ESTIMATED_TAB_BAR_HEIGHT } from '@/constants/layout';
 import { useAuth } from '@/contexts/auth-context';
+import { useLocation } from '@/contexts/location-context';
 import { fetchAppointmentsForMonth, fetchStaff, AppointmentRow, StaffMember } from '@/lib/api/calendar';
 
 import {
@@ -64,6 +65,7 @@ export default function CalendarScreen() {
   const { width, height } = useWindowDimensions();
   const gridWidth = width - 32;
   const { companyId } = useAuth();
+  const { locationId, loading: locationLoading } = useLocation();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);
@@ -144,7 +146,7 @@ export default function CalendarScreen() {
 
   const loadMonth = React.useCallback(
     async (offset: number, opts?: { force?: boolean }) => {
-      if (!companyId) return;
+      if (!companyId || !locationId) return;
       const { year, monthIndex, key } = monthKeyForOffset(offset);
 
       if (inFlightMonthsRef.current.has(key)) return;
@@ -154,7 +156,7 @@ export default function CalendarScreen() {
       setLoadingMonthKeys((prev) => new Set(prev).add(key));
 
       try {
-        const data = await fetchAppointmentsForMonth(companyId, year, monthIndex);
+        const data = await fetchAppointmentsForMonth(companyId, locationId, year, monthIndex);
         monthDataRef.current.set(key, data);
         monthEventsCacheRef.current.delete(key);
         setError(null);
@@ -169,23 +171,32 @@ export default function CalendarScreen() {
         });
       }
     },
-    [companyId, monthKeyForOffset, t]
+    [companyId, locationId, monthKeyForOffset, t]
   );
 
   const loadStaff = React.useCallback(async () => {
-    if (!companyId) {
+    if (!companyId || !locationId) {
       setStaffLoading(false);
       return;
     }
+    setStaffLoading(true);
     try {
-      const data = await fetchStaff(companyId);
+      const data = await fetchStaff(companyId, locationId);
       setStaffList(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('calendar.failedToLoadStaff'));
     } finally {
       setStaffLoading(false);
     }
-  }, [companyId, t]);
+  }, [companyId, locationId, t]);
+
+  React.useEffect(() => {
+    monthDataRef.current.clear();
+    monthEventsCacheRef.current.clear();
+    inFlightMonthsRef.current.clear();
+    setLoadingMonthKeys(new Set());
+    setStaffFilterId(null);
+  }, [locationId]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -645,8 +656,9 @@ export default function CalendarScreen() {
     });
   }, [showStaffMenu]);
 
-  const showInitialLoading = staffLoading && !error;
-  const showNoCompanyState = !staffLoading && !companyId;
+  const showInitialLoading = (staffLoading || locationLoading) && !error;
+  const showNoCompanyState = !staffLoading && !locationLoading && !companyId;
+  const showNoLocationState = !staffLoading && !locationLoading && !!companyId && !locationId;
 
   return (
     <TabSwipeArea next="/list">
@@ -658,6 +670,10 @@ export default function CalendarScreen() {
       ) : showNoCompanyState ? (
         <View style={styles.stateContainer}>
           <Text style={styles.stateText}>{t('calendar.noCompany')}</Text>
+        </View>
+      ) : showNoLocationState ? (
+        <View style={styles.stateContainer}>
+          <Text style={styles.stateText}>{t('calendar.noLocation')}</Text>
         </View>
       ) : (
         <View style={styles.container} ref={containerRef} collapsable={false}>

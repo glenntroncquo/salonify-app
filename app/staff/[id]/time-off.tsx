@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ScheduleException, deleteTimeOff, fetchTimeOff } from '@/lib/api/staff';
 
@@ -30,6 +31,7 @@ export default function StaffTimeOffScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { companyId } = useAuth();
+  const { locationId } = useLocation();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);
@@ -44,7 +46,7 @@ export default function StaffTimeOffScreen() {
       return;
     }
     try {
-      const data = await fetchTimeOff(id, companyId);
+      const data = await fetchTimeOff(id, companyId, locationId ?? undefined);
       setBlocks(data);
       setError(null);
     } catch (err) {
@@ -52,7 +54,7 @@ export default function StaffTimeOffScreen() {
     } finally {
       setLoading(false);
     }
-  }, [id, companyId, t]);
+  }, [id, companyId, locationId, t]);
 
   useFocusEffect(
     React.useCallback(() => {

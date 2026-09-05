@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { DateTimeField } from '@/components/date-time-field';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { createTimeOff } from '@/lib/api/staff';
 
@@ -42,6 +43,7 @@ export default function StaffTimeOffNewScreen() {
   const router = useRouter();
   const { staffId } = useLocalSearchParams<{ staffId: string }>();
   const { companyId } = useAuth();
+  const { locationId } = useLocation();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
 
@@ -52,7 +54,7 @@ export default function StaffTimeOffNewScreen() {
   const [error, setError] = React.useState<string | null>(null);
 
   const handleSave = async () => {
-    if (!staffId || !companyId) return;
+    if (!staffId || !companyId || !locationId) return;
     setSaving(true);
     setError(null);
     try {
@@ -63,7 +65,8 @@ export default function StaffTimeOffNewScreen() {
         startTime.getHours(),
         startTime.getMinutes(),
         endTime.getHours(),
-        endTime.getMinutes()
+        endTime.getMinutes(),
+        locationId
       );
       router.back();
     } catch {

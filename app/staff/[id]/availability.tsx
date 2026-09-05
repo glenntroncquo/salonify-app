@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { DateTimeField } from '@/components/date-time-field';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import i18n from '@/lib/i18n';
 import {
@@ -56,6 +57,7 @@ export default function StaffAvailabilityScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { companyId } = useAuth();
+  const { locationId } = useLocation();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);
@@ -77,7 +79,7 @@ export default function StaffAvailabilityScreen() {
       return;
     }
     try {
-      const slots = await fetchScheduleRules(id, companyId);
+      const slots = await fetchScheduleRules(id, companyId, locationId ?? undefined);
       const byDay = new Map<number, ScheduleRule[]>();
       slots.forEach((slot) => {
         const list = byDay.get(slot.day_of_week) ?? [];
@@ -112,14 +114,14 @@ export default function StaffAvailabilityScreen() {
     } finally {
       setLoading(false);
     }
-  }, [id, companyId, t]);
+  }, [id, companyId, locationId, t]);
 
   React.useEffect(() => {
     load();
   }, [load]);
 
   const handleSave = async () => {
-    if (!id || !companyId) return;
+    if (!id || !companyId || !locationId) return;
     setSaving(true);
     setError(null);
     try {
@@ -144,7 +146,8 @@ export default function StaffAvailabilityScreen() {
               state.start.getHours(),
               state.start.getMinutes(),
               state.end.getHours(),
-              state.end.getMinutes()
+              state.end.getMinutes(),
+              locationId
             );
           } else if (!state.working && state.existingId) {
             await deleteScheduleRule(state.existingId);
