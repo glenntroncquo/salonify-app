@@ -48,7 +48,7 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ThemedView style={styles.container}>
         <ThemedText type="title" style={styles.title}>
-          Salonify
+          Gleami
         </ThemedText>
         <ThemedText style={styles.subtitle} lightColor={theme.muted} darkColor={theme.muted}>
           {t('auth.signInSubtitle')}
