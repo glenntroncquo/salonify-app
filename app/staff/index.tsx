@@ -91,7 +91,7 @@ export default function StaffListScreen() {
           }
           renderItem={({ item }) => {
             const name = staffName(item, t('calendar.employee'));
-            const subtitle = [item.role, item.specialization].filter(Boolean).join(' · ');
+            const subtitle = item.specialization ?? '';
             return (
               <Pressable style={styles.row} onPress={() => router.push({ pathname: '/staff/[id]', params: { id: item.id } })}>
                 <StaffAvatar

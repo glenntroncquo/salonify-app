@@ -23,7 +23,6 @@ export default function NewStaffScreen() {
   const [lastName, setLastName] = React.useState('');
   const [email, setEmail] = React.useState('');
   const [phone, setPhone] = React.useState('');
-  const [role, setRole] = React.useState('');
   const [specialization, setSpecialization] = React.useState('');
   const [saving, setSaving] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
@@ -43,7 +42,6 @@ export default function NewStaffScreen() {
         lastName: lastName.trim(),
         email: email.trim(),
         phone: phone.trim(),
-        role: role.trim(),
         specialization: specialization.trim(),
         status: '',
       });
@@ -102,7 +100,6 @@ export default function NewStaffScreen() {
           onChangeText={setPhone}
           keyboardType="phone-pad"
         />
-        <TextInput style={styles.input} placeholder={t('staff.role')} value={role} onChangeText={setRole} />
         <TextInput
           style={styles.input}
           placeholder={t('staff.specialization')}

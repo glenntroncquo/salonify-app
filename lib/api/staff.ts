@@ -6,7 +6,6 @@ export type Staff = {
   last_name: string | null;
   email: string;
   phone: string | null;
-  role: string | null;
   specialization: string | null;
   status: string | null;
   image_path: string | null;
@@ -17,12 +16,11 @@ export type StaffFields = {
   lastName: string;
   email: string;
   phone: string;
-  role: string;
   specialization: string;
   status: string;
 };
 
-const STAFF_SELECT = 'id, first_name, last_name, email, phone, role, specialization, status, image_path';
+const STAFF_SELECT = 'id, first_name, last_name, email, phone, specialization, status, image_path';
 
 export async function fetchAllStaff(companyId: string): Promise<Staff[]> {
   const { data, error } = await supabase
@@ -50,7 +48,6 @@ export async function createStaff(companyId: string, fields: StaffFields): Promi
       last_name: fields.lastName || null,
       email: fields.email,
       phone: fields.phone || null,
-      role: fields.role || null,
       specialization: fields.specialization || null,
       status: fields.status || null,
     })
@@ -67,7 +64,6 @@ export async function updateStaff(staffId: string, fields: Partial<StaffFields>)
     last_name?: string | null;
     email?: string;
     phone?: string | null;
-    role?: string | null;
     specialization?: string | null;
     status?: string | null;
   } = {};
@@ -75,7 +71,6 @@ export async function updateStaff(staffId: string, fields: Partial<StaffFields>)
   if (fields.lastName !== undefined) patch.last_name = fields.lastName || null;
   if (fields.email !== undefined) patch.email = fields.email;
   if (fields.phone !== undefined) patch.phone = fields.phone || null;
-  if (fields.role !== undefined) patch.role = fields.role || null;
   if (fields.specialization !== undefined) patch.specialization = fields.specialization || null;
   if (fields.status !== undefined) patch.status = fields.status || null;
 

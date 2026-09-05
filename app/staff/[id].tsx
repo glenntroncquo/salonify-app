@@ -29,7 +29,6 @@ export default function StaffDetailScreen() {
   const [lastName, setLastName] = React.useState('');
   const [email, setEmail] = React.useState('');
   const [phone, setPhone] = React.useState('');
-  const [role, setRole] = React.useState('');
   const [specialization, setSpecialization] = React.useState('');
   const [status, setStatus] = React.useState('');
 
@@ -46,7 +45,6 @@ export default function StaffDetailScreen() {
         setLastName(data.last_name ?? '');
         setEmail(data.email ?? '');
         setPhone(data.phone ?? '');
-        setRole(data.role ?? '');
         setSpecialization(data.specialization ?? '');
         setStatus(data.status ?? '');
       }
@@ -71,7 +69,6 @@ export default function StaffDetailScreen() {
         lastName: lastName.trim(),
         email: email.trim(),
         phone: phone.trim(),
-        role: role.trim(),
         specialization: specialization.trim(),
         status: status.trim(),
       });
@@ -147,7 +144,6 @@ export default function StaffDetailScreen() {
             onChangeText={setPhone}
             keyboardType="phone-pad"
           />
-          <TextInput style={styles.input} placeholder={t('staff.role')} value={role} onChangeText={setRole} />
           <TextInput
             style={styles.input}
             placeholder={t('staff.specialization')}
