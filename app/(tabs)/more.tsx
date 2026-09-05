@@ -37,6 +37,11 @@ export default function MoreScreen() {
   const { user, companyId, signOut } = useAuth();
   const [profile, setProfile] = React.useState<StaffProfile | null>(null);
   const [profileLoading, setProfileLoading] = React.useState(true);
+  const [shouldCrash, setShouldCrash] = React.useState(false);
+
+  if (__DEV__ && shouldCrash) {
+    throw new Error('Sentry test render crash (__DEV__)');
+  }
 
   const loadProfile = React.useCallback(async () => {
     if (!user || !companyId) {
@@ -130,6 +135,14 @@ export default function MoreScreen() {
           <AppIcon name="chevronRight" size={20} color={theme.muted} />
         </Pressable>
       </View>
+
+      {__DEV__ ? (
+        <Pressable style={styles.signOutButton} onPress={() => setShouldCrash(true)}>
+          <ThemedText style={styles.signOutText} lightColor={Colors.light.error} darkColor={Colors.dark.error}>
+            {t('errorBoundary.testCrash')}
+          </ThemedText>
+        </Pressable>
+      ) : null}
 
       <Pressable style={styles.signOutButton} onPress={signOut}>
         <ThemedText style={styles.signOutText} lightColor={Colors.light.error} darkColor={Colors.dark.error}>

@@ -239,5 +239,11 @@
   "profile": {
     "signOut": "Uitloggen",
     "language": "Taal"
+  },
+  "errorBoundary": {
+    "title": "Er is iets misgegaan",
+    "message": "De app is tegen een probleem aangelopen. Je kunt het opnieuw proberen.",
+    "retry": "Opnieuw proberen",
+    "testCrash": "Testcrash (dev)"
   }
 }

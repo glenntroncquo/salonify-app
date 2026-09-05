@@ -45,8 +45,20 @@
         }
       ],
       "expo-localization",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://de.sentry.io/",
+          "organization": "gleami",
+          "project": "gleami",
+          "note": "Use SENTRY_AUTH_TOKEN env to authenticate with Sentry. Do not put the token here."
+        }
+      ]
     ],
+    "extra": {
+      "sentryDsn": "https://f538d29e8552491263993c60be9477d0@o4512034656813056.ingest.de.sentry.io/4512034662580304"
+    },
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
