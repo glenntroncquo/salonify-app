@@ -149,7 +149,6 @@
     "failedToSave": "Falha ao salvar funcionário. Tente novamente.",
     "noStaff": "Ainda não há funcionários",
     "addNew": "Novo funcionário",
-    "role": "Função",
     "specialization": "Especialização",
     "status": "Status",
     "availability": "Disponibilidade",
