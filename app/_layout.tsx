@@ -62,7 +62,6 @@ function RootNavigator() {
     <Stack>
       <Stack.Protected guard={!!session}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
         <Stack.Screen name="day/[date]" options={{ presentation: 'modal' }} />
         <Stack.Screen name="appointment-new" options={{ presentation: 'modal' }} />
         <Stack.Screen name="appointment/[id]" options={{ presentation: 'modal' }} />
