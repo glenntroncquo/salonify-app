@@ -137,7 +137,7 @@ export default function NewAppointmentScreen() {
       .catch(() => setStaffList([]))
       .finally(() => setStaffLoading(false));
 
-    fetchServices(companyId)
+    fetchServices(companyId, locationId)
       .then(setServicesList)
       .catch(() => setServicesList([]));
   }, [companyId, locationId]);

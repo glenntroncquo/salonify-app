@@ -2,7 +2,7 @@ import type { Session, User } from '@supabase/supabase-js';
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
 import { hydrateCompanyIds, jwtCompanyIds, pickPreferredId } from '@/lib/api/memberships';
-import { readPreferredCompanyId, writePreferredCompanyId } from '@/lib/preferences';
+import { clearSessionPreferences, readPreferredCompanyId, writePreferredCompanyId } from '@/lib/preferences';
 import { supabase } from '@/lib/supabase';
 
 interface AuthContextType {
@@ -72,10 +72,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const membershipIds = await hydrateCompanyIds(jwtIds);
-      const picked = pickPreferredId(membershipIds, stored) ?? membershipIds[0] ?? seed ?? stored ?? null;
+      const picked = pickPreferredId(membershipIds, stored);
       if (cancelled) return;
 
-      setCompanyIds(membershipIds.length > 0 ? membershipIds : picked ? [picked] : []);
+      setCompanyIds(membershipIds);
       setCompanyId(picked);
       if (picked) {
         void writePreferredCompanyId(picked);
@@ -100,6 +100,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    await clearSessionPreferences();
     await supabase.auth.signOut();
   };
 

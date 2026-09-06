@@ -49,6 +49,12 @@ export default function ClientsScreen() {
       return;
     }
     if (locationLoading) return;
+    if (!locationId) {
+      setClients([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     try {
       const data = await fetchClients(companyId, locationId);
       setClients(data);
@@ -84,6 +90,7 @@ export default function ClientsScreen() {
 
   const showInitialLoading = (loading || locationLoading) && !error;
   const showNoCompanyState = !loading && !locationLoading && !companyId;
+  const showNoLocationState = !loading && !locationLoading && !!companyId && !locationId;
 
   return (
     <TabSwipeArea next="/more" prev="/">
@@ -121,6 +128,10 @@ export default function ClientsScreen() {
       ) : showNoCompanyState ? (
         <View style={styles.stateContainer}>
           <Text style={styles.stateText}>{t('calendar.noCompany')}</Text>
+        </View>
+      ) : showNoLocationState ? (
+        <View style={styles.stateContainer}>
+          <Text style={styles.stateText}>{t('calendar.noLocation')}</Text>
         </View>
       ) : (
         <FlatList

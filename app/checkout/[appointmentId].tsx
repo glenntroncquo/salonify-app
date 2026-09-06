@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   CheckoutLineItem,
@@ -26,6 +27,7 @@ export default function CheckoutScreen() {
   const router = useRouter();
   const { appointmentId } = useLocalSearchParams<{ appointmentId: string }>();
   const { companyId } = useAuth();
+  const { locationId } = useLocation();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);
@@ -79,6 +81,7 @@ export default function CheckoutScreen() {
     try {
       const result = await createOrderWithPayment({
         companyId,
+        locationId: locationId ?? undefined,
         appointmentId,
         clientId: clientId ?? undefined,
         lineItems,

@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { fetchOrders, OrderListItem } from '@/lib/api/orders';
 
@@ -29,6 +30,7 @@ export default function OrdersListScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { companyId } = useAuth();
+  const { locationId, loading: locationLoading } = useLocation();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);
@@ -43,8 +45,15 @@ export default function OrdersListScreen() {
       setLoading(false);
       return;
     }
+    if (locationLoading) return;
+    if (!locationId) {
+      setOrders([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     try {
-      const data = await fetchOrders(companyId);
+      const data = await fetchOrders(companyId, locationId);
       setOrders(data);
       setError(null);
     } catch (err) {
@@ -52,7 +61,7 @@ export default function OrdersListScreen() {
     } finally {
       setLoading(false);
     }
-  }, [companyId, t]);
+  }, [companyId, locationId, locationLoading, t]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -66,7 +75,8 @@ export default function OrdersListScreen() {
     setRefreshing(false);
   }, [load]);
 
-  const showNoCompanyState = !loading && !companyId;
+  const showNoCompanyState = !loading && !locationLoading && !companyId;
+  const showNoLocationState = !loading && !locationLoading && !!companyId && !locationId;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
@@ -78,13 +88,17 @@ export default function OrdersListScreen() {
         </View>
       ) : null}
 
-      {loading ? (
+      {loading || locationLoading ? (
         <View style={styles.stateContainer}>
           <ActivityIndicator size="large" color={theme.text} />
         </View>
       ) : showNoCompanyState ? (
         <View style={styles.stateContainer}>
           <Text style={styles.stateText}>{t('calendar.noCompany')}</Text>
+        </View>
+      ) : showNoLocationState ? (
+        <View style={styles.stateContainer}>
+          <Text style={styles.stateText}>{t('calendar.noLocation')}</Text>
         </View>
       ) : (
         <FlatList

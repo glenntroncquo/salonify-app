@@ -42,45 +42,35 @@ export type RevenueData = {
 };
 
 /**
- * Mirrors the web dashboard's revenue query: `order` rows are scoped to a
- * company indirectly (via `order_item.company_id`, since `order` itself
- * isn't filtered directly), summing `total_amount` (gross) and `subtotal`
- * (net) per month. Matches web's own behavior of not filtering by
- * payment/order status — every order in range counts.
+ * Live `order` has `company_id` + `location_id` (generated snapshot is stale).
+ * Sum `total_amount` (gross) and `subtotal` (net) per month. No payment-status
+ * filter — every order in range counts.
  */
-export async function fetchRevenue(companyId: string): Promise<RevenueData> {
+export async function fetchRevenue(companyId: string, locationId?: string | null): Promise<RevenueData> {
   const months = buildMonthSkeleton(12);
   const rangeStart = new Date(months[0].year, months[0].monthIndex, 1);
   const rangeEndExclusive = new Date(months[months.length - 1].year, months[months.length - 1].monthIndex + 1, 1);
 
-  const { data: orderItemRows, error: itemError } = await supabase
-    .from('order_item')
-    .select('order_id')
-    .eq('company_id', companyId);
-  if (itemError) throw itemError;
+  let query = live
+    .from('order')
+    .select('id, created_at, total_amount, subtotal')
+    .eq('company_id', companyId)
+    .gte('created_at', rangeStart.toISOString())
+    .lt('created_at', rangeEndExclusive.toISOString());
+  if (locationId) query = query.eq('location_id', locationId);
 
-  const orderIds = Array.from(new Set((orderItemRows ?? []).map((row) => row.order_id).filter((id): id is string => Boolean(id))));
+  const { data: orders, error: orderError } = await query;
+  if (orderError) throw orderError;
 
   const byKey = new Map<string, { revenue: number; revenueExclVat: number }>();
-
-  if (orderIds.length > 0) {
-    const { data: orders, error: orderError } = await supabase
-      .from('order')
-      .select('id, created_at, total_amount, subtotal')
-      .in('id', orderIds)
-      .gte('created_at', rangeStart.toISOString())
-      .lt('created_at', rangeEndExclusive.toISOString());
-    if (orderError) throw orderError;
-
-    (orders ?? []).forEach((order) => {
-      const d = new Date(order.created_at);
-      const key = monthKey(d.getFullYear(), d.getMonth());
-      const entry = byKey.get(key) ?? { revenue: 0, revenueExclVat: 0 };
-      entry.revenue += order.total_amount ?? 0;
-      entry.revenueExclVat += order.subtotal ?? 0;
-      byKey.set(key, entry);
-    });
-  }
+  (orders ?? []).forEach((order: { created_at: string; total_amount: number | null; subtotal: number | null }) => {
+    const d = new Date(order.created_at);
+    const key = monthKey(d.getFullYear(), d.getMonth());
+    const entry = byKey.get(key) ?? { revenue: 0, revenueExclVat: 0 };
+    entry.revenue += order.total_amount ?? 0;
+    entry.revenueExclVat += order.subtotal ?? 0;
+    byKey.set(key, entry);
+  });
 
   const monthlyData = months.map((month) => ({
     ...month,
@@ -103,18 +93,21 @@ export type MonthlyCountData = {
 };
 
 /** Counts non-canceled appointments per month. Web also supports a treatment-filter dropdown; deferred as a nice-to-have, not essential for the default view. */
-export async function fetchMonthlyAppointments(companyId: string): Promise<MonthlyCountData> {
+export async function fetchMonthlyAppointments(companyId: string, locationId?: string | null): Promise<MonthlyCountData> {
   const months = buildMonthSkeleton(24);
   const rangeStart = new Date(months[0].year, months[0].monthIndex, 1);
   const rangeEndExclusive = new Date(months[months.length - 1].year, months[months.length - 1].monthIndex + 1, 1);
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('appointment')
     .select('start')
     .eq('company_id', companyId)
     .eq('is_canceled', false)
     .gte('start', rangeStart.toISOString())
     .lt('start', rangeEndExclusive.toISOString());
+  if (locationId) query = query.eq('location_id', locationId);
+
+  const { data, error } = await query;
   if (error) throw error;
 
   const byKey = new Map<string, number>();

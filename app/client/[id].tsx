@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { fetchClientAppointments } from '@/lib/api/calendar';
 import {
@@ -36,6 +37,7 @@ export default function ClientDetailScreen() {
   const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { companyId } = useAuth();
+  const { locationId, loading: locationLoading } = useLocation();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);
@@ -62,11 +64,12 @@ export default function ClientDetailScreen() {
       setLoading(false);
       return;
     }
+    if (locationLoading) return;
     try {
       const [clientData, notesData, appointmentsData] = await Promise.all([
         fetchClient(id),
         fetchClientNotes(id, companyId),
-        fetchClientAppointments(id, companyId),
+        locationId ? fetchClientAppointments(id, companyId, locationId) : Promise.resolve([]),
       ]);
       setClient(clientData);
       setNotes(notesData);
@@ -77,7 +80,7 @@ export default function ClientDetailScreen() {
     } finally {
       setLoading(false);
     }
-  }, [id, companyId, t]);
+  }, [id, companyId, locationId, locationLoading, t]);
 
   useFocusEffect(
     React.useCallback(() => {

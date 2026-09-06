@@ -141,14 +141,21 @@ export async function fetchStaff(companyId: string, locationId?: string): Promis
 }
 
 /** Appointment history for a single client, newest first (for the client detail screen). */
-export async function fetchClientAppointments(clientId: string, companyId: string): Promise<AppointmentRow[]> {
-  const { data, error } = await supabase
+export async function fetchClientAppointments(
+  clientId: string,
+  companyId: string,
+  locationId?: string | null
+): Promise<AppointmentRow[]> {
+  let query = supabase
     .from('appointment')
     .select(APPOINTMENT_SELECT)
     .eq('company_id', companyId)
     .eq('client_id', clientId)
     .eq('is_canceled', false)
     .order('start', { ascending: false });
+  if (locationId) query = query.eq('location_id', locationId);
+
+  const { data, error } = await query;
 
   if (error) throw error;
   return sortSegments((data as unknown as AppointmentRow[]) ?? []);

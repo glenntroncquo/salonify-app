@@ -1,5 +1,9 @@
 import { supabase } from '@/lib/supabase';
 
+/** Live `order.location_id` predates the generated snapshot in this repo. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const live = supabase as any;
+
 export type OrderListItem = {
   id: string;
   order_number: string | null;
@@ -11,14 +15,15 @@ export type OrderListItem = {
   client: { id: string; first_name: string | null; last_name: string | null } | null;
 };
 
-export async function fetchOrders(companyId: string, limit = 50): Promise<OrderListItem[]> {
-  const { data, error } = await supabase
+export async function fetchOrders(companyId: string, locationId?: string | null, limit = 50): Promise<OrderListItem[]> {
+  let query = live
     .from('order')
     .select('id, order_number, date, created_at, total_amount, payment_status, status, client:client_id ( id, first_name, last_name )')
-    .eq('company_id', companyId)
-    .order('date', { ascending: false })
-    .order('created_at', { ascending: false })
-    .limit(limit);
+    .eq('company_id', companyId);
+  if (locationId) query = query.eq('location_id', locationId);
+  query = query.order('date', { ascending: false }).order('created_at', { ascending: false }).limit(limit);
+
+  const { data, error } = await query;
 
   if (error) throw error;
   return (data as unknown as OrderListItem[]) ?? [];

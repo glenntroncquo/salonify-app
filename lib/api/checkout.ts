@@ -63,6 +63,7 @@ export type CheckoutPaymentType = 'cash' | 'card' | 'invoice' | 'bank_transfer';
 
 export type CreateOrderPayload = {
   companyId: string;
+  locationId?: string;
   appointmentId: string;
   clientId?: string;
   lineItems: CheckoutLineItem[];
@@ -74,6 +75,7 @@ export async function createOrderWithPayment(payload: CreateOrderPayload): Promi
   const { data, error } = await supabase.functions.invoke('order-create', {
     body: {
       company_id: payload.companyId,
+      ...(payload.locationId ? { location_id: payload.locationId, locationId: payload.locationId } : {}),
       appointment_id: payload.appointmentId,
       client_id: payload.clientId,
       treatments: payload.lineItems.map((item) => ({
