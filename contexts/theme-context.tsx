@@ -23,7 +23,13 @@ export function ThemePreferenceProvider({ children }: { children: React.ReactNod
   useEffect(() => {
     setHasHydrated(true);
   }, []);
-  const effectiveSystemScheme: 'light' | 'dark' = Platform.OS === 'web' && !hasHydrated ? 'light' : (systemScheme ?? 'light');
+  // RN 0.86 ColorSchemeName includes "unspecified"; treat that (and null) as light.
+  const effectiveSystemScheme: 'light' | 'dark' =
+    Platform.OS === 'web' && !hasHydrated
+      ? 'light'
+      : systemScheme === 'dark'
+        ? 'dark'
+        : 'light';
 
   const [preference, setPreferenceState] = useState<ThemePreference>('system');
 

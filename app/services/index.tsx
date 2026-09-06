@@ -1,7 +1,6 @@
 import { Pressable } from '@/components/pressable-scale';
 import { AppIcon } from '@/components/app-icon';
-import { useFocusEffect } from '@react-navigation/native';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import React from 'react';
 import {
   ActivityIndicator,

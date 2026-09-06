@@ -1,7 +1,6 @@
 import { Pressable } from '@/components/pressable-scale';
 import { HeaderButton } from '@/components/header-button';
-import { useFocusEffect } from '@react-navigation/native';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import React from 'react';
 import {
   ActivityIndicator,

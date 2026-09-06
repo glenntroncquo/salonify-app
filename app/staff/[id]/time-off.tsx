@@ -1,7 +1,6 @@
 import { Pressable } from '@/components/pressable-scale';
 import { SwipeableRow } from '@/components/swipeable-row';
-import { useFocusEffect } from '@react-navigation/native';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';

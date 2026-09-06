@@ -21,7 +21,7 @@ Then open the project in Expo Go, an iOS simulator, or an Android emulator.
 - `slug` / `scheme`: `gleami`
 - `ios.bundleIdentifier` / `android.package`: `com.gleami.staff`
 
-`extra.eas.projectId` is **not** set. On a machine logged into Expo, run `eas init` once and commit the generated project id before `eas build`.
+`extra.eas.projectId` is `0697a847-cb88-4e7c-b337-5641523fc443`.
 
 ## Crash reporting (Sentry)
 
@@ -35,7 +35,7 @@ eas secret:create --name SENTRY_AUTH_TOKEN --value <org-auth-token>
 
 Create the token in Sentry (DE region) under Settings → Auth Tokens. `SENTRY_ORG` / `SENTRY_PROJECT` / `SENTRY_URL` are already in `eas.json` (`https://de.sentry.io/`). Native maps are uploaded by the `@sentry/react-native/expo` plugin; `eas-build-on-success` also uploads `dist/` if present (EAS Update / `expo export`).
 
-Until `eas init` writes `extra.eas.projectId`, EAS builds cannot attach this repo — the Sentry plugin config is still in place for when that exists.
+EAS builds attach to this project via `extra.eas.projectId`. The Sentry plugin uploads native maps when `SENTRY_AUTH_TOKEN` is present.
 
 ## Brand assets
 
