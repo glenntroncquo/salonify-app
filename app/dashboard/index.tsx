@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { MonthlyBarChart } from '@/components/monthly-bar-chart';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { fetchMonthlyAppointments, fetchMonthlyClients, fetchRevenue, MonthlyCountData, RevenueData } from '@/lib/api/dashboard';
 
@@ -18,6 +19,7 @@ const RECENT_MONTHS = 6;
 export default function DashboardScreen() {
   const { t } = useTranslation();
   const { companyId } = useAuth();
+  const { locationId, loading: locationLoading } = useLocation();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);
@@ -33,11 +35,20 @@ export default function DashboardScreen() {
       setLoading(false);
       return;
     }
+    if (locationLoading) return;
+    if (!locationId) {
+      setRevenue(null);
+      setAppointments(null);
+      setClients(null);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     try {
       const [revenueData, appointmentsData, clientsData] = await Promise.all([
-        fetchRevenue(companyId),
-        fetchMonthlyAppointments(companyId),
-        fetchMonthlyClients(companyId),
+        fetchRevenue(companyId, locationId),
+        fetchMonthlyAppointments(companyId, locationId),
+        fetchMonthlyClients(companyId, locationId),
       ]);
       setRevenue(revenueData);
       setAppointments(appointmentsData);
@@ -48,7 +59,7 @@ export default function DashboardScreen() {
     } finally {
       setLoading(false);
     }
-  }, [companyId, t]);
+  }, [companyId, locationId, locationLoading, t]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -56,7 +67,8 @@ export default function DashboardScreen() {
     }, [load])
   );
 
-  const showNoCompanyState = !loading && !companyId;
+  const showNoCompanyState = !loading && !locationLoading && !companyId;
+  const showNoLocationState = !loading && !locationLoading && !!companyId && !locationId;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
@@ -68,13 +80,17 @@ export default function DashboardScreen() {
         </View>
       ) : null}
 
-      {loading ? (
+      {loading || locationLoading ? (
         <View style={styles.stateContainer}>
           <ActivityIndicator size="large" color={theme.text} />
         </View>
       ) : showNoCompanyState ? (
         <View style={styles.stateContainer}>
           <Text style={styles.stateText}>{t('calendar.noCompany')}</Text>
+        </View>
+      ) : showNoLocationState ? (
+        <View style={styles.stateContainer}>
+          <Text style={styles.stateText}>{t('calendar.noLocation')}</Text>
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent}>

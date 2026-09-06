@@ -1,5 +1,9 @@
 import { supabase } from '@/lib/supabase';
 
+/** Live `location_service` predates the generated snapshot in this repo. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const live = supabase as any;
+
 export type PhaseType = 'busy' | 'free' | 'buffer';
 
 export type ServiceVariantPhase = {
@@ -72,13 +76,26 @@ function compareVariants(a: ServiceVariant, b: ServiceVariant): number {
   return a.name.localeCompare(b.name);
 }
 
-export async function fetchServices(companyId: string): Promise<ServiceWithVariants[]> {
+export async function fetchServices(companyId: string, locationId?: string | null): Promise<ServiceWithVariants[]> {
+  if (!locationId) return [];
+
+  const { data: links, error: linkError } = await live
+    .from('location_service')
+    .select('service_id')
+    .eq('location_id', locationId);
+  if (linkError) throw linkError;
+  const serviceIds = ((links as { service_id?: string }[] | null) ?? [])
+    .map((row) => row.service_id)
+    .filter((id): id is string => typeof id === 'string' && id.length > 0);
+  if (serviceIds.length === 0) return [];
+
   const { data, error } = await supabase
     .from('service')
     .select(BOOKING_SERVICE_SELECT)
     .eq('company_id', companyId)
     .eq('is_active', true)
     .eq('is_deleted', false)
+    .in('id', serviceIds)
     .order('display_order', { ascending: true, nullsFirst: false })
     .order('name', { ascending: true });
 

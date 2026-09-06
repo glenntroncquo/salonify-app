@@ -59,7 +59,7 @@ export function jwtCompanyIds(appMetadata: Record<string, unknown> | undefined):
 
 export function pickPreferredId(ids: string[], preferred: string | null | undefined): string | null {
   if (preferred && ids.includes(preferred)) return preferred;
-  return ids[0] ?? preferred ?? null;
+  return ids[0] ?? null;
 }
 
 export function pickLocationId(locations: ShopLocation[], preferred: string | null | undefined): string | null {
@@ -98,7 +98,8 @@ export async function fetchMyLocations(): Promise<ShopLocation[]> {
 export async function hydrateCompanyIds(jwtFallback: string[]): Promise<string[]> {
   try {
     const ids = await withTimeout(fetchMyCompanyIds(), null);
-    if (ids && ids.length > 0) return ids;
+    // Empty array is a real "no memberships" result — do not treat it as a timeout.
+    if (ids !== null) return ids;
   } catch {
     // Fall through to JWT cache so hydrate cannot hang (Safari-style).
   }

@@ -141,11 +141,18 @@ export async function fetchStaff(companyId: string, locationId?: string): Promis
 }
 
 /** Appointment history for a single client, newest first (for the client detail screen). */
-export async function fetchClientAppointments(clientId: string, companyId: string): Promise<AppointmentRow[]> {
+export async function fetchClientAppointments(
+  clientId: string,
+  companyId: string,
+  locationId?: string | null
+): Promise<AppointmentRow[]> {
+  if (!locationId) return [];
+
   const { data, error } = await supabase
     .from('appointment')
     .select(APPOINTMENT_SELECT)
     .eq('company_id', companyId)
+    .eq('location_id', locationId)
     .eq('client_id', clientId)
     .eq('is_canceled', false)
     .order('start', { ascending: false });
@@ -173,8 +180,8 @@ export async function fetchStaffAppointments(
       service: service_id ( id, name, color ),
       service_variant: service_variant_id ( id, name ),
       staff: staff_id ( id, first_name, last_name, image_path ),
-      appointment: appointment_id (
-        id, start, end, notes, staff_notes, is_canceled,
+      appointment: appointment_id!inner (
+        id, start, end, notes, staff_notes, is_canceled, location_id,
         client: client_id ( id, first_name, last_name, email ),
         staff: staff_id ( id, first_name, last_name, image_path )
       )
@@ -186,7 +193,7 @@ export async function fetchStaffAppointments(
     .lt('starts_at', rangeEndExclusive.toISOString());
 
   if (locationId) {
-    query = query.eq('location_id', locationId);
+    query = query.eq('appointment.location_id', locationId);
   }
 
   const { data, error } = await query;
@@ -237,6 +244,7 @@ type StaffSegmentQueryRow = AppointmentSegmentRow & {
     notes: string | null;
     staff_notes: string | null;
     is_canceled: boolean;
+    location_id?: string;
     client: AppointmentRow['client'];
     staff: AppointmentRow['staff'];
   } | null;

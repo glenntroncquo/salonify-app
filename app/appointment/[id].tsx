@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { fetchAppointmentById, fetchClientAppointments } from '@/lib/api/calendar';
 import { addClientNote, Client, ClientNote, fetchClient, fetchClientNotes } from '@/lib/api/clients';
@@ -23,6 +24,7 @@ export default function AppointmentDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { companyId } = useAuth();
+  const { locationId, loading: locationLoading } = useLocation();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
 
@@ -40,6 +42,7 @@ export default function AppointmentDetailScreen() {
       setLoading(false);
       return;
     }
+    if (locationLoading) return;
     setLoading(true);
     try {
       const appointment = await fetchAppointmentById(id);
@@ -55,7 +58,7 @@ export default function AppointmentDetailScreen() {
         const [clientData, notesData, appointmentsData] = await Promise.all([
           fetchClient(clientId),
           fetchClientNotes(clientId, companyId),
-          fetchClientAppointments(clientId, companyId),
+          locationId ? fetchClientAppointments(clientId, companyId, locationId) : Promise.resolve([]),
         ]);
         setClient(clientData);
         setNotes(notesData);
@@ -67,7 +70,7 @@ export default function AppointmentDetailScreen() {
     } finally {
       setLoading(false);
     }
-  }, [id, companyId, t]);
+  }, [id, companyId, locationId, locationLoading, t]);
 
   React.useEffect(() => {
     load();
