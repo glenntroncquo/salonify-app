@@ -6,7 +6,8 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-nat
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { groupAppointmentsByDateKey } from '@/app/(tabs)/calendar/calendar-data';
+import { groupAppointmentsByDateKey, listVisitBlockHeight } from '@/app/(tabs)/calendar/calendar-data';
+import { VisitPhaseBar } from '@/components/visit-phase-bar';
 import { addDays, getISOWeekNumber, getMonthShortLabel, getWeekStartMonday, getWeekdayLong, toDateKey } from '@/app/(tabs)/calendar/date-utils';
 import { EventItem } from '@/app/(tabs)/calendar/types';
 import { Colors } from '@/constants/theme';
@@ -176,9 +177,14 @@ export default function StaffScheduleScreen() {
                   <Text style={styles.noAppointmentsText}>{t('calendar.noAppointmentsToday')}</Text>
                 ) : (
                   events.map((event) => (
-                    <View key={event.id} style={styles.appointmentRow}>
-                      <View style={[styles.colorBar, { backgroundColor: event.color }]} />
-                      <Text style={styles.appointmentTime}>{event.startTime}</Text>
+                    <View key={event.id} style={[styles.appointmentRow, { minHeight: listVisitBlockHeight(event) + 8 }]}>
+                      <VisitPhaseBar
+                        phases={event.phases}
+                        color={event.color}
+                        bgColor={event.bgColor}
+                        height={listVisitBlockHeight(event)}
+                      />
+                      <Text style={styles.appointmentTime}>{`${event.startTime}–${event.endTime}`}</Text>
                       <Text style={styles.appointmentLabel} numberOfLines={1}>
                         {event.label}
                       </Text>
@@ -320,7 +326,7 @@ const createStyles = (theme: typeof Colors.light) =>
       fontSize: 12,
       fontWeight: '700',
       color: theme.text,
-      width: 42,
+      width: 72,
     },
     appointmentLabel: {
       fontSize: 13,

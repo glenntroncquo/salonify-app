@@ -1,9 +1,19 @@
 import { Pressable } from '@/components/pressable-scale';
 import { AppIcon } from '@/components/app-icon';
 import { HeaderButton } from '@/components/header-button';
+import { VisitPhaseBar } from '@/components/visit-phase-bar';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  DeviceEventEmitter,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
@@ -11,12 +21,14 @@ import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { fetchAppointmentById, fetchClientAppointments } from '@/lib/api/calendar';
+import { cancelAppointment } from '@/lib/api/appointment-cancel';
+import { isAppointmentCanceled } from '@/lib/api/appointment-status';
+import { fetchAppointmentById, fetchClientAppointments, type AppointmentRow } from '@/lib/api/calendar';
 import { addClientNote, Client, ClientNote, fetchClient, fetchClientNotes } from '@/lib/api/clients';
 import { getInitialsFromLabel } from '@/lib/text';
 
-import { appointmentToEvent } from '../(tabs)/calendar/calendar-data';
-import { getListHeaderLabel, toDateKey } from '../(tabs)/calendar/date-utils';
+import { appointmentToEvent, listVisitBlockHeight } from '../(tabs)/calendar/calendar-data';
+import { getListHeaderLabel, toDateKey, toDateKeyFromSalonClock } from '../(tabs)/calendar/date-utils';
 import { EventItem } from '../(tabs)/calendar/types';
 
 export default function AppointmentDetailScreen() {
@@ -29,12 +41,14 @@ export default function AppointmentDetailScreen() {
   const theme = Colors[colorScheme];
 
   const [event, setEvent] = React.useState<EventItem | null>(null);
+  const [appointment, setAppointment] = React.useState<AppointmentRow | null>(null);
   const [client, setClient] = React.useState<Client | null>(null);
   const [notes, setNotes] = React.useState<ClientNote[]>([]);
   const [newNote, setNewNote] = React.useState('');
   const [addingNote, setAddingNote] = React.useState(false);
   const [history, setHistory] = React.useState<EventItem[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [cancelling, setCancelling] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   const load = React.useCallback(async () => {
@@ -51,6 +65,7 @@ export default function AppointmentDetailScreen() {
         return;
       }
       const nextEvent = appointmentToEvent(appointment);
+      setAppointment(appointment);
       setEvent(nextEvent);
 
       const clientId = nextEvent.clientId;
@@ -93,6 +108,42 @@ export default function AppointmentDetailScreen() {
     }
   };
 
+  const handleCancel = () => {
+    const clientId = event?.clientId ?? appointment?.client_id;
+    const company = appointment?.company_id ?? companyId;
+    const shopId = appointment?.location_id ?? locationId;
+    if (!event || !clientId || !company) {
+      setError(t('appointment.cancelFailed'));
+      return;
+    }
+
+    Alert.alert(t('appointment.cancelConfirmTitle'), t('appointment.cancelConfirmMessage'), [
+      { text: t('appointment.cancel'), style: 'cancel' },
+      {
+        text: t('appointment.cancelConfirmAction'),
+        style: 'destructive',
+        onPress: async () => {
+          setCancelling(true);
+          try {
+            await cancelAppointment({
+              appointmentId: event.appointmentId,
+              clientId,
+              companyId: company,
+              locationId: shopId,
+            });
+            DeviceEventEmitter.emit('calendarRefreshAppointments');
+            router.back();
+          } catch (err) {
+            setError(err instanceof Error ? err.message : t('appointment.cancelFailed'));
+          } finally {
+            setCancelling(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  const canceled = event?.canceled || (appointment ? isAppointmentCanceled(appointment) : false);
   const clientDisplayName =
     client && (client.first_name || client.last_name)
       ? `${client.first_name ?? ''} ${client.last_name ?? ''}`.trim()
@@ -109,15 +160,16 @@ export default function AppointmentDetailScreen() {
               <AppIcon name="close" size={18} color={theme.text} />
             </HeaderButton>
           ),
-          headerRight: () => (
-            <HeaderButton
-              onPress={() => {
-                if (event) router.push({ pathname: '/checkout/[appointmentId]', params: { appointmentId: event.appointmentId } });
-              }}
-              hitSlop={8}>
-              <AppIcon name="pointOfSale" size={22} color={theme.tint} />
-            </HeaderButton>
-          ),
+          headerRight: () =>
+            event && !canceled ? (
+              <HeaderButton
+                onPress={() => {
+                  router.push({ pathname: '/checkout/[appointmentId]', params: { appointmentId: event.appointmentId } });
+                }}
+                hitSlop={8}>
+                <AppIcon name="pointOfSale" size={22} color={theme.tint} />
+              </HeaderButton>
+            ) : null,
         }}
       />
 
@@ -133,13 +185,21 @@ export default function AppointmentDetailScreen() {
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <View style={styles.section}>
             <View style={styles.appointmentRow}>
-              <View style={[styles.colorBar, { backgroundColor: event.color }]} />
+              <VisitPhaseBar
+                phases={event.phases}
+                color={event.color}
+                bgColor={event.bgColor}
+                height={listVisitBlockHeight(event)}
+              />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.appointmentTitle, { color: theme.text }]}>{event.label}</Text>
                 <Text style={[styles.appointmentSubtitle, { color: theme.muted }]}>
-                  {`${getListHeaderLabel(toDateKey(new Date(event.startISO)))} · ${event.startTime}–${event.endTime}`}
+                  {`${getListHeaderLabel(toDateKeyFromSalonClock(event.startISO))} · ${event.startTime}–${event.endTime}`}
                 </Text>
                 <Text style={[styles.appointmentSubtitle, { color: theme.muted }]}>{event.staffName}</Text>
+                {canceled ? (
+                  <Text style={[styles.canceledBadge, { color: theme.error }]}>{t('appointment.canceled')}</Text>
+                ) : null}
               </View>
             </View>
           </View>
@@ -208,13 +268,26 @@ export default function AppointmentDetailScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.historyTitle, { color: theme.text }]}>{historyEvent.label}</Text>
                     <Text style={[styles.historySubtitle, { color: theme.muted }]}>
-                      {`${getListHeaderLabel(toDateKey(new Date(historyEvent.startISO)))} · ${historyEvent.startTime}–${historyEvent.endTime}`}
+                      {`${getListHeaderLabel(toDateKeyFromSalonClock(historyEvent.startISO))} · ${historyEvent.startTime}–${historyEvent.endTime}`}
                     </Text>
                   </View>
                 </View>
               ))
             )}
           </View>
+
+          {!canceled ? (
+            <Pressable
+              style={[styles.cancelButton, { borderColor: theme.error }]}
+              onPress={handleCancel}
+              disabled={cancelling}>
+              {cancelling ? (
+                <ActivityIndicator size="small" color={theme.error} />
+              ) : (
+                <Text style={[styles.cancelButtonText, { color: theme.error }]}>{t('appointment.cancelAppointment')}</Text>
+              )}
+            </Pressable>
+          ) : null}
         </ScrollView>
       )}
     </SafeAreaView>
@@ -358,5 +431,21 @@ const styles = StyleSheet.create({
   historySubtitle: {
     fontSize: 12,
     marginTop: 2,
+  },
+  canceledBadge: {
+    marginTop: 6,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  cancelButton: {
+    marginTop: 8,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
   },
 });
