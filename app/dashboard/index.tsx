@@ -4,6 +4,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-nat
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { EmptyState } from '@/components/empty-state';
 import { MonthlyBarChart } from '@/components/monthly-bar-chart';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
@@ -84,13 +85,9 @@ export default function DashboardScreen() {
           <ActivityIndicator size="large" color={theme.text} />
         </View>
       ) : showNoCompanyState ? (
-        <View style={styles.stateContainer}>
-          <Text style={styles.stateText}>{t('calendar.noCompany')}</Text>
-        </View>
+        <EmptyState icon="viewAgenda" title={t('calendar.noCompany')} />
       ) : showNoLocationState ? (
-        <View style={styles.stateContainer}>
-          <Text style={styles.stateText}>{t('calendar.noLocation')}</Text>
-        </View>
+        <EmptyState icon="viewAgenda" title={t('calendar.noLocation')} />
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {revenue ? (

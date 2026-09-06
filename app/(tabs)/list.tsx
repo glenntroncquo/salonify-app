@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { EmptyState } from '@/components/empty-state';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
@@ -125,25 +126,33 @@ export default function ClientsScreen() {
           <ActivityIndicator size="large" color={theme.text} />
         </View>
       ) : showNoCompanyState ? (
-        <View style={styles.stateContainer}>
-          <Text style={styles.stateText}>{t('calendar.noCompany')}</Text>
-        </View>
+        <EmptyState icon="peopleOutline" title={t('calendar.noCompany')} />
       ) : showNoLocationState ? (
-        <View style={styles.stateContainer}>
-          <Text style={styles.stateText}>{t('calendar.noLocation')}</Text>
-        </View>
+        <EmptyState icon="peopleOutline" title={t('calendar.noLocation')} />
       ) : (
         <FlatList
           data={filteredClients}
           keyExtractor={(item) => item.id}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, filteredClients.length === 0 && styles.listContentEmpty]}
           ListEmptyComponent={
-            <View style={styles.stateContainer}>
-              <Text style={styles.stateText}>
-                {searchTerm ? t('client.noResults') : t('client.noClients')}
-              </Text>
-            </View>
+            searchTerm ? (
+              <EmptyState
+                icon="search"
+                title={t('client.noResults')}
+                subtitle={t('client.noResultsHint')}
+                actionLabel={t('client.addNew')}
+                onAction={() => router.push('/client/new')}
+              />
+            ) : (
+              <EmptyState
+                icon="peopleOutline"
+                title={t('client.noClients')}
+                subtitle={t('client.noClientsHint')}
+                actionLabel={t('client.addNew')}
+                onAction={() => router.push('/client/new')}
+              />
+            )
           }
           renderItem={({ item }) => {
             const name = clientName(item, t('calendar.unknownClient'));
@@ -241,6 +250,9 @@ const createStyles = (theme: typeof Colors.light) =>
     listContent: {
       paddingHorizontal: 16,
       paddingBottom: 100,
+    },
+    listContentEmpty: {
+      flexGrow: 1,
     },
     row: {
       flexDirection: 'row',

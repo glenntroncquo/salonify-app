@@ -227,6 +227,14 @@ export const createStyles = (theme: typeof Colors.light) =>
       paddingTop: 4,
       paddingBottom: 120,
     },
+    listEmptyContent: {
+      flexGrow: 1,
+    },
+    weekAgendaEmpty: {
+      flex: 1,
+      justifyContent: 'center',
+      paddingRight: 8,
+    },
     listLoadingFooter: {
       height: 56,
       alignItems: 'center',

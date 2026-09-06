@@ -8,6 +8,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Switch, Text, TextInput, Vie
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { EmptyState } from '@/components/empty-state';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
@@ -199,7 +200,11 @@ export default function TreatmentDetailScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>{t('service.variants')}</Text>
           {variants.length === 0 ? (
-            <Text style={styles.emptyText}>{t('service.noVariants')}</Text>
+            <EmptyState
+              compact
+              title={t('service.noVariants')}
+              subtitle={t('service.noVariantsHint')}
+            />
           ) : (
             variants.map((option) => (
               <SwipeableRow key={option.id} onDelete={() => handleDeleteOption(option)} deleteLabel={t('common.delete')}>

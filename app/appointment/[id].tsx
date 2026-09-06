@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { EmptyState } from '@/components/empty-state';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
@@ -178,9 +179,7 @@ export default function AppointmentDetailScreen() {
           <ActivityIndicator size="large" color={theme.muted} />
         </View>
       ) : !event ? (
-        <View style={styles.stateContainer}>
-          <Text style={{ color: theme.muted }}>{error ?? t('client.failedToLoad')}</Text>
-        </View>
+        <EmptyState icon="eventBusy" title={error ?? t('client.failedToLoad')} />
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <View style={styles.section}>
@@ -244,7 +243,7 @@ export default function AppointmentDetailScreen() {
               </Pressable>
             </View>
             {notes.length === 0 ? (
-              <Text style={[styles.emptyText, { color: theme.muted }]}>{t('client.noNotes')}</Text>
+              <EmptyState compact title={t('client.noNotes')} subtitle={t('client.noNotesHint')} />
             ) : (
               notes.map((note) => (
                 <View key={note.id} style={[styles.noteRow, { borderBottomColor: theme.border }]}>
@@ -260,7 +259,12 @@ export default function AppointmentDetailScreen() {
           <View style={styles.section}>
             <Text style={[styles.sectionLabel, { color: theme.muted }]}>{t('client.history')}</Text>
             {history.length === 0 ? (
-              <Text style={[styles.emptyText, { color: theme.muted }]}>{t('client.noHistory')}</Text>
+              <EmptyState
+                compact
+                icon="eventBusy"
+                title={t('client.noHistory')}
+                subtitle={t('client.noHistoryHint')}
+              />
             ) : (
               history.map((historyEvent) => (
                 <View key={historyEvent.id} style={[styles.historyRow, { borderBottomColor: theme.border }]}>

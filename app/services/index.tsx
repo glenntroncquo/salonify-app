@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { EmptyState } from '@/components/empty-state';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -111,19 +112,21 @@ export default function TreatmentsScreen() {
           <ActivityIndicator size="large" color={theme.text} />
         </View>
       ) : showNoCompanyState ? (
-        <View style={styles.stateContainer}>
-          <Text style={styles.stateText}>{t('calendar.noCompany')}</Text>
-        </View>
+        <EmptyState icon="gridView" title={t('calendar.noCompany')} />
       ) : (
         <FlatList
           data={services}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, services.length === 0 && styles.listContentEmpty]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
           ListEmptyComponent={
-            <View style={styles.stateContainer}>
-              <Text style={styles.stateText}>{t('service.noServices')}</Text>
-            </View>
+            <EmptyState
+              icon="gridView"
+              title={t('service.noServices')}
+              subtitle={t('service.noServicesHint')}
+              actionLabel={t('service.addNew')}
+              onAction={() => router.push('/services/new')}
+            />
           }
           renderItem={({ item, index }) => {
             const eventColor = mapTreatmentColorToEventColor(item.color, item.name);
@@ -231,6 +234,9 @@ const createStyles = (theme: typeof Colors.light) =>
     listContent: {
       paddingHorizontal: 16,
       paddingBottom: 100,
+    },
+    listContentEmpty: {
+      flexGrow: 1,
     },
     row: {
       flexDirection: 'row',

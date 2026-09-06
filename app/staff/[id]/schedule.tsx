@@ -10,6 +10,7 @@ import { groupAppointmentsByDateKey, listVisitBlockHeight } from '@/app/(tabs)/c
 import { VisitPhaseBar } from '@/components/visit-phase-bar';
 import { addDays, getISOWeekNumber, getMonthShortLabel, getWeekStartMonday, getWeekdayLong, toDateKey } from '@/app/(tabs)/calendar/date-utils';
 import { EventItem } from '@/app/(tabs)/calendar/types';
+import { EmptyState } from '@/components/empty-state';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
@@ -174,7 +175,7 @@ export default function StaffScheduleScreen() {
                 ))}
 
                 {events.length === 0 ? (
-                  <Text style={styles.noAppointmentsText}>{t('calendar.noAppointmentsToday')}</Text>
+                  <EmptyState compact title={t('calendar.noAppointmentsToday')} />
                 ) : (
                   events.map((event) => (
                     <View key={event.id} style={[styles.appointmentRow, { minHeight: listVisitBlockHeight(event) + 8 }]}>

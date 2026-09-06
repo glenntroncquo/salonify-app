@@ -8,6 +8,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { EmptyState } from '@/components/empty-state';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
@@ -155,7 +156,11 @@ export default function CheckoutScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>{t('appointment.services')}</Text>
           {lineItems.length === 0 ? (
-            <Text style={styles.emptyText}>{t('checkout.noLineItems')}</Text>
+            <EmptyState
+              compact
+              title={t('checkout.noLineItems')}
+              subtitle={t('checkout.noLineItemsHint')}
+            />
           ) : (
             lineItems.map((item, index) => (
               <View key={`${item.appointmentSegmentId}-${index}`} style={styles.lineItemRow}>
