@@ -1,5 +1,9 @@
 import { supabase } from '@/lib/supabase';
 
+/** Live `client_location` / `location` tables predate the generated snapshot in this repo. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const live = supabase as any;
+
 export type MonthBucket = {
   key: string;
   year: number;
@@ -8,6 +12,14 @@ export type MonthBucket = {
 
 function monthKey(year: number, monthIndex: number) {
   return `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+}
+
+function createdAtFromLocationRow(row: unknown): { id: string; created_at: string } | null {
+  if (!row || typeof row !== 'object') return null;
+  const raw = (row as { client?: { id?: string; created_at?: string } | { id?: string; created_at?: string }[] | null }).client;
+  const client = Array.isArray(raw) ? raw[0] : raw;
+  if (!client?.id || !client.created_at) return null;
+  return { id: client.id, created_at: client.created_at };
 }
 
 /** Builds `count` consecutive month buckets ending at the current month, oldest first. */
@@ -117,23 +129,33 @@ export async function fetchMonthlyAppointments(companyId: string): Promise<Month
   return { monthlyData, total: last12.reduce((sum, m) => sum + m.count, 0) };
 }
 
-/** New clients (by `client.created_at`) per month, linked to this company via `client_company`. */
-export async function fetchMonthlyClients(companyId: string): Promise<MonthlyCountData> {
+/** New clients (by `client.created_at`) per month, linked via `client_location` ⋈ `location.company_id`. */
+export async function fetchMonthlyClients(companyId: string, locationId?: string | null): Promise<MonthlyCountData> {
   const months = buildMonthSkeleton(24);
   const rangeStart = new Date(months[0].year, months[0].monthIndex, 1);
   const rangeEndExclusive = new Date(months[months.length - 1].year, months[months.length - 1].monthIndex + 1, 1);
 
-  const { data, error } = await supabase.from('client_company').select('client:client_id ( created_at )').eq('company_id', companyId);
+  const query = locationId
+    ? live.from('client_location').select('client:client_id ( id, created_at )').eq('location_id', locationId)
+    : live
+        .from('client_location')
+        .select('client:client_id ( id, created_at ), location:location_id!inner ( company_id )')
+        .eq('location.company_id', companyId);
+
+  const { data, error } = await query;
   if (error) throw error;
 
+  const seen = new Set<string>();
   const byKey = new Map<string, number>();
-  (data as unknown as { client: { created_at: string } | null }[] | null ?? []).forEach((row) => {
-    if (!row.client?.created_at) return;
-    const d = new Date(row.client.created_at);
-    if (d < rangeStart || d >= rangeEndExclusive) return;
+  for (const row of Array.isArray(data) ? data : []) {
+    const client = createdAtFromLocationRow(row);
+    if (!client || seen.has(client.id)) continue;
+    seen.add(client.id);
+    const d = new Date(client.created_at);
+    if (d < rangeStart || d >= rangeEndExclusive) continue;
     const key = monthKey(d.getFullYear(), d.getMonth());
     byKey.set(key, (byKey.get(key) ?? 0) + 1);
-  });
+  }
 
   const monthlyData = months.map((month) => ({ ...month, count: byKey.get(month.key) ?? 0 }));
   const last12 = monthlyData.slice(-12);
