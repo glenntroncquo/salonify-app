@@ -19,6 +19,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { EmptyState } from '@/components/empty-state';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
@@ -416,6 +417,15 @@ export default function NewAppointmentScreen() {
       ) : null}
 
       {screen === 'services' ? (
+        servicesList.length === 0 ? (
+          <EmptyState
+            icon="gridView"
+            title={t('service.noServices')}
+            subtitle={t('service.noServicesHint')}
+            actionLabel={t('service.addNew')}
+            onAction={() => router.push('/services/new')}
+          />
+        ) : (
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           {servicesList.map((service) => (
             <Pressable
@@ -436,7 +446,15 @@ export default function NewAppointmentScreen() {
             </Pressable>
           ))}
         </ScrollView>
+        )
       ) : screen === 'serviceOptions' && pickedService ? (
+        pickedService.service_variant.length === 0 ? (
+          <EmptyState
+            icon="gridView"
+            title={t('service.noVariants')}
+            subtitle={t('service.noVariantsHint')}
+          />
+        ) : (
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           {pickedService.service_variant.map((variant) => (
             <Pressable
@@ -452,6 +470,7 @@ export default function NewAppointmentScreen() {
             </Pressable>
           ))}
         </ScrollView>
+        )
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           {/* Client */}
@@ -510,7 +529,12 @@ export default function NewAppointmentScreen() {
                 {clientSearching ? (
                   <ActivityIndicator style={{ marginTop: 8 }} color={theme.muted} />
                 ) : clientSearchTerm.trim().length >= 2 && clientResults.length === 0 ? (
-                  <Text style={[styles.noResultsText, { color: theme.muted }]}>{t('appointment.noResults')}</Text>
+                  <EmptyState
+                    compact
+                    icon="search"
+                    title={t('appointment.noResults')}
+                    subtitle={t('appointment.noResultsHint')}
+                  />
                 ) : (
                   clientResults.map((result) => (
                     <Pressable
@@ -540,6 +564,13 @@ export default function NewAppointmentScreen() {
             <Text style={[styles.sectionLabel, { color: theme.muted }]}>{t('appointment.defaultStaff')}</Text>
             {staffLoading ? (
               <ActivityIndicator color={theme.muted} />
+            ) : staffList.length === 0 ? (
+              <EmptyState
+                compact
+                icon="groups"
+                title={t('staff.noStaff')}
+                subtitle={t('staff.noStaffHint')}
+              />
             ) : (
               <View style={styles.staffRow}>
                 {staffList.map((staff) => {
@@ -572,7 +603,11 @@ export default function NewAppointmentScreen() {
           <View style={styles.section}>
             <Text style={[styles.sectionLabel, { color: theme.muted }]}>{t('appointment.services')}</Text>
             {cart.length === 0 ? (
-              <Text style={[styles.noResultsText, { color: theme.muted }]}>{t('appointment.noServicesAdded')}</Text>
+              <EmptyState
+                compact
+                title={t('appointment.noServicesAdded')}
+                subtitle={t('appointment.noServicesAddedHint')}
+              />
             ) : (
               cart.map((item, index) => (
                 <View key={`${item.serviceId}-${item.serviceVariantId}-${index}`} style={[styles.cartRow, { borderBottomColor: theme.border }]}>

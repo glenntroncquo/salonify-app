@@ -4,6 +4,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-nat
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { EmptyState } from '@/components/empty-state';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { fetchOrder, OrderDetail } from '@/lib/api/orders';
@@ -90,7 +91,11 @@ export default function OrderDetailScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>{t('order.payments')}</Text>
             {order.payment.length === 0 ? (
-              <Text style={styles.subvalue}>{t('order.noPayments')}</Text>
+              <EmptyState
+                compact
+                title={t('order.noPayments')}
+                subtitle={t('order.noPaymentsHint')}
+              />
             ) : (
               order.payment.map((payment) => (
                 <View key={payment.id} style={styles.itemRow}>

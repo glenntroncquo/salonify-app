@@ -5,6 +5,7 @@ import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } f
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { EmptyState } from '@/components/empty-state';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
@@ -92,23 +93,17 @@ export default function OrdersListScreen() {
           <ActivityIndicator size="large" color={theme.text} />
         </View>
       ) : showNoCompanyState ? (
-        <View style={styles.stateContainer}>
-          <Text style={styles.stateText}>{t('calendar.noCompany')}</Text>
-        </View>
+        <EmptyState icon="pointOfSale" title={t('calendar.noCompany')} />
       ) : showNoLocationState ? (
-        <View style={styles.stateContainer}>
-          <Text style={styles.stateText}>{t('calendar.noLocation')}</Text>
-        </View>
+        <EmptyState icon="pointOfSale" title={t('calendar.noLocation')} />
       ) : (
         <FlatList
           data={orders}
           keyExtractor={(item) => item.id}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, orders.length === 0 && styles.listContentEmpty]}
           ListEmptyComponent={
-            <View style={styles.stateContainer}>
-              <Text style={styles.stateText}>{t('order.noOrders')}</Text>
-            </View>
+            <EmptyState icon="pointOfSale" title={t('order.noOrders')} subtitle={t('order.noOrdersHint')} />
           }
           renderItem={({ item }) => {
             const clientName =
@@ -180,6 +175,9 @@ const createStyles = (theme: typeof Colors.light) =>
     listContent: {
       paddingHorizontal: 16,
       paddingBottom: 24,
+    },
+    listContentEmpty: {
+      flexGrow: 1,
     },
     row: {
       flexDirection: 'row',

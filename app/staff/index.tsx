@@ -6,6 +6,7 @@ import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, Touchabl
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { EmptyState } from '@/components/empty-state';
 import { StaffAvatar } from '@/components/staff-avatar';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
@@ -74,19 +75,21 @@ export default function StaffListScreen() {
           <ActivityIndicator size="large" color={theme.text} />
         </View>
       ) : showNoCompanyState ? (
-        <View style={styles.stateContainer}>
-          <Text style={styles.stateText}>{t('calendar.noCompany')}</Text>
-        </View>
+        <EmptyState icon="groups" title={t('calendar.noCompany')} />
       ) : (
         <FlatList
           data={staff}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, staff.length === 0 && styles.listContentEmpty]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
           ListEmptyComponent={
-            <View style={styles.stateContainer}>
-              <Text style={styles.stateText}>{t('staff.noStaff')}</Text>
-            </View>
+            <EmptyState
+              icon="groups"
+              title={t('staff.noStaff')}
+              subtitle={t('staff.noStaffHint')}
+              actionLabel={t('staff.addNew')}
+              onAction={() => router.push('/staff/new')}
+            />
           }
           renderItem={({ item }) => {
             const name = staffName(item, t('calendar.employee'));
@@ -166,6 +169,9 @@ const createStyles = (theme: typeof Colors.light) =>
     listContent: {
       paddingHorizontal: 16,
       paddingBottom: 100,
+    },
+    listContentEmpty: {
+      flexGrow: 1,
     },
     row: {
       flexDirection: 'row',

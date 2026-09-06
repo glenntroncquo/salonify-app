@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { EmptyState } from '@/components/empty-state';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
@@ -228,7 +229,7 @@ export default function ClientDetailScreen() {
               </Pressable>
             </View>
             {notes.length === 0 ? (
-              <Text style={styles.emptyText}>{t('client.noNotes')}</Text>
+              <EmptyState compact title={t('client.noNotes')} subtitle={t('client.noNotesHint')} />
             ) : (
               notes.map((note) => (
                 <View key={note.id} style={styles.noteRow}>
@@ -242,7 +243,12 @@ export default function ClientDetailScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>{t('client.history')}</Text>
             {history.length === 0 ? (
-              <Text style={styles.emptyText}>{t('client.noHistory')}</Text>
+              <EmptyState
+                compact
+                icon="eventBusy"
+                title={t('client.noHistory')}
+                subtitle={t('client.noHistoryHint')}
+              />
             ) : (
               history.map((event) => (
                 <View key={event.appointmentId} style={styles.historyRow}>

@@ -20,6 +20,7 @@ import * as Haptics from 'expo-haptics';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
+import { EmptyState } from '@/components/empty-state';
 import { StaffAvatar } from '@/components/staff-avatar';
 import { ESTIMATED_TAB_BAR_HEIGHT } from '@/constants/layout';
 import { useAuth } from '@/contexts/auth-context';
@@ -689,13 +690,9 @@ export default function CalendarScreen() {
           <ActivityIndicator size="large" color={theme.text} />
         </View>
       ) : showNoCompanyState ? (
-        <View style={styles.stateContainer}>
-          <Text style={styles.stateText}>{t('calendar.noCompany')}</Text>
-        </View>
+        <EmptyState icon="calendar" title={t('calendar.noCompany')} />
       ) : showNoLocationState ? (
-        <View style={styles.stateContainer}>
-          <Text style={styles.stateText}>{t('calendar.noLocation')}</Text>
-        </View>
+        <EmptyState icon="calendar" title={t('calendar.noLocation')} />
       ) : (
         <View style={styles.container} ref={containerRef} collapsable={false}>
           <View style={styles.scrollContent}>
@@ -739,6 +736,18 @@ export default function CalendarScreen() {
                     <Text style={styles.errorBannerRetry}>{t('calendar.retry')}</Text>
                   </Pressable>
                 </View>
+              ) : null}
+
+              {viewMode === 'month' &&
+              !isVisibleDataLoading &&
+              Object.keys(fetchMonthData(currentOffset).events).length === 0 ? (
+                <EmptyState
+                  compact
+                  icon="eventBusy"
+                  title={t('calendar.noAppointmentsFound')}
+                  subtitle={t('calendar.noAppointmentsFoundHint')}
+                  style={styles.monthEmptyHint}
+                />
               ) : null}
             </View>
 
@@ -802,6 +811,11 @@ export default function CalendarScreen() {
                               <Text style={[styles.weekAgendaDate, day.isSunday && styles.dayNumberSunday]}>{day.date}</Text>
                               <Text style={styles.weekAgendaWeekday}>{day.weekday}</Text>
                             </Pressable>
+                            {day.appointments.length === 0 ? (
+                              <View style={styles.weekAgendaEmpty}>
+                                <EmptyState compact title={t('calendar.noAppointmentsToday')} />
+                              </View>
+                            ) : (
                             <ScrollView style={styles.weekAgendaEvents} nestedScrollEnabled directionalLockEnabled showsVerticalScrollIndicator>
                               {day.appointments.map((event) => {
                                 const barHeight = listVisitBlockHeight(event);
@@ -832,6 +846,7 @@ export default function CalendarScreen() {
                                 );
                               })}
                             </ScrollView>
+                            )}
                           </View>
                         ))}
                       </View>
@@ -849,7 +864,10 @@ export default function CalendarScreen() {
                   stickyHeaderIndices={listFlatData.stickyHeaderIndices}
                   showsVerticalScrollIndicator={false}
                   style={styles.listFullBleed}
-                  contentContainerStyle={styles.listContent}
+                  contentContainerStyle={[
+                    styles.listContent,
+                    listFlatData.items.length === 0 ? styles.listEmptyContent : null,
+                  ]}
                   onEndReachedThreshold={0.4}
                   onEndReached={handleListLoadMore}
                   refreshing={refreshing}
@@ -862,13 +880,24 @@ export default function CalendarScreen() {
                     ) : null
                   }
                   ListEmptyComponent={
-                    <View style={styles.stateContainer}>
-                      {isVisibleDataLoading ? (
+                    isVisibleDataLoading ? (
+                      <View style={styles.stateContainer}>
                         <ActivityIndicator color={theme.muted} />
-                      ) : (
-                        <Text style={styles.stateText}>{t('calendar.noAppointmentsFound')}</Text>
-                      )}
-                    </View>
+                      </View>
+                    ) : (
+                      <EmptyState
+                        icon="eventBusy"
+                        title={t('calendar.noAppointmentsFound')}
+                        subtitle={t('calendar.noAppointmentsFoundHint')}
+                        actionLabel={t('appointment.title')}
+                        onAction={() =>
+                          router.push({
+                            pathname: '/appointment-new',
+                            params: { date: selectedDateKey ?? todayKey },
+                          })
+                        }
+                      />
+                    )
                   }
                   renderItem={renderListItem}
                 />

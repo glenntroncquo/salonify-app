@@ -6,6 +6,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-nat
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { EmptyState } from '@/components/empty-state';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
@@ -87,7 +88,12 @@ export default function StaffTimeOffScreen() {
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {blocks.length === 0 ? (
-            <Text style={styles.emptyText}>{t('staff.noTimeOff')}</Text>
+            <EmptyState
+              compact
+              icon="eventBusy"
+              title={t('staff.noTimeOff')}
+              subtitle={t('staff.noTimeOffHint')}
+            />
           ) : (
             blocks.map((block) => {
               const start = block.starts_at ? new Date(block.starts_at) : null;

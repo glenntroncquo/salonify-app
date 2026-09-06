@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { EmptyState } from '@/components/empty-state';
 import { StaffAvatar } from '@/components/staff-avatar';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
@@ -179,9 +180,13 @@ export default function DayScreen() {
           <ActivityIndicator color={theme.muted} />
         </View>
       ) : events.length === 0 ? (
-        <View style={styles.stateContainer}>
-          <Text style={[styles.emptyText, { color: theme.muted }]}>{t('calendar.noAppointmentsToday')}</Text>
-        </View>
+        <EmptyState
+          icon="eventBusy"
+          title={t('calendar.noAppointmentsToday')}
+          subtitle={t('calendar.noAppointmentsTodayHint')}
+          actionLabel={t('appointment.title')}
+          onAction={() => router.push({ pathname: '/appointment-new', params: { date } })}
+        />
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <View style={[styles.grid, { height: gridHeight }]}>
