@@ -257,6 +257,24 @@
     "dashboard": "Dashboard",
     "settings": "Settings"
   },
+  "legal": {
+    "section": "Legal",
+    "privacy": "Privacy policy",
+    "terms": "Terms of use",
+    "failedToOpen": "Couldn't open this page. Please try again."
+  },
+  "account": {
+    "section": "Account",
+    "requestDeletion": "Request account deletion",
+    "requestDeletionAlready": "Deletion requested",
+    "confirmTitle": "Request account deletion?",
+    "confirmMessage": "We'll record your request and process it. This does not immediately delete salon or company data.",
+    "confirmAction": "Request deletion",
+    "successTitle": "Request sent",
+    "successMessage": "We've recorded your deletion request. We'll follow up at the email on this account.",
+    "failedTitle": "Request failed",
+    "failed": "Couldn't send the deletion request. Please try again."
+  },
   "profile": {
     "signOut": "Sign Out",
     "language": "Language"
