@@ -121,7 +121,10 @@ export default function StaffAvailabilityScreen() {
   }, [load]);
 
   const handleSave = async () => {
-    if (!id || !companyId || !locationId) return;
+    if (!id || !companyId || !locationId) {
+      setError(t('calendar.noLocation'));
+      return;
+    }
     setSaving(true);
     setError(null);
     try {

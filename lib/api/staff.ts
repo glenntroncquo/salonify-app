@@ -1,5 +1,17 @@
 import { supabase } from '@/lib/supabase';
 
+/** Live tables/RPCs exist; generated types in this repo predate memberships. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const live = supabase as any;
+
+/**
+ * System `role` rows (scope=location). Live `role` has RLS and no SELECT policy,
+ * so the client cannot look these up — these IDs are the catalog rows from
+ * `kvhinnhnwgvdpzggdnxs` (never mutate system roles).
+ */
+const SYSTEM_LOCATION_ROLE_STYLIST = '09ea05b0-3ec1-4481-a6b8-21bc4bfa2a44';
+const SYSTEM_LOCATION_ROLE_STAFF = '7a2a1bc5-5cce-4a9e-94d1-2ec39e4d78c6';
+
 export type Staff = {
   id: string;
   first_name: string | null;
@@ -9,6 +21,7 @@ export type Staff = {
   specialization: string | null;
   status: string | null;
   image_path: string | null;
+  user_id?: string | null;
 };
 
 export type StaffFields = {
@@ -20,7 +33,72 @@ export type StaffFields = {
   status: string;
 };
 
-const STAFF_SELECT = 'id, first_name, last_name, email, phone, specialization, status, image_path';
+const STAFF_SELECT = 'id, first_name, last_name, email, phone, specialization, status, image_path, user_id';
+
+export function requireLocationId(locationId: string | null | undefined): string {
+  if (!locationId) {
+    throw new Error('locationId is required');
+  }
+  return locationId;
+}
+
+async function resolveNewStaffRoleId(): Promise<string> {
+  const { data } = await live
+    .from('role')
+    .select('id, name')
+    .eq('is_system', true)
+    .eq('scope', 'location')
+    .in('name', ['stylist', 'staff']);
+
+  const rows = (Array.isArray(data) ? data : []) as { id?: string; name?: string }[];
+  const stylist = rows.find((row) => row.name === 'stylist' && typeof row.id === 'string');
+  if (stylist?.id) return stylist.id;
+  const staff = rows.find((row) => row.name === 'staff' && typeof row.id === 'string');
+  if (staff?.id) return staff.id;
+  return SYSTEM_LOCATION_ROLE_STYLIST;
+}
+
+function isMissingMembershipUserIdError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const record = error as { code?: string; message?: string };
+  const message = (record.message ?? '').toLowerCase();
+  return (
+    record.code === '23502' ||
+    (message.includes('user_id') && (message.includes('null') || message.includes('not-null') || message.includes('not null')))
+  );
+}
+
+async function insertLocationMembershipForStaff(
+  staffId: string,
+  locationId: string,
+  userId: string | null | undefined
+): Promise<void> {
+  const roleId = await resolveNewStaffRoleId();
+  const row: Record<string, unknown> = {
+    location_id: locationId,
+    role_id: roleId,
+    is_active: true,
+    staff_id: staffId,
+  };
+  if (userId) {
+    row.user_id = userId;
+  }
+
+  const { error } = await live.from('location_membership').insert(row);
+  if (!error) return;
+  if (isMissingMembershipUserIdError(error)) throw error;
+
+  // Retry with the staff catalog role if the stylist id is stale.
+  if (roleId === SYSTEM_LOCATION_ROLE_STYLIST) {
+    const retry = await live.from('location_membership').insert({
+      ...row,
+      role_id: SYSTEM_LOCATION_ROLE_STAFF,
+    });
+    if (!retry.error) return;
+    throw retry.error;
+  }
+  throw error;
+}
 
 export async function fetchAllStaff(companyId: string): Promise<Staff[]> {
   const { data, error } = await supabase
@@ -39,7 +117,8 @@ export async function fetchStaffMember(staffId: string): Promise<Staff | null> {
   return data;
 }
 
-export async function createStaff(companyId: string, fields: StaffFields): Promise<Staff> {
+export async function createStaff(companyId: string, fields: StaffFields, locationId: string): Promise<Staff> {
+  const shopId = requireLocationId(locationId);
   const { data, error } = await supabase
     .from('staff')
     .insert({
@@ -55,6 +134,20 @@ export async function createStaff(companyId: string, fields: StaffFields): Promi
     .single();
 
   if (error) throw error;
+
+  try {
+    await insertLocationMembershipForStaff(data.id, shopId, data.user_id);
+  } catch (membershipError) {
+    // Live location_membership.user_id is NOT NULL + FK to auth.users.
+    // Bookable staff created from this screen usually have no login yet —
+    // keep the staff row so the company directory still works.
+    if (!data.user_id && isMissingMembershipUserIdError(membershipError)) {
+      return data;
+    }
+    await supabase.from('staff').delete().eq('id', data.id);
+    throw membershipError;
+  }
+
   return data;
 }
 
@@ -124,10 +217,11 @@ export async function createScheduleRule(
   endMinutes: number,
   locationId: string
 ): Promise<void> {
+  const shopId = requireLocationId(locationId);
   const { error } = await supabase.from('staff_schedule_rule').insert({
     staff_id: staffId,
     company_id: companyId,
-    location_id: locationId,
+    location_id: shopId,
     day_of_week: dayOfWeek,
     start_time: formatTimeOfDay(startHours, startMinutes),
     end_time: formatTimeOfDay(endHours, endMinutes),
@@ -191,6 +285,7 @@ export async function createTimeOff(
   endMinutes: number,
   locationId: string
 ): Promise<void> {
+  const shopId = requireLocationId(locationId);
   const start = new Date(date);
   start.setHours(startHours, startMinutes, 0, 0);
   const end = new Date(date);
@@ -200,7 +295,7 @@ export async function createTimeOff(
   const { error } = await supabase.from('staff_schedule_exception').insert({
     staff_id: staffId,
     company_id: companyId,
-    location_id: locationId,
+    location_id: shopId,
     starts_at: start.toISOString(),
     ends_at: end.toISOString(),
     kind: 'unavailable',
