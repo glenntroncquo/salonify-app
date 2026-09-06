@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { createClient } from '@/lib/api/clients';
 
@@ -15,6 +16,7 @@ export default function NewClientScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { companyId } = useAuth();
+  const { locationId } = useLocation();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);
@@ -26,7 +28,7 @@ export default function NewClientScreen() {
   const [saving, setSaving] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
 
-  const canSave = firstName.trim().length > 0 && email.trim().length > 0 && !saving;
+  const canSave = firstName.trim().length > 0 && email.trim().length > 0 && !saving && !!companyId;
 
   const handleSave = async () => {
     if (!companyId || !canSave) {
@@ -41,7 +43,7 @@ export default function NewClientScreen() {
         lastName: lastName.trim(),
         email: email.trim(),
         phone: phone.trim(),
-      });
+      }, locationId);
       router.replace({ pathname: '/client/[id]', params: { id: client.id } });
     } catch {
       setErrorMessage(t('client.failedToSave'));

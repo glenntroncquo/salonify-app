@@ -1,4 +1,12 @@
+import { hydrateLocationsForCompany, pickLocationId } from '@/lib/api/memberships';
 import { supabase } from '@/lib/supabase';
+
+/** Live `client_location` / `location` tables predate the generated snapshot in this repo. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const live = supabase as any;
+
+const CLIENT_FIELDS = 'id, first_name, last_name, email, phone';
+const CLIENT_EMBED = `client:client_id ( ${CLIENT_FIELDS} )`;
 
 export type ClientSearchResult = {
   id: string;
@@ -41,22 +49,66 @@ function sortByName(a: Client, b: Client) {
   return nameA.localeCompare(nameB);
 }
 
-/**
- * `client` has no `company_id` column — membership is via the `client_company`
- * join table, so listing a company's clients (unlike the `search-clients` edge
- * function above, which searches globally across all companies) must join
- * through it to stay correctly scoped to one salon.
- */
-export async function fetchClients(companyId: string): Promise<Client[]> {
-  const { data, error } = await supabase
-    .from('client_company')
-    .select('client:client_id ( id, first_name, last_name, email, phone )')
-    .eq('company_id', companyId)
-    .eq('is_active', true);
+function asClient(value: unknown): Client | null {
+  if (!value || typeof value !== 'object') return null;
+  const record = Array.isArray(value) ? value[0] : value;
+  if (!record || typeof record !== 'object') return null;
+  const client = record as Partial<Client>;
+  if (typeof client.id !== 'string' || client.id.length === 0) return null;
+  return {
+    id: client.id,
+    first_name: typeof client.first_name === 'string' ? client.first_name : null,
+    last_name: typeof client.last_name === 'string' ? client.last_name : null,
+    email: typeof client.email === 'string' ? client.email : null,
+    phone: typeof client.phone === 'string' ? client.phone : null,
+  };
+}
 
+function clientsFromLocationRows(data: unknown): Client[] {
+  const rows = Array.isArray(data) ? data : [];
+  const seen = new Set<string>();
+  const clients: Client[] = [];
+  for (const row of rows) {
+    if (!row || typeof row !== 'object') continue;
+    const client = asClient((row as { client?: unknown }).client);
+    if (!client || seen.has(client.id)) continue;
+    seen.add(client.id);
+    clients.push(client);
+  }
+  return clients.sort(sortByName);
+}
+
+/**
+ * Resolve the shop to attach a new client to. Prefer the active `locationId`
+ * from LocationProvider; if a caller only has `companyId`, use that company's
+ * primary (then first) location — same pick as the existing location switcher.
+ */
+export async function resolveClientLocationId(companyId: string, locationId?: string | null): Promise<string> {
+  if (locationId) return locationId;
+  const locations = await hydrateLocationsForCompany(companyId);
+  const picked = pickLocationId(locations, null);
+  if (!picked) {
+    throw new Error('locationId is required');
+  }
+  return picked;
+}
+
+/**
+ * `client` has no `company_id` column — membership is via `client_location`.
+ * Prefer the selected shop; otherwise distinct clients for the company via
+ * `location.company_id`. `client_location` has no `is_active` column.
+ */
+export async function fetchClients(companyId: string, locationId?: string | null): Promise<Client[]> {
+  const query = locationId
+    ? live.from('client_location').select(CLIENT_EMBED).eq('location_id', locationId)
+    : live
+        .from('client_location')
+        .select(`${CLIENT_EMBED}, location:location_id!inner ( company_id )`)
+        .eq('location.company_id', companyId);
+
+  const { data, error } = await query;
   if (error) throw error;
-  const rows = (data as unknown as { client: Client | null }[]) ?? [];
-  return rows.map((row) => row.client).filter((client): client is Client => Boolean(client)).sort(sortByName);
+  return clientsFromLocationRows(data);
 }
 
 export async function fetchClient(clientId: string): Promise<Client | null> {
@@ -70,7 +122,9 @@ export async function fetchClient(clientId: string): Promise<Client | null> {
   return data;
 }
 
-export async function createClient(companyId: string, fields: ClientFields): Promise<Client> {
+export async function createClient(companyId: string, fields: ClientFields, locationId?: string | null): Promise<Client> {
+  const shopId = await resolveClientLocationId(companyId, locationId);
+
   const { data: client, error: insertError } = await supabase
     .from('client')
     .insert({
@@ -84,9 +138,10 @@ export async function createClient(companyId: string, fields: ClientFields): Pro
 
   if (insertError) throw insertError;
 
-  const { error: linkError } = await supabase
-    .from('client_company')
-    .insert({ client_id: client.id, company_id: companyId, is_active: true });
+  const { error: linkError } = await live.from('client_location').insert({
+    client_id: client.id,
+    location_id: shopId,
+  });
 
   if (linkError) throw linkError;
 

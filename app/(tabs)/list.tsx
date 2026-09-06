@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Client, fetchClients } from '@/lib/api/clients';
 import { getInitialsFromLabel } from '@/lib/text';
@@ -31,6 +32,7 @@ export default function ClientsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { companyId } = useAuth();
+  const { locationId, loading: locationLoading } = useLocation();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);
@@ -46,8 +48,9 @@ export default function ClientsScreen() {
       setLoading(false);
       return;
     }
+    if (locationLoading) return;
     try {
-      const data = await fetchClients(companyId);
+      const data = await fetchClients(companyId, locationId);
       setClients(data);
       setError(null);
     } catch (err) {
@@ -55,7 +58,7 @@ export default function ClientsScreen() {
     } finally {
       setLoading(false);
     }
-  }, [companyId, t]);
+  }, [companyId, locationId, locationLoading, t]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -79,7 +82,8 @@ export default function ClientsScreen() {
     });
   }, [clients, searchTerm]);
 
-  const showNoCompanyState = !loading && !companyId;
+  const showInitialLoading = (loading || locationLoading) && !error;
+  const showNoCompanyState = !loading && !locationLoading && !companyId;
 
   return (
     <TabSwipeArea next="/more" prev="/">
@@ -110,7 +114,7 @@ export default function ClientsScreen() {
         </View>
       ) : null}
 
-      {loading ? (
+      {showInitialLoading ? (
         <View style={styles.stateContainer}>
           <ActivityIndicator size="large" color={theme.text} />
         </View>

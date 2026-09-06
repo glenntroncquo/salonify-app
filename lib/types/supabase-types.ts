@@ -467,6 +467,39 @@ export type Database = {
           },
         ]
       }
+      client_location: {
+        Row: {
+          client_id: string
+          created_at: string
+          location_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          location_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          location_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_location_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_location_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "location"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_notes: {
         Row: {
           client_id: string
