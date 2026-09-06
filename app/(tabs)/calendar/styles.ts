@@ -230,10 +230,6 @@ export const createStyles = (theme: typeof Colors.light) =>
     listEmptyContent: {
       flexGrow: 1,
     },
-    monthEmptyHint: {
-      alignItems: 'center',
-      paddingVertical: 8,
-    },
     weekAgendaEmpty: {
       flex: 1,
       justifyContent: 'center',

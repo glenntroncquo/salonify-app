@@ -737,18 +737,6 @@ export default function CalendarScreen() {
                   </Pressable>
                 </View>
               ) : null}
-
-              {viewMode === 'month' &&
-              !isVisibleDataLoading &&
-              Object.keys(fetchMonthData(currentOffset).events).length === 0 ? (
-                <EmptyState
-                  compact
-                  icon="eventBusy"
-                  title={t('calendar.noAppointmentsFound')}
-                  subtitle={t('calendar.noAppointmentsFoundHint')}
-                  style={styles.monthEmptyHint}
-                />
-              ) : null}
             </View>
 
             <View style={styles.calendarArea} onLayout={(event) => setCalendarAreaHeight(event.nativeEvent.layout.height)}>
