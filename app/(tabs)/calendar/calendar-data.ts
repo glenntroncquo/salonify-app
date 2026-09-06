@@ -75,6 +75,11 @@ export function appointmentToEvent(appointment: AppointmentRow): EventItem {
   };
 }
 
+/** Cache key for one calendar month. Must include shop + tenant so a location switch cannot reuse another shop's rows. */
+export function monthCacheKey(companyId: string, locationId: string, year: number, monthIndex: number): string {
+  return `${companyId}:${locationId}:${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+}
+
 export function groupAppointmentsByDateKey(
   appointments: AppointmentRow[],
   staffFilterId: string | null

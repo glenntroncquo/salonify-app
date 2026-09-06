@@ -54,7 +54,10 @@ export default function StaffTimeOffNewScreen() {
   const [error, setError] = React.useState<string | null>(null);
 
   const handleSave = async () => {
-    if (!staffId || !companyId || !locationId) return;
+    if (!staffId || !companyId || !locationId) {
+      setError(t('calendar.noLocation'));
+      return;
+    }
     setSaving(true);
     setError(null);
     try {

@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { createStaff } from '@/lib/api/staff';
 
@@ -15,6 +16,7 @@ export default function NewStaffScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { companyId } = useAuth();
+  const { locationId } = useLocation();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);
@@ -27,24 +29,28 @@ export default function NewStaffScreen() {
   const [saving, setSaving] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
 
-  const canSave = firstName.trim().length > 0 && email.trim().length > 0 && !saving;
+  const canSave = firstName.trim().length > 0 && email.trim().length > 0 && !saving && !!companyId && !!locationId;
 
   const handleSave = async () => {
-    if (!companyId || !canSave) {
-      setErrorMessage(t('staff.validationRequired'));
+    if (!companyId || !locationId || !canSave) {
+      setErrorMessage(!locationId ? t('calendar.noLocation') : t('staff.validationRequired'));
       return;
     }
     setSaving(true);
     setErrorMessage(null);
     try {
-      const staff = await createStaff(companyId, {
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        email: email.trim(),
-        phone: phone.trim(),
-        specialization: specialization.trim(),
-        status: '',
-      });
+      const staff = await createStaff(
+        companyId,
+        {
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          email: email.trim(),
+          phone: phone.trim(),
+          specialization: specialization.trim(),
+          status: '',
+        },
+        locationId
+      );
       router.replace({ pathname: '/staff/[id]', params: { id: staff.id } });
     } catch {
       setErrorMessage(t('staff.failedToSave'));

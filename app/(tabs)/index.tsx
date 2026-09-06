@@ -46,7 +46,7 @@ import {
   getWeekdayLong,
   toDateKey,
 } from './calendar/date-utils';
-import { buildMonthData, groupAppointmentsByDateKey } from './calendar/calendar-data';
+import { buildMonthData, groupAppointmentsByDateKey, monthCacheKey } from './calendar/calendar-data';
 import { ListEventRow } from './calendar/components/ListEventRow';
 import { ListSectionHeader } from './calendar/components/ListSectionHeader';
 import { createStyles } from './calendar/styles';
@@ -126,10 +126,13 @@ export default function CalendarScreen() {
 
   // Appointments are fetched one calendar month at a time (see loadMonth
   // below) rather than the whole company's history up front — cached here by
-  // "YYYY-MM" key. A ref because it's a cache, not something that should
-  // itself trigger renders; `loadingMonthKeys` (state) does that instead.
+  // companyId + locationId + "YYYY-MM". A ref because it's a cache, not
+  // something that should itself trigger renders; `loadingMonthKeys` (state)
+  // does that instead. `scopeEpochRef` invalidates in-flight writes after a
+  // shop switch so a late response cannot paint the previous location.
   const monthDataRef = React.useRef(new Map<string, AppointmentRow[]>());
   const inFlightMonthsRef = React.useRef(new Set<string>());
+  const scopeEpochRef = React.useRef(0);
   const [loadingMonthKeys, setLoadingMonthKeys] = React.useState<Set<string>>(new Set());
 
   // Unfiltered per-day event groupings for the agenda list, cached per month
@@ -139,15 +142,23 @@ export default function CalendarScreen() {
   // Invalidated in loadMonth whenever a month's appointments are (re)fetched.
   const monthEventsCacheRef = React.useRef(new Map<string, Record<string, EventItem[]>>());
 
-  const monthKeyForOffset = React.useCallback((offset: number) => {
-    const { year, monthIndex } = addMonths(BASE_YEAR, BASE_MONTH_INDEX, offset);
-    return { year, monthIndex, key: `${year}-${String(monthIndex + 1).padStart(2, '0')}` };
-  }, []);
+  const monthKeyForOffset = React.useCallback(
+    (offset: number) => {
+      const { year, monthIndex } = addMonths(BASE_YEAR, BASE_MONTH_INDEX, offset);
+      return {
+        year,
+        monthIndex,
+        key: companyId && locationId ? monthCacheKey(companyId, locationId, year, monthIndex) : `${year}-${String(monthIndex + 1).padStart(2, '0')}`,
+      };
+    },
+    [companyId, locationId]
+  );
 
   const loadMonth = React.useCallback(
     async (offset: number, opts?: { force?: boolean }) => {
       if (!companyId || !locationId) return;
       const { year, monthIndex, key } = monthKeyForOffset(offset);
+      const epoch = scopeEpochRef.current;
 
       if (inFlightMonthsRef.current.has(key)) return;
       if (!opts?.force && monthDataRef.current.has(key)) return;
@@ -157,12 +168,15 @@ export default function CalendarScreen() {
 
       try {
         const data = await fetchAppointmentsForMonth(companyId, locationId, year, monthIndex);
+        if (scopeEpochRef.current !== epoch) return;
         monthDataRef.current.set(key, data);
         monthEventsCacheRef.current.delete(key);
         setError(null);
       } catch (err) {
+        if (scopeEpochRef.current !== epoch) return;
         setError(err instanceof Error ? err.message : t('calendar.failedToLoadAppointments'));
       } finally {
+        if (scopeEpochRef.current !== epoch) return;
         inFlightMonthsRef.current.delete(key);
         setLoadingMonthKeys((prev) => {
           const next = new Set(prev);
@@ -179,24 +193,29 @@ export default function CalendarScreen() {
       setStaffLoading(false);
       return;
     }
+    const epoch = scopeEpochRef.current;
     setStaffLoading(true);
     try {
       const data = await fetchStaff(companyId, locationId);
+      if (scopeEpochRef.current !== epoch) return;
       setStaffList(data);
     } catch (err) {
+      if (scopeEpochRef.current !== epoch) return;
       setError(err instanceof Error ? err.message : t('calendar.failedToLoadStaff'));
     } finally {
+      if (scopeEpochRef.current !== epoch) return;
       setStaffLoading(false);
     }
   }, [companyId, locationId, t]);
 
   React.useEffect(() => {
+    scopeEpochRef.current += 1;
     monthDataRef.current.clear();
     monthEventsCacheRef.current.clear();
     inFlightMonthsRef.current.clear();
     setLoadingMonthKeys(new Set());
     setStaffFilterId(null);
-  }, [locationId]);
+  }, [companyId, locationId]);
 
   useFocusEffect(
     React.useCallback(() => {
