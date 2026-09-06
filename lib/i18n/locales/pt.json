@@ -80,7 +80,13 @@
     "errorNotAvailable": "Este funcionário não está disponível neste horário.",
     "errorInvalidSelection": "Funcionário, serviço ou variante inválidos.",
     "errorGeneric": "Falha ao criar agendamento. Tente novamente.",
-    "done": "Concluído"
+    "done": "Concluído",
+    "cancelAppointment": "Cancelar agendamento",
+    "cancelConfirmTitle": "Cancelar este agendamento?",
+    "cancelConfirmMessage": "O cliente receberá um e-mail de confirmação.",
+    "cancelConfirmAction": "Cancelar agendamento",
+    "cancelFailed": "Falha ao cancelar o agendamento. Tente novamente.",
+    "canceled": "Cancelado"
   },
   "client": {
     "title": "Clientes",

@@ -89,13 +89,42 @@ export function formatTime(iso: string) {
   return `${hours}:${minutes}`;
 }
 
+/** Naive salon wall-clock: `2026-09-06T14:00:00Z` means 14:00 at the salon, not UTC. */
+const NAIVE_WALL_CLOCK = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/;
+
+export function parseSalonWallClock(value: string): Date {
+  const match = value.match(NAIVE_WALL_CLOCK);
+  if (!match) return new Date(value);
+  return new Date(
+    Number(match[1]),
+    Number(match[2]) - 1,
+    Number(match[3]),
+    Number(match[4]),
+    Number(match[5]),
+    Number(match[6] ?? 0)
+  );
+}
+
+export function formatSalonWallClock(value: string): string {
+  const match = value.match(NAIVE_WALL_CLOCK);
+  if (match) return `${match[4]}:${match[5]}`;
+  return formatTime(value);
+}
+
+export function toDateKeyFromSalonClock(value: string): string {
+  const match = value.match(NAIVE_WALL_CLOCK);
+  if (match) return `${match[1]}-${match[2]}-${match[3]}`;
+  return toDateKey(parseSalonWallClock(value));
+}
+
+export function minutesBetweenWallClock(start: string, end: string): number {
+  const ms = parseSalonWallClock(end).getTime() - parseSalonWallClock(start).getTime();
+  return Math.max(0, Math.round(ms / 60000));
+}
+
 /**
- * Builds the appointment `start`/`end` string format the backend still expects
- * on the vestigial appointment columns: local wall-clock date/time parts with a
- * literal "Z" suffix (not a real UTC conversion).
- *
- * Calendar display uses appointment_segment.starts_at/ends_at (timestamptz) via
- * `formatTime`, so those render at the correct local wall-clock time.
+ * Builds the appointment `start`/`end` string format the backend still expects:
+ * local wall-clock date/time parts with a literal "Z" suffix (not a real UTC conversion).
  */
 export function toFakeUtcISOString(date: Date, hours: number, minutes: number) {
   const y = date.getFullYear();

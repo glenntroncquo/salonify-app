@@ -1,3 +1,4 @@
+import { isAppointmentCanceled } from '@/lib/api/appointment-status';
 import { supabase } from '@/lib/supabase';
 
 /** Live `client_location` / `location` tables predate the generated snapshot in this repo. */
@@ -108,16 +109,16 @@ export async function fetchMonthlyAppointments(companyId: string, locationId?: s
 
   const { data, error } = await supabase
     .from('appointment')
-    .select('start')
+    .select('start, status, is_canceled')
     .eq('company_id', companyId)
     .eq('location_id', locationId)
-    .eq('is_canceled', false)
     .gte('start', rangeStart.toISOString())
     .lt('start', rangeEndExclusive.toISOString());
   if (error) throw error;
 
   const byKey = new Map<string, number>();
   (data ?? []).forEach((row) => {
+    if (isAppointmentCanceled(row)) return;
     const d = new Date(row.start);
     const key = monthKey(d.getFullYear(), d.getMonth());
     byKey.set(key, (byKey.get(key) ?? 0) + 1);

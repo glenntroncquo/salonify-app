@@ -29,7 +29,7 @@ import {
 import { getInitialsFromLabel } from '@/lib/text';
 
 import { appointmentToEvent } from '../(tabs)/calendar/calendar-data';
-import { getListHeaderLabel, toDateKey } from '../(tabs)/calendar/date-utils';
+import { getListHeaderLabel, toDateKey, toDateKeyFromSalonClock } from '../(tabs)/calendar/date-utils';
 import { EventItem } from '../(tabs)/calendar/types';
 
 export default function ClientDetailScreen() {
@@ -250,7 +250,7 @@ export default function ClientDetailScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.historyTitle}>{event.label}</Text>
                     <Text style={styles.historySubtitle}>
-                      {`${getListHeaderLabel(toDateKey(new Date(event.startISO)))} · ${event.startTime}–${event.endTime} · ${event.staffName}`}
+                      {`${getListHeaderLabel(toDateKeyFromSalonClock(event.startISO))} · ${event.startTime}–${event.endTime} · ${event.staffName}`}
                     </Text>
                   </View>
                 </View>

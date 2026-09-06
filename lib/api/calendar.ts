@@ -1,4 +1,15 @@
+import { isAppointmentCanceled } from '@/lib/api/appointment-status';
+import { parsePhaseType, type PhaseType } from '@/lib/api/services';
 import { supabase } from '@/lib/supabase';
+
+export type AppointmentSegmentPhaseRow = {
+  id: string;
+  sequence: number;
+  phase_type: PhaseType;
+  starts_at: string;
+  ends_at: string;
+  staff_id: string;
+};
 
 export type AppointmentSegmentRow = {
   id: string;
@@ -21,6 +32,7 @@ export type AppointmentSegmentRow = {
     last_name: string | null;
     image_path: string | null;
   } | null;
+  appointment_segment_phase: AppointmentSegmentPhaseRow[];
 };
 
 export type AppointmentRow = {
@@ -29,6 +41,11 @@ export type AppointmentRow = {
   end: string;
   notes: string | null;
   staff_notes: string | null;
+  status: string | null;
+  is_canceled: boolean;
+  client_id: string | null;
+  company_id: string | null;
+  location_id: string | null;
   client: {
     id: string;
     first_name: string | null;
@@ -57,21 +74,45 @@ const APPOINTMENT_SELECT = `
   end,
   notes,
   staff_notes,
+  status,
+  is_canceled,
+  client_id,
+  company_id,
+  location_id,
   client:client_id ( id, first_name, last_name, email ),
   staff:staff_id ( id, first_name, last_name, image_path ),
   appointment_segment (
     id, sequence, staff_id, starts_at, ends_at,
     service: service_id ( id, name, color ),
     service_variant: service_variant_id ( id, name ),
-    staff: staff_id ( id, first_name, last_name, image_path )
+    staff: staff_id ( id, first_name, last_name, image_path ),
+    appointment_segment_phase ( id, sequence, phase_type, starts_at, ends_at, staff_id )
   )
 `;
+
+function sortPhases(phases: AppointmentSegmentPhaseRow[] | null | undefined): AppointmentSegmentPhaseRow[] {
+  return [...(phases ?? [])]
+    .map((phase) => ({
+      ...phase,
+      phase_type: parsePhaseType(phase.phase_type),
+    }))
+    .sort((a, b) => a.sequence - b.sequence);
+}
 
 function sortSegments(appointments: AppointmentRow[]): AppointmentRow[] {
   return appointments.map((appointment) => ({
     ...appointment,
-    appointment_segment: [...(appointment.appointment_segment ?? [])].sort((a, b) => a.sequence - b.sequence),
+    appointment_segment: [...(appointment.appointment_segment ?? [])]
+      .sort((a, b) => a.sequence - b.sequence)
+      .map((segment) => ({
+        ...segment,
+        appointment_segment_phase: sortPhases(segment.appointment_segment_phase),
+      })),
   }));
+}
+
+function excludeCanceled(appointments: AppointmentRow[]): AppointmentRow[] {
+  return appointments.filter((appointment) => !isAppointmentCanceled(appointment));
 }
 
 /**
@@ -94,12 +135,11 @@ export async function fetchAppointmentsForMonth(
     .select(APPOINTMENT_SELECT)
     .eq('company_id', companyId)
     .eq('location_id', locationId)
-    .eq('is_canceled', false)
     .gte('start', monthStart.toISOString())
     .lt('start', monthEnd.toISOString());
 
   if (error) throw error;
-  return sortSegments((data as unknown as AppointmentRow[]) ?? []);
+  return excludeCanceled(sortSegments((data as unknown as AppointmentRow[]) ?? []));
 }
 
 export async function fetchAppointmentById(appointmentId: string): Promise<AppointmentRow | null> {
@@ -154,11 +194,10 @@ export async function fetchClientAppointments(
     .eq('company_id', companyId)
     .eq('location_id', locationId)
     .eq('client_id', clientId)
-    .eq('is_canceled', false)
     .order('start', { ascending: false });
 
   if (error) throw error;
-  return sortSegments((data as unknown as AppointmentRow[]) ?? []);
+  return excludeCanceled(sortSegments((data as unknown as AppointmentRow[]) ?? []));
 }
 
 /**
@@ -180,8 +219,9 @@ export async function fetchStaffAppointments(
       service: service_id ( id, name, color ),
       service_variant: service_variant_id ( id, name ),
       staff: staff_id ( id, first_name, last_name, image_path ),
+      appointment_segment_phase ( id, sequence, phase_type, starts_at, ends_at, staff_id ),
       appointment: appointment_id!inner (
-        id, start, end, notes, staff_notes, is_canceled, location_id,
+        id, start, end, notes, staff_notes, status, is_canceled, client_id, company_id, location_id,
         client: client_id ( id, first_name, last_name, email ),
         staff: staff_id ( id, first_name, last_name, image_path )
       )
@@ -203,7 +243,7 @@ export async function fetchStaffAppointments(
   const byAppointment = new Map<string, AppointmentRow>();
   for (const row of (data as unknown as StaffSegmentQueryRow[]) ?? []) {
     const appointment = row.appointment;
-    if (!appointment || appointment.is_canceled) continue;
+    if (!appointment || isAppointmentCanceled(appointment)) continue;
 
     const segment: AppointmentSegmentRow = {
       id: row.id,
@@ -214,6 +254,7 @@ export async function fetchStaffAppointments(
       service: row.service,
       service_variant: row.service_variant,
       staff: row.staff,
+      appointment_segment_phase: sortPhases(row.appointment_segment_phase),
     };
 
     const existing = byAppointment.get(appointment.id);
@@ -226,6 +267,11 @@ export async function fetchStaffAppointments(
         end: appointment.end,
         notes: appointment.notes,
         staff_notes: appointment.staff_notes,
+        status: appointment.status,
+        is_canceled: appointment.is_canceled,
+        client_id: appointment.client_id,
+        company_id: appointment.company_id ?? null,
+        location_id: appointment.location_id ?? null,
         client: appointment.client,
         staff: appointment.staff,
         appointment_segment: [segment],
@@ -243,8 +289,11 @@ type StaffSegmentQueryRow = AppointmentSegmentRow & {
     end: string;
     notes: string | null;
     staff_notes: string | null;
+    status: string | null;
     is_canceled: boolean;
-    location_id?: string;
+    client_id: string | null;
+    company_id?: string | null;
+    location_id?: string | null;
     client: AppointmentRow['client'];
     staff: AppointmentRow['staff'];
   } | null;

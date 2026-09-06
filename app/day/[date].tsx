@@ -1,6 +1,7 @@
 import { Pressable } from '@/components/pressable-scale';
 import { AppIcon } from '@/components/app-icon';
 import { HeaderButton } from '@/components/header-button';
+import { VisitPhaseBar } from '@/components/visit-phase-bar';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
 import {
@@ -22,9 +23,67 @@ import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { fetchAppointmentsForMonth, fetchStaff } from '@/lib/api/calendar';
 
-import { groupAppointmentsByDateKey } from '../(tabs)/calendar/calendar-data';
-import { getFullDateLabel, getISOWeekNumber } from '../(tabs)/calendar/date-utils';
+import {
+  groupAppointmentsByDateKey,
+  PX_PER_VISIT_MINUTE,
+  visitBlockHeight,
+  visitDurationMinutes,
+} from '../(tabs)/calendar/calendar-data';
+import { getFullDateLabel, getISOWeekNumber, parseSalonWallClock } from '../(tabs)/calendar/date-utils';
 import { EventItem } from '../(tabs)/calendar/types';
+
+const HOUR_LABEL_WIDTH = 44;
+const GRID_PAD_TOP = 8;
+const DEFAULT_START_MINUTE = 8 * 60;
+const DEFAULT_END_MINUTE = 18 * 60;
+
+function minutesFromMidnight(value: string): number {
+  const date = parseSalonWallClock(value);
+  return date.getHours() * 60 + date.getMinutes();
+}
+
+function formatHourLabel(minute: number): string {
+  const hours = Math.floor(minute / 60);
+  return `${String(hours).padStart(2, '0')}:00`;
+}
+
+type LaidOutVisit = {
+  event: EventItem;
+  top: number;
+  height: number;
+  column: number;
+  columns: number;
+};
+
+function layoutVisits(events: EventItem[], gridStart: number): LaidOutVisit[] {
+  const items = events
+    .map((event) => ({
+      event,
+      start: minutesFromMidnight(event.startISO),
+      end: minutesFromMidnight(event.startISO) + visitDurationMinutes(event),
+      height: visitBlockHeight(event),
+    }))
+    .sort((a, b) => a.start - b.start || a.end - b.end);
+
+  const active: { end: number; column: number }[] = [];
+  return items.map((item) => {
+    for (let index = active.length - 1; index >= 0; index -= 1) {
+      if (active[index].end <= item.start) active.splice(index, 1);
+    }
+    const used = new Set(active.map((entry) => entry.column));
+    let column = 0;
+    while (used.has(column)) column += 1;
+    active.push({ end: item.end, column });
+    const columns = Math.max(column + 1, ...active.map((entry) => entry.column + 1));
+    return {
+      event: item.event,
+      top: GRID_PAD_TOP + (item.start - gridStart) * PX_PER_VISIT_MINUTE,
+      height: item.height,
+      column,
+      columns,
+    };
+  });
+}
 
 export default function DayScreen() {
   const { t } = useTranslation();
@@ -67,6 +126,28 @@ export default function DayScreen() {
 
   const weekNumber = date ? getISOWeekNumber(new Date(date)) : 0;
 
+  const gridStart = React.useMemo(() => {
+    if (events.length === 0) return DEFAULT_START_MINUTE;
+    return Math.min(DEFAULT_START_MINUTE, ...events.map((event) => minutesFromMidnight(event.startISO)));
+  }, [events]);
+
+  const gridEnd = React.useMemo(() => {
+    if (events.length === 0) return DEFAULT_END_MINUTE;
+    return Math.max(
+      DEFAULT_END_MINUTE,
+      ...events.map((event) => minutesFromMidnight(event.startISO) + visitDurationMinutes(event))
+    );
+  }, [events]);
+
+  const hourMarks = React.useMemo(() => {
+    const startHour = Math.floor(gridStart / 60);
+    const endHour = Math.ceil(gridEnd / 60);
+    return Array.from({ length: endHour - startHour + 1 }, (_, index) => (startHour + index) * 60);
+  }, [gridStart, gridEnd]);
+
+  const laidOut = React.useMemo(() => layoutVisits(events, gridStart), [events, gridStart]);
+  const gridHeight = GRID_PAD_TOP + (gridEnd - gridStart) * PX_PER_VISIT_MINUTE + 16;
+
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['left', 'right', 'bottom']}>
       <Stack.Screen
@@ -97,46 +178,87 @@ export default function DayScreen() {
         <View style={styles.stateContainer}>
           <ActivityIndicator color={theme.muted} />
         </View>
+      ) : events.length === 0 ? (
+        <View style={styles.stateContainer}>
+          <Text style={[styles.emptyText, { color: theme.muted }]}>{t('calendar.noAppointmentsToday')}</Text>
+        </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          {events.length === 0 ? (
-            <Text style={[styles.emptyText, { color: theme.muted }]}>{t('calendar.noAppointmentsToday')}</Text>
-          ) : (
-            events.map((event) => (
-              <Pressable
-                key={event.id}
-                style={styles.row}
-                onPress={() => router.push({ pathname: '/appointment/[id]', params: { id: event.appointmentId } })}>
-                <View style={[styles.colorBar, { backgroundColor: event.color }]} />
-                <View style={styles.rowTimeCol}>
-                  <Text style={[styles.time, { color: theme.text }]}>{event.startTime}</Text>
-                  <Text style={[styles.timeMuted, { color: theme.muted }]}>{event.endTime}</Text>
+          <View style={[styles.grid, { height: gridHeight }]}>
+            {hourMarks.map((minute) => {
+              const top = GRID_PAD_TOP + (minute - gridStart) * PX_PER_VISIT_MINUTE;
+              return (
+                <View key={minute} style={[styles.hourRow, { top }]}>
+                  <Text style={[styles.hourLabel, { color: theme.muted }]}>{formatHourLabel(minute)}</Text>
+                  <View style={[styles.hourLine, { backgroundColor: theme.border }]} />
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.eventText, { color: theme.text }]} numberOfLines={1}>
-                    {event.label}
-                  </Text>
-                  <Text style={[styles.eventSubtitle, { color: theme.muted }]} numberOfLines={1}>
-                    {event.clientName} · {event.staffName}
-                  </Text>
-                </View>
-                <StaffAvatar
-                  imagePath={staffImageById.get(event.staffId ?? '')}
-                  name={event.staffName}
-                  size={32}
-                  backgroundColor="#e4d5c8"
-                  fontSize={9}
-                />
-                <TouchableOpacity
-                  style={[styles.checkoutButton, { borderColor: theme.border }]}
-                  onPress={() =>
-                    router.push({ pathname: '/checkout/[appointmentId]', params: { appointmentId: event.appointmentId } })
-                  }>
-                  <AppIcon name="pointOfSale" size={20} color={theme.text} />
-                </TouchableOpacity>
-              </Pressable>
-            ))
-          )}
+              );
+            })}
+
+            <View style={styles.visitLane}>
+              {laidOut.map((item) => {
+                const widthPercent = 100 / item.columns;
+                const leftPercent = item.column * widthPercent;
+                return (
+                  <Pressable
+                    key={item.event.id}
+                    style={[
+                      styles.visitBlock,
+                      {
+                        top: item.top,
+                        height: item.height,
+                        left: `${leftPercent}%`,
+                        width: `${widthPercent}%`,
+                        borderColor: theme.border,
+                      },
+                    ]}
+                    onPress={() =>
+                      router.push({ pathname: '/appointment/[id]', params: { id: item.event.appointmentId } })
+                    }>
+                    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                      <VisitPhaseBar
+                        phases={item.event.phases}
+                        color={item.event.color}
+                        bgColor={item.event.bgColor}
+                        height={item.height}
+                        direction="horizontal"
+                      />
+                    </View>
+                    <View style={styles.visitContent} pointerEvents="box-none">
+                      <View style={styles.visitTextCol}>
+                        <Text style={[styles.time, { color: theme.text }]} numberOfLines={1}>
+                          {`${item.event.startTime}–${item.event.endTime}`}
+                        </Text>
+                        <Text style={[styles.eventText, { color: theme.text }]} numberOfLines={1}>
+                          {item.event.label}
+                        </Text>
+                        <Text style={[styles.eventSubtitle, { color: theme.muted }]} numberOfLines={1}>
+                          {item.event.clientName} · {item.event.staffName}
+                        </Text>
+                      </View>
+                      <StaffAvatar
+                        imagePath={staffImageById.get(item.event.staffId ?? '')}
+                        name={item.event.staffName}
+                        size={28}
+                        backgroundColor="#e4d5c8"
+                        fontSize={9}
+                      />
+                      <TouchableOpacity
+                        style={[styles.checkoutButton, { borderColor: theme.border, backgroundColor: theme.surface }]}
+                        onPress={() =>
+                          router.push({
+                            pathname: '/checkout/[appointmentId]',
+                            params: { appointmentId: item.event.appointmentId },
+                          })
+                        }>
+                        <AppIcon name="pointOfSale" size={18} color={theme.text} />
+                      </TouchableOpacity>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
         </ScrollView>
       )}
     </SafeAreaView>
@@ -146,14 +268,6 @@ export default function DayScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
   },
   headerCenter: {
     flex: 1,
@@ -173,46 +287,74 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   scrollContent: {
-    padding: 20,
+    paddingHorizontal: 12,
+    paddingTop: 8,
     paddingBottom: 48,
-    gap: 14,
   },
   emptyText: {
     fontSize: 15,
     textAlign: 'center',
   },
-  row: {
+  grid: {
+    marginLeft: 0,
+    position: 'relative',
+  },
+  hourRow: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
   },
-  colorBar: {
-    width: 3,
-    height: 40,
-    borderRadius: 2,
+  hourLabel: {
+    width: HOUR_LABEL_WIDTH,
+    fontSize: 11,
+    fontWeight: '600',
   },
-  rowTimeCol: {
-    width: 56,
+  hourLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+  },
+  visitLane: {
+    position: 'absolute',
+    left: HOUR_LABEL_WIDTH + 4,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
+  visitBlock: {
+    position: 'absolute',
+    borderRadius: 8,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  visitContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 8,
+    height: '100%',
+  },
+  visitTextCol: {
+    flex: 1,
   },
   time: {
-    fontSize: 14,
-  },
-  timeMuted: {
     fontSize: 12,
+    fontWeight: '700',
   },
   eventText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
   },
   eventSubtitle: {
-    marginTop: 2,
-    fontSize: 13,
+    marginTop: 1,
+    fontSize: 12,
   },
   checkoutButton: {
-    marginLeft: 8,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,

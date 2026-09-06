@@ -80,7 +80,13 @@
     "errorNotAvailable": "Deze medewerker is op dit tijdstip niet beschikbaar.",
     "errorInvalidSelection": "Ongeldige medewerker, dienst of variant geselecteerd.",
     "errorGeneric": "Kan afspraak niet aanmaken. Probeer het opnieuw.",
-    "done": "Klaar"
+    "done": "Klaar",
+    "cancelAppointment": "Afspraak annuleren",
+    "cancelConfirmTitle": "Deze afspraak annuleren?",
+    "cancelConfirmMessage": "De klant krijgt een bevestiging per e-mail.",
+    "cancelConfirmAction": "Afspraak annuleren",
+    "cancelFailed": "Kan afspraak niet annuleren. Probeer het opnieuw.",
+    "canceled": "Geannuleerd"
   },
   "client": {
     "title": "Klanten",

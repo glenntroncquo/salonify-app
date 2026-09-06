@@ -1,9 +1,17 @@
 import i18n from '@/lib/i18n';
-import type { AppointmentRow, AppointmentSegmentRow } from '@/lib/api/calendar';
+import { isAppointmentCanceled } from '@/lib/api/appointment-status';
+import type { AppointmentRow, AppointmentSegmentPhaseRow, AppointmentSegmentRow } from '@/lib/api/calendar';
 import { COLOR_BG_MAP, COLOR_MAP, COLOR_TEXT_MAP, mapTreatmentColorToEventColor } from '@/lib/treatment-colors';
 
-import { formatTime, getISOWeekNumber, getMonthShortLabel, toDateKey } from './date-utils';
-import { EventItem, MonthData } from './types';
+import {
+  formatSalonWallClock,
+  getISOWeekNumber,
+  getMonthShortLabel,
+  minutesBetweenWallClock,
+  toDateKey,
+  toDateKeyFromSalonClock,
+} from './date-utils';
+import { EventItem, EventPhase, MonthData } from './types';
 
 function staffLabel(staff: { first_name: string | null; last_name: string | null } | null): string {
   if (!staff) return i18n.t('calendar.unassignedStaff');
@@ -15,48 +23,53 @@ function clientLabel(client: AppointmentRow['client']): string {
   return `${client.first_name ?? ''} ${client.last_name ?? ''}`.trim() || i18n.t('calendar.unknownClient');
 }
 
-function segmentToEvent(appointment: AppointmentRow, segment: AppointmentSegmentRow): EventItem {
-  const serviceName = segment.service?.name || i18n.t('calendar.untitledAppointment');
-  const eventColor = mapTreatmentColorToEventColor(segment.service?.color ?? null, segment.service?.name);
-
-  return {
-    id: segment.id,
-    appointmentId: appointment.id,
-    label: serviceName,
-    color: COLOR_MAP[eventColor],
-    bgColor: COLOR_BG_MAP[eventColor],
-    textColor: COLOR_TEXT_MAP[eventColor],
-    clientName: clientLabel(appointment.client),
-    clientId: appointment.client?.id ?? null,
-    staffName: staffLabel(segment.staff ?? appointment.staff),
-    staffId: segment.staff?.id ?? segment.staff_id ?? appointment.staff?.id ?? null,
-    startTime: formatTime(segment.starts_at),
-    endTime: formatTime(segment.ends_at),
-    startISO: segment.starts_at,
-  };
+function phaseMinutes(phase: AppointmentSegmentPhaseRow): number {
+  const ms = new Date(phase.ends_at).getTime() - new Date(phase.starts_at).getTime();
+  return Math.max(0, Math.round(ms / 60000));
 }
 
-/** One calendar event per segment, timed and staffed from appointment_segment. */
-export function appointmentToEvents(appointment: AppointmentRow): EventItem[] {
-  const segments = appointment.appointment_segment ?? [];
-  if (segments.length === 0) {
-    return [appointmentToEvent(appointment)];
-  }
-  return segments.map((segment) => segmentToEvent(appointment, segment));
+/** Client-facing occupancy: busy + free. Buffer is a staff lock, not visit duration. */
+export function clientFacingPhases(segments: AppointmentSegmentRow[]): EventPhase[] {
+  return segments
+    .flatMap((segment) => segment.appointment_segment_phase ?? [])
+    .filter((phase): phase is AppointmentSegmentPhaseRow & { phase_type: 'busy' | 'free' } => {
+      return phase.phase_type === 'busy' || phase.phase_type === 'free';
+    })
+    .sort((a, b) => a.sequence - b.sequence || a.starts_at.localeCompare(b.starts_at))
+    .map((phase): EventPhase => ({
+      id: phase.id,
+      phase_type: phase.phase_type,
+      minutes: phaseMinutes(phase),
+    }))
+    .filter((phase) => phase.minutes > 0);
 }
 
-/** Combined appointment view (history / detail) — all services, overall span. */
+function headerVisitMinutes(appointment: AppointmentRow, phases: EventPhase[]): number {
+  const header = minutesBetweenWallClock(appointment.start, appointment.end);
+  if (header > 0) return header;
+  return phases.reduce((sum, phase) => sum + phase.minutes, 0);
+}
+
+/** Combined appointment view — visit header is naive appointment.start/end. */
 export function appointmentToEvent(appointment: AppointmentRow): EventItem {
   const segments = appointment.appointment_segment ?? [];
   const services = segments.map((segment) => segment.service).filter(Boolean);
-  const label =
-    services.map((service) => service!.name).join(', ') || i18n.t('calendar.untitledAppointment');
+  const label = services.map((service) => service!.name).join(', ') || i18n.t('calendar.untitledAppointment');
   const eventColor = mapTreatmentColorToEventColor(services[0]?.color ?? null, services[0]?.name);
   const first = segments[0];
-  const last = segments[segments.length - 1];
-  const startISO = first?.starts_at ?? appointment.start;
-  const endISO = last?.ends_at ?? appointment.end;
   const staff = first?.staff ?? appointment.staff;
+  const staffIds = [
+    ...new Set(segments.map((segment) => segment.staff_id).filter((id): id is string => Boolean(id))),
+  ];
+  if (staffIds.length === 0 && staff?.id) staffIds.push(staff.id);
+  const phases = clientFacingPhases(segments);
+  const duration = headerVisitMinutes(appointment, phases);
+  const scaledPhases =
+    phases.length > 0
+      ? phases
+      : duration > 0
+        ? [{ id: `${appointment.id}-busy`, phase_type: 'busy' as const, minutes: duration }]
+        : [];
 
   return {
     id: appointment.id,
@@ -66,13 +79,43 @@ export function appointmentToEvent(appointment: AppointmentRow): EventItem {
     bgColor: COLOR_BG_MAP[eventColor],
     textColor: COLOR_TEXT_MAP[eventColor],
     clientName: clientLabel(appointment.client),
-    clientId: appointment.client?.id ?? null,
+    clientId: appointment.client?.id ?? appointment.client_id ?? null,
     staffName: staffLabel(staff),
     staffId: staff?.id ?? first?.staff_id ?? null,
-    startTime: formatTime(startISO),
-    endTime: formatTime(endISO),
-    startISO,
+    staffIds,
+    startTime: formatSalonWallClock(appointment.start),
+    endTime: formatSalonWallClock(appointment.end),
+    startISO: appointment.start,
+    endISO: appointment.end,
+    phases: scaledPhases,
+    canceled: isAppointmentCanceled(appointment),
   };
+}
+
+/** One calendar event per visit. Height comes from appointment.start/end, not segment buffer. */
+export function appointmentToEvents(appointment: AppointmentRow): EventItem[] {
+  return [appointmentToEvent(appointment)];
+}
+
+export const PX_PER_VISIT_MINUTE = 1.4;
+const MIN_VISIT_BLOCK_HEIGHT = 32;
+const MAX_LIST_VISIT_HEIGHT = 96;
+
+export function visitDurationMinutes(event: Pick<EventItem, 'startISO' | 'endISO' | 'phases'>): number {
+  const header = minutesBetweenWallClock(event.startISO, event.endISO);
+  if (header > 0) return header;
+  return event.phases.reduce((sum, phase) => sum + phase.minutes, 0);
+}
+
+/** Pixel height of a visit block from appointment.start/end (busy+free), never busy-only. */
+export function visitBlockHeight(event: Pick<EventItem, 'startISO' | 'endISO' | 'phases'>, cap?: number): number {
+  const minutes = visitDurationMinutes(event);
+  const height = Math.max(MIN_VISIT_BLOCK_HEIGHT, minutes * PX_PER_VISIT_MINUTE);
+  return cap ? Math.min(cap, height) : height;
+}
+
+export function listVisitBlockHeight(event: Pick<EventItem, 'startISO' | 'endISO' | 'phases'>): number {
+  return visitBlockHeight(event, MAX_LIST_VISIT_HEIGHT);
 }
 
 /** Cache key for one calendar month. Must include shop + tenant so a location switch cannot reuse another shop's rows. */
@@ -85,12 +128,14 @@ export function groupAppointmentsByDateKey(
   staffFilterId: string | null
 ): Record<string, EventItem[]> {
   const events = appointments.flatMap(appointmentToEvents);
-  const filtered = staffFilterId ? events.filter((event) => event.staffId === staffFilterId) : events;
+  const filtered = staffFilterId
+    ? events.filter((event) => event.staffIds.includes(staffFilterId) || event.staffId === staffFilterId)
+    : events;
 
   const byDateKey: Record<string, EventItem[]> = {};
 
   filtered.forEach((event) => {
-    const dateKey = toDateKey(new Date(event.startISO));
+    const dateKey = toDateKeyFromSalonClock(event.startISO);
     if (!byDateKey[dateKey]) {
       byDateKey[dateKey] = [];
     }

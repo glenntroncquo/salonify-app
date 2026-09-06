@@ -14,6 +14,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AppIcon } from '@/components/app-icon';
 import { SalonSelector } from '@/components/salon-selector';
 import { TabSwipeArea } from '@/components/tab-swipe-area';
+import { VisitPhaseBar } from '@/components/visit-phase-bar';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import * as Haptics from 'expo-haptics';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -45,7 +46,7 @@ import {
   getWeekdayLong,
   toDateKey,
 } from './calendar/date-utils';
-import { buildMonthData, groupAppointmentsByDateKey, monthCacheKey } from './calendar/calendar-data';
+import { buildMonthData, groupAppointmentsByDateKey, listVisitBlockHeight, monthCacheKey } from './calendar/calendar-data';
 import { ListEventRow } from './calendar/components/ListEventRow';
 import { ListSectionHeader } from './calendar/components/ListSectionHeader';
 import { createStyles } from './calendar/styles';
@@ -454,7 +455,9 @@ export default function CalendarScreen() {
           .sort()
           .forEach((dateKey) => {
             const dayEvents = staffFilterId
-              ? eventsByDateKey[dateKey].filter((event) => event.staffId === staffFilterId)
+              ? eventsByDateKey[dateKey].filter(
+                  (event) => event.staffIds.includes(staffFilterId) || event.staffId === staffFilterId
+                )
               : eventsByDateKey[dateKey];
             if (!dayEvents || dayEvents.length === 0) return;
 
@@ -800,21 +803,34 @@ export default function CalendarScreen() {
                               <Text style={styles.weekAgendaWeekday}>{day.weekday}</Text>
                             </Pressable>
                             <ScrollView style={styles.weekAgendaEvents} nestedScrollEnabled directionalLockEnabled showsVerticalScrollIndicator>
-                              {day.appointments.map((event) => (
-                                <View key={event.id} style={styles.weekAgendaEventRow}>
-                                  <View style={[styles.weekAgendaColorBar, { backgroundColor: event.color }]} />
-                                  <Text style={styles.weekAgendaTime}>{event.startTime}</Text>
-                                  <Text style={styles.weekAgendaTitle} numberOfLines={1}>
-                                    {event.label}
-                                  </Text>
-                                  <StaffAvatar
-                                    imagePath={staffImageById.get(event.staffId ?? '')}
-                                    name={event.staffName}
-                                    size={18}
-                                    fontSize={8}
-                                  />
-                                </View>
-                              ))}
+                              {day.appointments.map((event) => {
+                                const barHeight = listVisitBlockHeight(event);
+                                return (
+                                  <Pressable
+                                    key={event.id}
+                                    style={[styles.weekAgendaEventRow, { minHeight: barHeight }]}
+                                    onPress={() =>
+                                      router.push({ pathname: '/appointment/[id]', params: { id: event.appointmentId } })
+                                    }>
+                                    <VisitPhaseBar
+                                      phases={event.phases}
+                                      color={event.color}
+                                      bgColor={event.bgColor}
+                                      height={barHeight}
+                                    />
+                                    <Text style={styles.weekAgendaTime}>{event.startTime}</Text>
+                                    <Text style={styles.weekAgendaTitle} numberOfLines={2}>
+                                      {event.label}
+                                    </Text>
+                                    <StaffAvatar
+                                      imagePath={staffImageById.get(event.staffId ?? '')}
+                                      name={event.staffName}
+                                      size={18}
+                                      fontSize={8}
+                                    />
+                                  </Pressable>
+                                );
+                              })}
                             </ScrollView>
                           </View>
                         ))}

@@ -10,8 +10,14 @@ export type CalendarWeek = {
   days: CalendarDay[];
 };
 
+export type EventPhase = {
+  id: string;
+  phase_type: 'busy' | 'free';
+  minutes: number;
+};
+
 export type EventItem = {
-  /** Segment id when exploded for the calendar; appointment id for combined history rows. */
+  /** Appointment id — one calendar event per visit. */
   id: string;
   appointmentId: string;
   label: string;
@@ -25,9 +31,16 @@ export type EventItem = {
   clientId: string | null;
   staffName: string;
   staffId: string | null;
+  staffIds: string[];
   startTime: string;
   endTime: string;
+  /** Naive salon wall-clock `appointment.start`. */
   startISO: string;
+  /** Naive salon wall-clock `appointment.end`. */
+  endISO: string;
+  /** Client-facing busy+free phases, scaled onto start/end. Buffer is omitted. */
+  phases: EventPhase[];
+  canceled: boolean;
 };
 
 export type MonthData = {

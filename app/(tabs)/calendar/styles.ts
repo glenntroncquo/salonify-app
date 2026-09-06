@@ -199,6 +199,7 @@ export const createStyles = (theme: typeof Colors.light) =>
     weekAgendaEventRow: {
       flexDirection: 'row',
       alignItems: 'center',
+      gap: 6,
       marginBottom: 4,
     },
     weekAgendaColorBar: {
@@ -284,6 +285,9 @@ export const createStyles = (theme: typeof Colors.light) =>
       width: 3,
       height: 36,
       borderRadius: 2,
+      marginRight: 8,
+    },
+    listEventPhaseBar: {
       marginRight: 8,
     },
     listEventTextCol: {

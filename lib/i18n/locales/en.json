@@ -80,7 +80,13 @@
     "errorNotAvailable": "This staff member isn't available at this time.",
     "errorInvalidSelection": "Invalid staff, service, or variant selected.",
     "errorGeneric": "Failed to create appointment. Please try again.",
-    "done": "Done"
+    "done": "Done",
+    "cancelAppointment": "Cancel appointment",
+    "cancelConfirmTitle": "Cancel this appointment?",
+    "cancelConfirmMessage": "The client will receive a confirmation email.",
+    "cancelConfirmAction": "Cancel appointment",
+    "cancelFailed": "Failed to cancel appointment. Please try again.",
+    "canceled": "Canceled"
   },
   "client": {
     "title": "Clients",
