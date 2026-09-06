@@ -257,6 +257,24 @@
     "dashboard": "Painel",
     "settings": "Configurações"
   },
+  "legal": {
+    "section": "Jurídico",
+    "privacy": "Política de privacidade",
+    "terms": "Termos de uso",
+    "failedToOpen": "Não foi possível abrir esta página. Tente novamente."
+  },
+  "account": {
+    "section": "Conta",
+    "requestDeletion": "Solicitar exclusão da conta",
+    "requestDeletionAlready": "Exclusão solicitada",
+    "confirmTitle": "Solicitar exclusão da conta?",
+    "confirmMessage": "Vamos registrar seu pedido e processá-lo. Isso não exclui imediatamente os dados do salão ou da empresa.",
+    "confirmAction": "Solicitar exclusão",
+    "successTitle": "Pedido enviado",
+    "successMessage": "Registramos seu pedido de exclusão. Entraremos em contato pelo e-mail desta conta.",
+    "failedTitle": "Pedido falhou",
+    "failed": "Não foi possível enviar o pedido de exclusão. Tente novamente."
+  },
   "profile": {
     "signOut": "Sair",
     "language": "Idioma"

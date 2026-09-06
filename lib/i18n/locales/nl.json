@@ -257,6 +257,24 @@
     "dashboard": "Dashboard",
     "settings": "Instellingen"
   },
+  "legal": {
+    "section": "Juridisch",
+    "privacy": "Privacybeleid",
+    "terms": "Gebruiksvoorwaarden",
+    "failedToOpen": "Kan deze pagina niet openen. Probeer het opnieuw."
+  },
+  "account": {
+    "section": "Account",
+    "requestDeletion": "Accountverwijdering aanvragen",
+    "requestDeletionAlready": "Verwijdering aangevraagd",
+    "confirmTitle": "Accountverwijdering aanvragen?",
+    "confirmMessage": "We registreren je verzoek en verwerken het. Salon- of bedrijfsgegevens worden niet meteen verwijderd.",
+    "confirmAction": "Verwijdering aanvragen",
+    "successTitle": "Verzoek verzonden",
+    "successMessage": "We hebben je verzoek tot verwijdering geregistreerd. We nemen contact op via het e-mailadres van dit account.",
+    "failedTitle": "Verzoek mislukt",
+    "failed": "Kan het verwijderverzoek niet verzenden. Probeer het opnieuw."
+  },
   "profile": {
     "signOut": "Uitloggen",
     "language": "Taal"

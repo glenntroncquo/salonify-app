@@ -6,6 +6,8 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { AccountDeletionButton } from '@/components/account-deletion-button';
+import { LegalLinkRows, useLegalUrls } from '@/components/legal-link-rows';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { ThemePreference, useThemePreference } from '@/contexts/theme-context';
@@ -18,6 +20,8 @@ export default function SettingsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { companyId } = useAuth();
+  const { privacyUrl, termsUrl } = useLegalUrls();
+  const hasLegalLinks = Boolean(privacyUrl || termsUrl);
   const { preference, setPreference } = useThemePreference();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
@@ -164,6 +168,18 @@ export default function SettingsScreen() {
               })}
             </View>
           </View>
+
+          {hasLegalLinks ? (
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>{t('legal.section')}</Text>
+              <LegalLinkRows rowStyle={styles.linkRow} textStyle={styles.linkRowText} chevronColor={theme.muted} />
+            </View>
+          ) : null}
+
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>{t('account.section')}</Text>
+            <AccountDeletionButton style={styles.deleteButton} />
+          </View>
         </ScrollView>
       )}
     </SafeAreaView>
@@ -266,5 +282,24 @@ const createStyles = (theme: typeof Colors.light) =>
     },
     themeChipTextActive: {
       color: theme.onTint,
+    },
+    linkRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    linkRowText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    deleteButton: {
+      alignItems: 'flex-start',
+      paddingVertical: 12,
     },
   });

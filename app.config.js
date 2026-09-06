@@ -15,5 +15,8 @@ module.exports = ({ config }) => ({
     ...config.extra,
     sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN || config.extra?.sentryDsn || DEFAULT_DSN,
     sentryEnvironment: resolveSentryEnvironment(),
+    // Hosted legal pages. Leave empty until Gleami publishes them — rows hide when unset.
+    privacyUrl: process.env.EXPO_PUBLIC_PRIVACY_URL || config.extra?.privacyUrl || '',
+    termsUrl: process.env.EXPO_PUBLIC_TERMS_URL || config.extra?.termsUrl || '',
   },
 });

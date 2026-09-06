@@ -7,6 +7,8 @@ import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { AccountDeletionButton } from '@/components/account-deletion-button';
+import { LegalLinkRows, useLegalUrls } from '@/components/legal-link-rows';
 import { TabSwipeArea } from '@/components/tab-swipe-area';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -34,6 +36,8 @@ export default function MoreScreen() {
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);
   const { user, companyId, signOut } = useAuth();
+  const { privacyUrl, termsUrl } = useLegalUrls();
+  const hasLegalLinks = Boolean(privacyUrl || termsUrl);
   const [profile, setProfile] = React.useState<StaffProfile | null>(null);
   const [profileLoading, setProfileLoading] = React.useState(true);
   const [shouldCrash, setShouldCrash] = React.useState(false);
@@ -135,19 +139,30 @@ export default function MoreScreen() {
         </Pressable>
       </View>
 
-      {__DEV__ ? (
-        <Pressable style={styles.signOutButton} onPress={() => setShouldCrash(true)}>
-          <ThemedText style={styles.signOutText} lightColor={Colors.light.error} darkColor={Colors.dark.error}>
-            {t('errorBoundary.testCrash')}
-          </ThemedText>
-        </Pressable>
+      {hasLegalLinks ? (
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionLabel}>{t('legal.section')}</ThemedText>
+          <LegalLinkRows rowStyle={styles.manageRow} textStyle={styles.manageRowText} chevronColor={theme.muted} />
+        </View>
       ) : null}
 
-      <Pressable style={styles.signOutButton} onPress={signOut}>
-        <ThemedText style={styles.signOutText} lightColor={Colors.light.error} darkColor={Colors.dark.error}>
-          {t('profile.signOut')}
-        </ThemedText>
-      </Pressable>
+      <View style={styles.accountActions}>
+        {__DEV__ ? (
+          <Pressable style={styles.signOutButton} onPress={() => setShouldCrash(true)}>
+            <ThemedText style={styles.signOutText} lightColor={Colors.light.error} darkColor={Colors.dark.error}>
+              {t('errorBoundary.testCrash')}
+            </ThemedText>
+          </Pressable>
+        ) : null}
+
+        <AccountDeletionButton style={styles.signOutButton} />
+
+        <Pressable style={styles.signOutButton} onPress={signOut}>
+          <ThemedText style={styles.signOutText} lightColor={Colors.light.error} darkColor={Colors.dark.error}>
+            {t('profile.signOut')}
+          </ThemedText>
+        </Pressable>
+      </View>
       </ScrollView>
     </ThemedView>
     </TabSwipeArea>
@@ -233,11 +248,14 @@ const createStyles = (theme: typeof Colors.light) =>
       fontSize: 15,
       fontWeight: '600',
     },
-    signOutButton: {
+    accountActions: {
       marginTop: 'auto',
+      alignItems: 'center',
+      marginBottom: 24,
+    },
+    signOutButton: {
       paddingVertical: 12,
       paddingHorizontal: 24,
-      marginBottom: 24,
     },
     signOutText: {
       fontSize: 16,
