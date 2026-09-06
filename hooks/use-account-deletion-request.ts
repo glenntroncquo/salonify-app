@@ -9,7 +9,8 @@ export function useAccountDeletionRequest() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [submitting, setSubmitting] = React.useState(false);
-  const alreadyRequested = hasDeletionRequest(user);
+  const [requested, setRequested] = React.useState(false);
+  const alreadyRequested = requested || hasDeletionRequest(user);
 
   const confirm = React.useCallback(() => {
     if (!user || submitting) return;
@@ -29,6 +30,7 @@ export function useAccountDeletionRequest() {
             setSubmitting(true);
             try {
               await requestStaffAccountDeletion(user);
+              setRequested(true);
               Alert.alert(t('account.successTitle'), t('account.successMessage'));
             } catch {
               Alert.alert(t('account.failedTitle'), t('account.failed'));
