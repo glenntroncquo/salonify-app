@@ -92,22 +92,28 @@ export type MonthlyCountData = {
   total: number;
 };
 
-/** Counts non-canceled appointments per month. Web also supports a treatment-filter dropdown; deferred as a nice-to-have, not essential for the default view. */
+/**
+ * Counts non-canceled appointments per month on `appointment.location_id`
+ * (not `appointment_segment.location_id` — same as platform client #31).
+ * A service-filter dropdown exists on web; Expo default view is unfiltered.
+ */
 export async function fetchMonthlyAppointments(companyId: string, locationId?: string | null): Promise<MonthlyCountData> {
   const months = buildMonthSkeleton(24);
   const rangeStart = new Date(months[0].year, months[0].monthIndex, 1);
   const rangeEndExclusive = new Date(months[months.length - 1].year, months[months.length - 1].monthIndex + 1, 1);
 
-  let query = supabase
+  if (!locationId) {
+    return { monthlyData: months.map((month) => ({ ...month, count: 0 })), total: 0 };
+  }
+
+  const { data, error } = await supabase
     .from('appointment')
     .select('start')
     .eq('company_id', companyId)
+    .eq('location_id', locationId)
     .eq('is_canceled', false)
     .gte('start', rangeStart.toISOString())
     .lt('start', rangeEndExclusive.toISOString());
-  if (locationId) query = query.eq('location_id', locationId);
-
-  const { data, error } = await query;
   if (error) throw error;
 
   const byKey = new Map<string, number>();

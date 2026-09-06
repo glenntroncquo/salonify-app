@@ -77,30 +77,27 @@ function compareVariants(a: ServiceVariant, b: ServiceVariant): number {
 }
 
 export async function fetchServices(companyId: string, locationId?: string | null): Promise<ServiceWithVariants[]> {
-  let serviceIds: string[] | null = null;
-  if (locationId) {
-    const { data: links, error: linkError } = await live
-      .from('location_service')
-      .select('service_id')
-      .eq('location_id', locationId);
-    if (linkError) throw linkError;
-    serviceIds = ((links as { service_id?: string }[] | null) ?? [])
-      .map((row) => row.service_id)
-      .filter((id): id is string => typeof id === 'string' && id.length > 0);
-    if (serviceIds.length === 0) return [];
-  }
+  if (!locationId) return [];
 
-  let query = supabase
+  const { data: links, error: linkError } = await live
+    .from('location_service')
+    .select('service_id')
+    .eq('location_id', locationId);
+  if (linkError) throw linkError;
+  const serviceIds = ((links as { service_id?: string }[] | null) ?? [])
+    .map((row) => row.service_id)
+    .filter((id): id is string => typeof id === 'string' && id.length > 0);
+  if (serviceIds.length === 0) return [];
+
+  const { data, error } = await supabase
     .from('service')
     .select(BOOKING_SERVICE_SELECT)
     .eq('company_id', companyId)
     .eq('is_active', true)
     .eq('is_deleted', false)
+    .in('id', serviceIds)
     .order('display_order', { ascending: true, nullsFirst: false })
     .order('name', { ascending: true });
-  if (serviceIds) query = query.in('id', serviceIds);
-
-  const { data, error } = await query;
 
   if (error) throw error;
   return ((data as unknown as ServiceWithVariants[]) ?? [])
