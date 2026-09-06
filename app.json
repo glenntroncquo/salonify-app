@@ -57,11 +57,17 @@
       ]
     ],
     "extra": {
-      "sentryDsn": "https://f538d29e8552491263993c60be9477d0@o4512034656813056.ingest.de.sentry.io/4512034662580304"
+      "sentryDsn": "https://f538d29e8552491263993c60be9477d0@o4512034656813056.ingest.de.sentry.io/4512034662580304",
+      "sentryEnvironment": "development",
+      "router": {},
+      "eas": {
+        "projectId": "0697a847-cb88-4e7c-b337-5641523fc443"
+      }
     },
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "owner": "glennt"
   }
 }
