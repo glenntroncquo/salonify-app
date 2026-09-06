@@ -16,8 +16,7 @@ import { SalonSelector } from '@/components/salon-selector';
 import { TabSwipeArea } from '@/components/tab-swipe-area';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import * as Haptics from 'expo-haptics';
-import { useRouter } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
 import { StaffAvatar } from '@/components/staff-avatar';
