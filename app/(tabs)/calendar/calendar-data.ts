@@ -123,6 +123,37 @@ export function monthCacheKey(companyId: string, locationId: string, year: numbe
   return `${companyId}:${locationId}:${year}-${String(monthIndex + 1).padStart(2, '0')}`;
 }
 
+export function removeAppointmentFromCache(
+  cache: Map<string, AppointmentRow[]>,
+  appointmentId: string
+): string[] {
+  const touched: string[] = [];
+  cache.forEach((rows, key) => {
+    const next = rows.filter((row) => row.id !== appointmentId);
+    if (next.length !== rows.length) {
+      cache.set(key, next);
+      touched.push(key);
+    }
+  });
+  return touched;
+}
+
+export function upsertAppointmentInCache(
+  cache: Map<string, AppointmentRow[]>,
+  row: AppointmentRow,
+  monthKey: string
+): string[] {
+  const touched = new Set(removeAppointmentFromCache(cache, row.id));
+  const existing = cache.get(monthKey);
+  if (!existing) return [...touched];
+  cache.set(
+    monthKey,
+    [...existing.filter((item) => item.id !== row.id), row].sort((a, b) => a.start.localeCompare(b.start))
+  );
+  touched.add(monthKey);
+  return [...touched];
+}
+
 export function groupAppointmentsByDateKey(
   appointments: AppointmentRow[],
   staffFilterId: string | null

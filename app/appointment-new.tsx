@@ -26,6 +26,7 @@ import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { createAppointment } from '@/lib/api/appointment-create';
 import { fetchStaff, StaffMember } from '@/lib/api/calendar';
+import { CALENDAR_REFRESH_EVENT } from '@/lib/calendar-refresh';
 import { ClientSearchResult, searchClients } from '@/lib/api/clients';
 import {
   fetchServices,
@@ -229,7 +230,7 @@ export default function NewAppointmentScreen() {
     setSubmitting(true);
     setErrorMessage(null);
     try {
-      await createAppointment({
+      const created = await createAppointment({
         start: startDate,
         companyId,
         locationId,
@@ -247,7 +248,7 @@ export default function NewAppointmentScreen() {
         email: emailValue,
         notes: notes.trim(),
       });
-      DeviceEventEmitter.emit('calendarRefreshAppointments');
+      DeviceEventEmitter.emit(CALENDAR_REFRESH_EVENT, created.id ? { appointmentId: created.id } : undefined);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.back();
     } catch (err) {
