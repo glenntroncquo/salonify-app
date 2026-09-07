@@ -95,14 +95,14 @@ export default function DayScreen() {
   const [events, setEvents] = React.useState<EventItem[]>([]);
   const [staffImageById, setStaffImageById] = React.useState<Map<string, string | null>>(new Map());
   const [loading, setLoading] = React.useState(true);
-  const [hasLoadedOnce, setHasLoadedOnce] = React.useState(false);
+  const hasLoadedOnceRef = React.useRef(false);
 
   const load = React.useCallback(async (opts?: { silent?: boolean }) => {
     if (!date || !companyId || !locationId) {
       setLoading(false);
       return;
     }
-    const silent = opts?.silent || hasLoadedOnce;
+    const silent = opts?.silent || hasLoadedOnceRef.current;
     if (!silent) setLoading(true);
     const target = new Date(date);
     const [appointments, staff] = await Promise.all([
@@ -112,9 +112,9 @@ export default function DayScreen() {
     const byDateKey = groupAppointmentsByDateKey(appointments, staffIdParam || null);
     setEvents(byDateKey[date] ?? []);
     setStaffImageById(new Map(staff.map((member) => [member.id, member.image_path])));
-    setHasLoadedOnce(true);
+    hasLoadedOnceRef.current = true;
     setLoading(false);
-  }, [date, companyId, locationId, staffIdParam, hasLoadedOnce]);
+  }, [date, companyId, locationId, staffIdParam]);
 
   const applyPatch = React.useCallback(
     async (payload?: CalendarRefreshPayload) => {
