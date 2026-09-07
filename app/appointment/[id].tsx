@@ -26,6 +26,7 @@ import { cancelAppointment } from '@/lib/api/appointment-cancel';
 import { isAppointmentCanceled } from '@/lib/api/appointment-status';
 import { fetchAppointmentById, fetchClientAppointments, type AppointmentRow } from '@/lib/api/calendar';
 import { addClientNote, Client, ClientNote, fetchClient, fetchClientNotes } from '@/lib/api/clients';
+import { CALENDAR_REFRESH_EVENT } from '@/lib/calendar-refresh';
 import { getInitialsFromLabel } from '@/lib/text';
 
 import { appointmentToEvent, listVisitBlockHeight } from '../(tabs)/calendar/calendar-data';
@@ -132,7 +133,10 @@ export default function AppointmentDetailScreen() {
               companyId: company,
               locationId: shopId,
             });
-            DeviceEventEmitter.emit('calendarRefreshAppointments');
+            DeviceEventEmitter.emit(CALENDAR_REFRESH_EVENT, {
+              appointmentId: event.appointmentId,
+              removed: true,
+            });
             router.back();
           } catch (err) {
             setError(err instanceof Error ? err.message : t('appointment.cancelFailed'));

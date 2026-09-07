@@ -1,11 +1,11 @@
 import { Pressable } from '@/components/pressable-scale';
 import { AppIcon } from '@/components/app-icon';
 import { HeaderButton } from '@/components/header-button';
+import { DayTimelineSkeleton } from '@/components/skeleton';
 import { VisitPhaseBar } from '@/components/visit-phase-bar';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
 import {
-  ActivityIndicator,
   DeviceEventEmitter,
   ScrollView,
   StyleSheet,
@@ -22,15 +22,12 @@ import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { fetchAppointmentsForMonth, fetchStaff } from '@/lib/api/calendar';
+import { fetchAppointmentsForMonth, fetchAppointmentById, fetchStaff } from '@/lib/api/calendar';
+import { isAppointmentCanceled } from '@/lib/api/appointment-status';
+import { CALENDAR_REFRESH_EVENT, type CalendarRefreshPayload } from '@/lib/calendar-refresh';
 
-import {
-  groupAppointmentsByDateKey,
-  PX_PER_VISIT_MINUTE,
-  visitBlockHeight,
-  visitDurationMinutes,
-} from '../(tabs)/calendar/calendar-data';
-import { getFullDateLabel, getISOWeekNumber, parseSalonWallClock } from '../(tabs)/calendar/date-utils';
+import { appointmentToEvent, groupAppointmentsByDateKey, PX_PER_VISIT_MINUTE, visitBlockHeight, visitDurationMinutes } from '../(tabs)/calendar/calendar-data';
+import { getFullDateLabel, getISOWeekNumber, parseSalonWallClock, toDateKeyFromSalonClock } from '../(tabs)/calendar/date-utils';
 import { EventItem } from '../(tabs)/calendar/types';
 
 const HOUR_LABEL_WIDTH = 44;
@@ -98,13 +95,15 @@ export default function DayScreen() {
   const [events, setEvents] = React.useState<EventItem[]>([]);
   const [staffImageById, setStaffImageById] = React.useState<Map<string, string | null>>(new Map());
   const [loading, setLoading] = React.useState(true);
+  const [hasLoadedOnce, setHasLoadedOnce] = React.useState(false);
 
-  const load = React.useCallback(async () => {
+  const load = React.useCallback(async (opts?: { silent?: boolean }) => {
     if (!date || !companyId || !locationId) {
       setLoading(false);
       return;
     }
-    setLoading(true);
+    const silent = opts?.silent || hasLoadedOnce;
+    if (!silent) setLoading(true);
     const target = new Date(date);
     const [appointments, staff] = await Promise.all([
       fetchAppointmentsForMonth(companyId, locationId, target.getFullYear(), target.getMonth()),
@@ -113,17 +112,60 @@ export default function DayScreen() {
     const byDateKey = groupAppointmentsByDateKey(appointments, staffIdParam || null);
     setEvents(byDateKey[date] ?? []);
     setStaffImageById(new Map(staff.map((member) => [member.id, member.image_path])));
+    setHasLoadedOnce(true);
     setLoading(false);
-  }, [date, companyId, locationId, staffIdParam]);
+  }, [date, companyId, locationId, staffIdParam, hasLoadedOnce]);
+
+  const applyPatch = React.useCallback(
+    async (payload?: CalendarRefreshPayload) => {
+      if (!date) return;
+
+      if (payload?.removed && payload.appointmentId) {
+        setEvents((current) => current.filter((event) => event.appointmentId !== payload.appointmentId));
+        return;
+      }
+
+      if (payload?.appointmentId) {
+        try {
+          const row = await fetchAppointmentById(payload.appointmentId);
+          if (!row || isAppointmentCanceled(row)) {
+            setEvents((current) => current.filter((event) => event.appointmentId !== payload.appointmentId));
+            return;
+          }
+          const event = appointmentToEvent(row);
+          const eventDate = toDateKeyFromSalonClock(event.startISO);
+          const staffId = staffIdParam || null;
+          const matchesStaff =
+            !staffId || event.staffIds.includes(staffId) || event.staffId === staffId;
+          setEvents((current) => {
+            const without = current.filter((item) => item.appointmentId !== event.appointmentId);
+            if (eventDate !== date || !matchesStaff) return without;
+            return [...without, event].sort((a, b) => a.startISO.localeCompare(b.startISO));
+          });
+        } catch {
+          await load({ silent: true });
+        }
+        return;
+      }
+
+      await load({ silent: true });
+    },
+    [date, load, staffIdParam]
+  );
 
   React.useEffect(() => {
     load();
   }, [load]);
 
   React.useEffect(() => {
-    const subscription = DeviceEventEmitter.addListener('calendarRefreshAppointments', load);
+    const subscription = DeviceEventEmitter.addListener(
+      CALENDAR_REFRESH_EVENT,
+      (payload?: CalendarRefreshPayload) => {
+        void applyPatch(payload);
+      }
+    );
     return () => subscription.remove();
-  }, [load]);
+  }, [applyPatch]);
 
   const weekNumber = date ? getISOWeekNumber(new Date(date)) : 0;
 
@@ -176,9 +218,7 @@ export default function DayScreen() {
       />
 
       {loading ? (
-        <View style={styles.stateContainer}>
-          <ActivityIndicator color={theme.muted} />
-        </View>
+        <DayTimelineSkeleton />
       ) : events.length === 0 ? (
         <EmptyState
           icon="eventBusy"
@@ -285,11 +325,6 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 13,
     marginTop: 2,
-  },
-  stateContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   scrollContent: {
     paddingHorizontal: 12,

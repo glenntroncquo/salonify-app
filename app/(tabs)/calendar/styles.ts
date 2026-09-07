@@ -127,16 +127,19 @@ export const createStyles = (theme: typeof Colors.light) =>
       color: theme.onTint,
       fontWeight: '700',
     },
-    todayRingCircle: {
-      borderRadius: 13,
-      borderWidth: 1.5,
-      borderColor: theme.tint,
+    weekAgendaTodayCircle: {
+      minWidth: 52,
+      height: 44,
+      paddingHorizontal: 6,
+      borderRadius: 22,
+      backgroundColor: theme.tint,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    dayNumberToday: {
-      color: theme.tint,
-      fontWeight: '700',
+    weekAgendaDateToday: {
+      color: theme.onTint,
+      fontSize: 28,
+      lineHeight: 32,
     },
     eventStack: {
       gap: 4,
@@ -236,9 +239,7 @@ export const createStyles = (theme: typeof Colors.light) =>
       paddingRight: 8,
     },
     listLoadingFooter: {
-      height: 56,
-      alignItems: 'center',
-      justifyContent: 'center',
+      paddingVertical: 8,
     },
     listFullBleed: {
       marginHorizontal: -16,
