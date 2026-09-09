@@ -60,7 +60,7 @@ const createStyles = (theme: typeof Colors.light) =>
       gap: 6,
       paddingLeft: 6,
       paddingRight: 10,
-      height: 32,
+      minHeight: 44,
       borderRadius: 10,
       borderWidth: 1,
     },

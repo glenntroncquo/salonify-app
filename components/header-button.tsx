@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, type PressableProps } from 'react-native';
+import { Pressable, StyleSheet, type PressableProps } from 'react-native';
 
 /**
  * For content rendered inside a native Stack.Screen `headerLeft`/`headerRight`
@@ -15,9 +15,27 @@ export const HeaderButton = React.forwardRef<React.ComponentRef<typeof Pressable
     return (
       <Pressable
         ref={ref}
-        style={(state) => [typeof style === 'function' ? style(state) : style, state.pressed && { opacity: 0.5 }]}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: rest.disabled ?? false }}
+        style={(state) => [styles.target, typeof style === 'function' ? style(state) : style, state.pressed && { opacity: 0.5 }]}
         {...rest}
       />
     );
   }
 );
+
+const styles = StyleSheet.create({
+  target: {
+    // Keep sheet controls square so the native iOS header treatment remains a
+    // true circle instead of stretching into a capsule when the slot is
+    // measured on compact devices.
+    width: 44,
+    height: 44,
+    minWidth: 44,
+    minHeight: 44,
+    borderRadius: 22,
+    padding: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable as RNPressable, type GestureResponderEvent, type PressableProps } from 'react-native';
+import { Pressable as RNPressable, StyleSheet, type GestureResponderEvent, type PressableProps } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
 
 const AnimatedPressable = Animated.createAnimatedComponent(RNPressable);
@@ -51,7 +51,9 @@ export const Pressable = React.forwardRef<React.ComponentRef<typeof RNPressable>
     return (
       <AnimatedPressable
         ref={ref}
-        style={[resolvedStyle, animatedStyle]}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: rest.disabled ?? false }}
+        style={[styles.target, resolvedStyle, animatedStyle]}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         {...rest}
@@ -59,3 +61,5 @@ export const Pressable = React.forwardRef<React.ComponentRef<typeof RNPressable>
     );
   }
 );
+
+const styles = StyleSheet.create({ target: { minWidth: 44, minHeight: 44, justifyContent: 'center' } });

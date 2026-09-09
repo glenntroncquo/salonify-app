@@ -1,3 +1,4 @@
+import { CheckoutProvider } from '@/contexts/checkout-context';
 import { CrashRecovery } from '@/components/crash-recovery';
 import { Colors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/contexts/auth-context';
@@ -99,7 +100,7 @@ function RootNavigator() {
         <Stack.Screen name="staff/[id]/time-off" />
         <Stack.Screen name="staff/[id]/schedule" />
         <Stack.Screen name="staff/time-off-new" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="checkout/[appointmentId]" options={{ presentation: 'modal', headerShown: false }} />
+        <Stack.Screen name="checkout/[appointmentId]" options={{ presentation: 'modal', headerShown: true }} />
         <Stack.Screen name="orders/index" />
         <Stack.Screen name="orders/[id]" />
         <Stack.Screen name="dashboard/index" />
@@ -142,7 +143,9 @@ function RootLayout() {
             <LocationProvider>
               <SentryStaffContext />
               <Sentry.ErrorBoundary fallback={({ resetError }) => <CrashRecovery onRetry={resetError} />}>
-                <RootLayoutInner />
+                <CheckoutProvider>
+                  <RootLayoutInner />
+                </CheckoutProvider>
               </Sentry.ErrorBoundary>
             </LocationProvider>
           </AuthProvider>

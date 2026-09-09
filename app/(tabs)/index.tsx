@@ -1,8 +1,8 @@
+import { calendarPreviewLayout } from '@/lib/calendar-layout';
 import { Pressable } from '@/components/pressable-scale';
 import React from 'react';
 import {
   DeviceEventEmitter,
-  ActivityIndicator,
   FlatList,
   ScrollView,
   Text,
@@ -10,22 +10,26 @@ import {
   TouchableOpacity,
   useWindowDimensions,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppIcon } from '@/components/app-icon';
 import { SalonSelector } from '@/components/salon-selector';
-import { TabSwipeArea } from '@/components/tab-swipe-area';
-import { VisitPhaseBar } from '@/components/visit-phase-bar';
+import { TabScreen } from '@/components/tab-screen';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import * as Haptics from 'expo-haptics';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
 import { EmptyState } from '@/components/empty-state';
 import { StaffAvatar } from '@/components/staff-avatar';
-import { ESTIMATED_TAB_BAR_HEIGHT } from '@/constants/layout';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
-import { fetchAppointmentsForMonth, fetchStaff, AppointmentRow, StaffMember } from '@/lib/api/calendar';
+import { isAppointmentCanceled } from '@/lib/api/appointment-status';
+import {
+  fetchAppointmentById,
+  fetchAppointmentsForMonth,
+  fetchStaff,
+  AppointmentRow,
+  StaffMember,
+} from '@/lib/api/calendar';
 
 import {
   BASE_MONTH_INDEX,
@@ -45,9 +49,22 @@ import {
   getWeekOffsetFromBase,
   getWeekStartMonday,
   getWeekdayLong,
+  parseSalonWallClock,
   toDateKey,
 } from './calendar/date-utils';
-import { buildMonthData, groupAppointmentsByDateKey, listVisitBlockHeight, monthCacheKey } from './calendar/calendar-data';
+import {
+  buildMonthData,
+  groupAppointmentsByDateKey,
+  monthCacheKey,
+  removeAppointmentFromMonthCache,
+  upsertAppointmentInMonthCache,
+} from './calendar/calendar-data';
+import {
+  ListAgendaSkeleton,
+  ListFooterSkeleton,
+  MonthGridSkeleton,
+  WeekAgendaSkeleton,
+} from './calendar/components/CalendarSkeletons';
 import { ListEventRow } from './calendar/components/ListEventRow';
 import { ListSectionHeader } from './calendar/components/ListSectionHeader';
 import { createStyles } from './calendar/styles';
@@ -63,25 +80,17 @@ function buildPrefetchWindow(centerOffset: number): number[] {
 
 export default function CalendarScreen() {
   const { t } = useTranslation();
-  const { width, height } = useWindowDimensions();
-  const gridWidth = width - 32;
+  const { width, fontScale } = useWindowDimensions();
+  const [gridWidth, setGridWidth] = React.useState(width - 32);
   const { companyId } = useAuth();
   const { locationId, loading: locationLoading } = useLocation();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);
-  const insets = useSafeAreaInsets();
-  const [headerHeight, setHeaderHeight] = React.useState(0);
   const [calendarAreaHeight, setCalendarAreaHeight] = React.useState(0);
-  // The tab bar floats via `position: absolute` (that's what makes it a
-  // pill instead of an edge-to-edge bar), so it never participates in this
-  // screen's flex layout — this SafeAreaView also deliberately skips the
-  // bottom edge, so `calendarAreaHeight` measures all the way to the
-  // physical screen bottom. Without subtracting the bar's footprint here,
-  // the grid's last row renders underneath it instead of above it.
-  const tabBarClearance = ESTIMATED_TAB_BAR_HEIGHT + insets.bottom + 8;
-  const calendarHeight = Math.max(280, (calendarAreaHeight || height - headerHeight) - tabBarClearance);
-  const weekRowFixedHeight = Math.max(72, Math.floor(calendarHeight / 7));
+  const calendarHeight = calendarAreaHeight;
+  const weekRowFixedHeight = calendarHeight / 7;
+  const compactHeader = gridWidth < 380 || fontScale > 1.2;
   const [showModeMenu, setShowModeMenu] = React.useState(false);
   const [showStaffMenu, setShowStaffMenu] = React.useState(false);
   const [modeMenuPos, setModeMenuPos] = React.useState({ top: 0, right: 16 });
@@ -103,10 +112,6 @@ export default function CalendarScreen() {
     []
   );
   const [currentWeekIndex, setCurrentWeekIndex] = React.useState(WEEK_CENTER_INDEX);
-  // Nothing is selected until the user taps a day — "today" gets its own
-  // visual marker (below) so it's still clear at a glance without forcing a
-  // selection state on it.
-  const [selectedDateKey, setSelectedDateKey] = React.useState<string | null>(null);
   const todayKey = React.useMemo(() => toDateKey(new Date()), []);
   const listRef = React.useRef<FlatList<number>>(null);
   const weekListRef = React.useRef<FlatList<number>>(null);
@@ -116,15 +121,13 @@ export default function CalendarScreen() {
   const router = useRouter();
   const offsetsRef = React.useRef(offsets);
   const viewModeRef = React.useRef(viewMode);
-  const selectedDateKeyRef = React.useRef(selectedDateKey);
   const prevViewModeRef = React.useRef(viewMode);
 
   const [staffList, setStaffList] = React.useState<StaffMember[]>([]);
   const [staffFilterId, setStaffFilterId] = React.useState<string | null>(null);
-  const [staffLoading, setStaffLoading] = React.useState(true);
   const [refreshing, setRefreshing] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-
+  const [calendarEpoch, setCalendarEpoch] = React.useState(0);
   // Appointments are fetched one calendar month at a time (see loadMonth
   // below) rather than the whole company's history up front — cached here by
   // companyId + locationId + "YYYY-MM". A ref because it's a cache, not
@@ -191,11 +194,9 @@ export default function CalendarScreen() {
 
   const loadStaff = React.useCallback(async () => {
     if (!companyId || !locationId) {
-      setStaffLoading(false);
       return;
     }
     const epoch = scopeEpochRef.current;
-    setStaffLoading(true);
     try {
       const data = await fetchStaff(companyId, locationId);
       if (scopeEpochRef.current !== epoch) return;
@@ -203,9 +204,6 @@ export default function CalendarScreen() {
     } catch (err) {
       if (scopeEpochRef.current !== epoch) return;
       setError(err instanceof Error ? err.message : t('calendar.failedToLoadStaff'));
-    } finally {
-      if (scopeEpochRef.current !== epoch) return;
-      setStaffLoading(false);
     }
   }, [companyId, locationId, t]);
 
@@ -216,13 +214,12 @@ export default function CalendarScreen() {
     inFlightMonthsRef.current.clear();
     setLoadingMonthKeys(new Set());
     setStaffFilterId(null);
+    setCalendarEpoch((value) => value + 1);
   }, [companyId, locationId]);
 
-  useFocusEffect(
-    React.useCallback(() => {
-      loadStaff();
-    }, [loadStaff])
-  );
+  React.useEffect(() => {
+    loadStaff();
+  }, [loadStaff]);
 
   const baseWeekStart = React.useMemo(() => getWeekStartMonday(new Date()), []);
 
@@ -257,9 +254,10 @@ export default function CalendarScreen() {
 
   const handleRefresh = React.useCallback(() => {
     setRefreshing(true);
-    return Promise.all([loadStaff(), ...neededMonthOffsets.map((offset) => loadMonth(offset, { force: true }))]).finally(
-      () => setRefreshing(false)
-    );
+    return Promise.all([
+      loadStaff(),
+      ...neededMonthOffsets.map((offset) => loadMonth(offset, { force: true })),
+    ]).finally(() => setRefreshing(false));
   }, [loadStaff, loadMonth, neededMonthOffsets]);
 
   const isVisibleDataLoading = neededMonthOffsets.some((offset) => loadingMonthKeys.has(monthKeyForOffset(offset).key));
@@ -283,10 +281,6 @@ export default function CalendarScreen() {
     viewModeRef.current = viewMode;
   }, [viewMode]);
 
-  React.useEffect(() => {
-    selectedDateKeyRef.current = selectedDateKey;
-  }, [selectedDateKey]);
-
   const fetchMonthData = React.useCallback(
     (offset: number): MonthData => {
       const { year, monthIndex, key } = monthKeyForOffset(offset);
@@ -294,7 +288,7 @@ export default function CalendarScreen() {
       const eventsByDateKey = groupAppointmentsByDateKey(monthAppointments, staffFilterId);
       return buildMonthData(year, monthIndex, eventsByDateKey);
     },
-    [monthKeyForOffset, staffFilterId]
+    [monthKeyForOffset, staffFilterId, calendarEpoch]
   );
 
   const getMonthEventsByDateKey = React.useCallback(
@@ -308,15 +302,57 @@ export default function CalendarScreen() {
       }
       return cached;
     },
-    [monthKeyForOffset]
+    [monthKeyForOffset, calendarEpoch]
+  );
+
+  const applyAppointmentChange = React.useCallback(
+    async (appointmentId?: string) => {
+      if (!companyId || !locationId) return;
+
+      if (!appointmentId) {
+        await Promise.all(neededMonthOffsets.map((offset) => loadMonth(offset, { force: true })));
+        return;
+      }
+
+      try {
+        const row = await fetchAppointmentById(appointmentId);
+        removeAppointmentFromMonthCache(monthDataRef.current, appointmentId);
+
+        const belongsHere =
+          row &&
+          !isAppointmentCanceled(row) &&
+          (!row.location_id || row.location_id === locationId);
+
+        if (belongsHere && row) {
+          const start = parseSalonWallClock(row.start);
+          const offset = getOffsetForDate(start);
+          const { key } = monthKeyForOffset(offset);
+          if (monthDataRef.current.has(key)) {
+            upsertAppointmentInMonthCache(monthDataRef.current, key, row);
+          } else {
+            await loadMonth(offset);
+          }
+        }
+
+        monthEventsCacheRef.current.clear();
+        setCalendarEpoch((value) => value + 1);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : t('calendar.failedToLoadAppointments'));
+      }
+    },
+    [companyId, locationId, loadMonth, monthKeyForOffset, neededMonthOffsets, t]
   );
 
   React.useEffect(() => {
-    const subscription = DeviceEventEmitter.addListener('calendarRefreshAppointments', () => {
-      handleRefresh();
-    });
+    const subscription = DeviceEventEmitter.addListener(
+      'calendarRefreshAppointments',
+      (payload?: { appointmentId?: string }) => {
+        applyAppointmentChange(payload?.appointmentId);
+      }
+    );
     return () => subscription.remove();
-  }, [handleRefresh]);
+  }, [applyAppointmentChange]);
 
   const fetchWeekData = React.useCallback(
     (weekOffset: number): WeekDayData[] => {
@@ -340,8 +376,6 @@ export default function CalendarScreen() {
 
   const currentWeekOffset = weekOffsets[currentWeekIndex] ?? 0;
   const currentWeekDays = fetchWeekData(currentWeekOffset);
-  // The header label tracks whichever month/week is on screen, independent
-  // of selection — selecting (or not selecting) a day shouldn't change it.
   const activeMonthLabel =
     viewMode === 'week'
       ? (() => {
@@ -354,19 +388,11 @@ export default function CalendarScreen() {
         })();
 
   React.useEffect(() => {
-    if (!selectedDateKey) return;
-    const monthData = fetchMonthData(currentOffset);
-    if (!monthData.inMonthKeys.has(selectedDateKey)) {
-      setSelectedDateKey(null);
-    }
-  }, [currentOffset, fetchMonthData, selectedDateKey]);
-
-  React.useEffect(() => {
     const prevMode = prevViewModeRef.current;
     prevViewModeRef.current = viewMode;
     if (viewMode !== 'week' || prevMode === 'week') return;
 
-    const targetWeekOffset = getWeekOffsetFromBase(baseWeekStart, selectedDateKeyRef.current ?? todayKey);
+    const targetWeekOffset = getWeekOffsetFromBase(baseWeekStart, todayKey);
     const targetIndex = WEEK_CENTER_INDEX + targetWeekOffset;
     if (targetIndex < 0 || targetIndex >= WEEK_PAGE_COUNT) return;
 
@@ -402,7 +428,6 @@ export default function CalendarScreen() {
       ];
       setOffsets(nextOffsets);
       setCurrentOffset(targetOffset);
-      setSelectedDateKey(dateKey);
       requestAnimationFrame(() => {
         listRef.current?.scrollToIndex({ index: 2, animated: false });
       });
@@ -410,7 +435,6 @@ export default function CalendarScreen() {
     }
 
     setCurrentOffset(targetOffset);
-    setSelectedDateKey(dateKey);
     setCurrentWeekIndex(WEEK_CENTER_INDEX);
     setListMonthOffsets(buildPrefetchWindow(targetOffset));
 
@@ -477,7 +501,7 @@ export default function CalendarScreen() {
       });
 
     return { items, stickyHeaderIndices };
-  }, [getMonthEventsByDateKey, listMonthOffsets, staffFilterId, todayKey]);
+  }, [getMonthEventsByDateKey, listMonthOffsets, loadingMonthKeys, staffFilterId, todayKey]);
 
   // Grows the loaded window forward by one month at a time, up to a cap.
   // Never drops already-loaded months (that eviction was what caused the
@@ -556,6 +580,16 @@ export default function CalendarScreen() {
     [router]
   );
 
+  const openDaySheet = React.useCallback(
+    (dateKey: string) => {
+      router.push({
+        pathname: '/day/[date]',
+        params: { date: dateKey, ...(staffFilterId ? { staffId: staffFilterId } : {}) },
+      });
+    },
+    [router, staffFilterId]
+  );
+
   const renderListItem = React.useCallback(
     ({ item }: { item: ListFlatItem }) => {
       if (item.kind === 'header') {
@@ -579,38 +613,31 @@ export default function CalendarScreen() {
             <View key={`${monthData.key}-${week.weekNumber}`} style={styles.weekRow}>
               {week.days.map((day) => {
                 const events = monthData.events[day.dateKey] ?? [];
-                const visibleEvents = events.slice(0, 3);
-                const hiddenCount = Math.max(0, events.length - visibleEvents.length);
-                const isSelected = selectedDateKey === day.dateKey;
+                const preview = calendarPreviewLayout(calendarHeight / weeksToRender.length, fontScale, events.length);
+                const visibleEvents = events.slice(0, preview.visibleCount);
+                const hiddenCount = preview.hiddenCount;
                 const isToday = day.dateKey === todayKey;
 
                 return (
                   <Pressable
                     key={day.dateKey}
                     style={styles.dayCell}
-                    onPress={() => {
-                      if (selectedDateKey === day.dateKey) {
-                        router.push({
-                          pathname: '/day/[date]',
-                          params: { date: day.dateKey, ...(staffFilterId ? { staffId: staffFilterId } : {}) },
-                        });
-                        return;
-                      }
-                      setSelectedDateKey(day.dateKey);
-                    }}>
+                    accessibilityRole="button"
+                    accessibilityLabel={`${day.dateKey}, ${events.length} ${t('appointment.services')}`}
+                    onPress={() => openDaySheet(day.dateKey)}>
                     <View style={styles.dayHeader}>
                       <View
                         style={[
                           styles.dayNumberWrapper,
-                          isSelected ? styles.selectedDayCircle : isToday ? styles.todayRingCircle : undefined,
+                          { height: preview.headerHeight },
+                          isToday ? styles.todayRingCircle : undefined,
                         ]}>
                         <Text
                           style={[
                             styles.dayNumber,
                             !day.inMonth && styles.dayNumberMuted,
                             day.isSunday && styles.dayNumberSunday,
-                            isToday && !isSelected && styles.dayNumberToday,
-                            isSelected && styles.dayNumberSelected,
+                            isToday && styles.dayNumberToday,
                           ]}>
                           {day.date}
                         </Text>
@@ -620,14 +647,14 @@ export default function CalendarScreen() {
                     <View style={styles.eventStack}>
                       {visibleEvents.map((event) => (
                         <View key={event.id} style={[styles.eventPill, { backgroundColor: event.bgColor }]}>
-                          <Text style={[styles.eventText, { color: event.textColor }]} numberOfLines={1}>
+                          <Text style={[styles.eventText, { color: event.textColor, lineHeight: preview.lineHeight }]} numberOfLines={1}>
                             {event.label}
                           </Text>
                         </View>
                       ))}
-                      {hiddenCount > 0 ? (
+                      {preview.showMore ? (
                         <View style={styles.morePill}>
-                          <Text style={styles.moreText}>{`+${hiddenCount}`}</Text>
+                          <Text style={[styles.moreText, { lineHeight: preview.lineHeight }]} numberOfLines={1}>{`+${hiddenCount}`}</Text>
                         </View>
                       ) : null}
                     </View>
@@ -639,7 +666,7 @@ export default function CalendarScreen() {
         </View>
       );
     },
-    [selectedDateKey, staffFilterId, router, styles, todayKey]
+    [calendarHeight, fontScale, openDaySheet, styles, t, todayKey]
   );
 
   const menuWidth = 190;
@@ -678,25 +705,20 @@ export default function CalendarScreen() {
     });
   }, [showStaffMenu]);
 
-  const showInitialLoading = (staffLoading || locationLoading) && !error;
-  const showNoCompanyState = !staffLoading && !locationLoading && !companyId;
-  const showNoLocationState = !staffLoading && !locationLoading && !!companyId && !locationId;
+  const showNoCompanyState = !locationLoading && !companyId;
+  const showNoLocationState = !locationLoading && !!companyId && !locationId;
 
   return (
-    <TabSwipeArea next="/list">
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      {showInitialLoading ? (
-        <View style={styles.stateContainer}>
-          <ActivityIndicator size="large" color={theme.text} />
-        </View>
-      ) : showNoCompanyState ? (
+    <TabScreen>
+    <>
+      {showNoCompanyState ? (
         <EmptyState icon="calendar" title={t('calendar.noCompany')} />
       ) : showNoLocationState ? (
         <EmptyState icon="calendar" title={t('calendar.noLocation')} />
       ) : (
         <View style={styles.container} ref={containerRef} collapsable={false}>
           <View style={styles.scrollContent}>
-            <View style={styles.headerBlock} onLayout={(event) => setHeaderHeight(event.nativeEvent.layout.height)}>
+            <View style={styles.headerBlock}>
               <View style={styles.headerRow}>
                 <Pressable style={styles.monthRow} onPress={goToToday} hitSlop={8}>
                   <Text style={styles.monthText} numberOfLines={1}>
@@ -705,18 +727,18 @@ export default function CalendarScreen() {
                   <AppIcon name="arrowDown" size={18} color={theme.muted} />
                 </Pressable>
 
-                <Pressable ref={staffChipRef} collapsable={false} style={styles.employeeChip} onPress={openStaffMenu}>
+                <Pressable ref={staffChipRef} collapsable={false} accessibilityLabel={selectedStaffName} style={[styles.employeeChip, compactHeader && styles.employeeChipCompact]} onPress={openStaffMenu}>
                   <StaffAvatar imagePath={selectedStaff?.image_path} name={selectedStaffName} size={22} fontSize={9} />
-                  <Text style={styles.employeeName} numberOfLines={1}>
+                  {!compactHeader && <Text style={styles.employeeName} numberOfLines={1}>
                     {selectedStaffName}
-                  </Text>
-                  <AppIcon name="expandMore" size={16} color={theme.muted} />
+                  </Text>}
+                  {!compactHeader && <AppIcon name="expandMore" size={16} color={theme.muted} />}
                 </Pressable>
 
                 <View style={styles.headerIcons}>
                   <TouchableOpacity
                     style={styles.iconButton}
-                    onPress={() => router.push({ pathname: '/appointment-new', params: { date: selectedDateKey ?? todayKey } })}>
+                    onPress={() => router.push({ pathname: '/appointment-new', params: { date: todayKey } })}>
                     <AppIcon name="add" size={20} color={theme.text} />
                   </TouchableOpacity>
                   <TouchableOpacity ref={modeButtonRef} style={styles.iconButton} onPress={openModeMenu}>
@@ -739,7 +761,10 @@ export default function CalendarScreen() {
               ) : null}
             </View>
 
-            <View style={styles.calendarArea} onLayout={(event) => setCalendarAreaHeight(event.nativeEvent.layout.height)}>
+            <View style={styles.calendarArea} onLayout={({ nativeEvent: { layout } }) => {
+              setCalendarAreaHeight(layout.height);
+              setGridWidth(layout.width);
+            }}>
               {viewMode === 'month' ? (
                 <FlatList
                   ref={listRef}
@@ -755,9 +780,20 @@ export default function CalendarScreen() {
                     const index = Math.round(event.nativeEvent.contentOffset.x / gridWidth);
                     handleMonthChange(index);
                   }}
-                  renderItem={({ item }) => (
-                    <View style={{ width: gridWidth, height: calendarHeight }}>{renderMonthGrid(fetchMonthData(item))}</View>
-                  )}
+                  renderItem={({ item }) => {
+                    const { key } = monthKeyForOffset(item);
+                    const ready = monthDataRef.current.has(key);
+                    const loading = loadingMonthKeys.has(key);
+                    return (
+                      <View style={{ width: gridWidth, height: calendarHeight }}>
+                        {!ready && (loading || locationLoading) ? (
+                          <MonthGridSkeleton styles={styles} />
+                        ) : (
+                          renderMonthGrid(fetchMonthData(item))
+                        )}
+                      </View>
+                    );
+                  }}
                 />
               ) : null}
 
@@ -780,22 +816,21 @@ export default function CalendarScreen() {
                   }}
                   renderItem={({ item }) => {
                     const weekDays = fetchWeekData(item);
+                    const weekNeedsSkeleton = weekDays.some((day) => {
+                      const [year, month] = day.dateKey.split('-').map(Number);
+                      const { key } = monthKeyForOffset(getOffsetForDate(new Date(year, month - 1, 1)));
+                      return !monthDataRef.current.has(key) && (loadingMonthKeys.has(key) || locationLoading);
+                    });
                     return (
                       <View style={[styles.weekAgendaPage, { width: gridWidth, height: calendarHeight }]}>
-                        {weekDays.map((day) => (
+                        {weekNeedsSkeleton ? (
+                          <WeekAgendaSkeleton styles={styles} rowHeight={weekRowFixedHeight} />
+                        ) : (
+                        weekDays.map((day) => (
                           <View key={day.dateKey} style={[styles.weekAgendaDay, { height: weekRowFixedHeight }]}>
                             <Pressable
                               style={styles.weekAgendaDateCol}
-                              onPress={() => {
-                                if (selectedDateKey === day.dateKey) {
-                                  router.push({
-                                    pathname: '/day/[date]',
-                                    params: { date: day.dateKey, ...(staffFilterId ? { staffId: staffFilterId } : {}) },
-                                  });
-                                  return;
-                                }
-                                setSelectedDateKey(day.dateKey);
-                              }}>
+                              onPress={() => openDaySheet(day.dateKey)}>
                               <Text style={[styles.weekAgendaDate, day.isSunday && styles.dayNumberSunday]}>{day.date}</Text>
                               <Text style={styles.weekAgendaWeekday}>{day.weekday}</Text>
                             </Pressable>
@@ -806,22 +841,16 @@ export default function CalendarScreen() {
                             ) : (
                             <ScrollView style={styles.weekAgendaEvents} nestedScrollEnabled directionalLockEnabled showsVerticalScrollIndicator>
                               {day.appointments.map((event) => {
-                                const barHeight = listVisitBlockHeight(event);
                                 return (
                                   <Pressable
                                     key={event.id}
-                                    style={[styles.weekAgendaEventRow, { minHeight: barHeight }]}
+                                    style={styles.weekAgendaEventRow}
                                     onPress={() =>
                                       router.push({ pathname: '/appointment/[id]', params: { id: event.appointmentId } })
                                     }>
-                                    <VisitPhaseBar
-                                      phases={event.phases}
-                                      color={event.color}
-                                      bgColor={event.bgColor}
-                                      height={barHeight}
-                                    />
+                                    <View style={[styles.weekAgendaColorBar, { backgroundColor: event.color }]} />
                                     <Text style={styles.weekAgendaTime}>{event.startTime}</Text>
-                                    <Text style={styles.weekAgendaTitle} numberOfLines={2}>
+                                    <Text style={styles.weekAgendaTitle} numberOfLines={1}>
                                       {event.label}
                                     </Text>
                                     <StaffAvatar
@@ -836,7 +865,8 @@ export default function CalendarScreen() {
                             </ScrollView>
                             )}
                           </View>
-                        ))}
+                        ))
+                        )}
                       </View>
                     );
                   }}
@@ -860,18 +890,10 @@ export default function CalendarScreen() {
                   onEndReached={handleListLoadMore}
                   refreshing={refreshing}
                   onRefresh={handleRefresh}
-                  ListFooterComponent={
-                    listLoadingMore ? (
-                      <View style={styles.listLoadingFooter}>
-                        <ActivityIndicator size="small" color={theme.muted} />
-                      </View>
-                    ) : null
-                  }
+                  ListFooterComponent={listLoadingMore ? <ListFooterSkeleton styles={styles} /> : null}
                   ListEmptyComponent={
-                    isVisibleDataLoading ? (
-                      <View style={styles.stateContainer}>
-                        <ActivityIndicator color={theme.muted} />
-                      </View>
+                    isVisibleDataLoading || locationLoading ? (
+                      <ListAgendaSkeleton styles={styles} />
                     ) : (
                       <EmptyState
                         icon="eventBusy"
@@ -881,7 +903,7 @@ export default function CalendarScreen() {
                         onAction={() =>
                           router.push({
                             pathname: '/appointment-new',
-                            params: { date: selectedDateKey ?? todayKey },
+                            params: { date: todayKey },
                           })
                         }
                       />
@@ -975,7 +997,7 @@ export default function CalendarScreen() {
           ) : null}
         </View>
       )}
-    </SafeAreaView>
-    </TabSwipeArea>
+    </>
+    </TabScreen>
   );
 }

@@ -8,6 +8,8 @@ export type CheckoutAppointment = {
   client: { id: string; first_name: string | null; last_name: string | null } | null;
   appointment_segment: Array<{
     id: string;
+    sequence: number;
+    price: number | null;
     service_id: string;
     service_variant_id: string;
     service: { id: string; name: string } | null;
@@ -29,7 +31,7 @@ const CHECKOUT_APPOINTMENT_SELECT = `
   client_id,
   client:client_id ( id, first_name, last_name ),
   appointment_segment (
-    id, service_id, service_variant_id,
+    id, sequence, price, service_id, service_variant_id,
     service:service_id ( id, name ),
     service_variant:service_variant_id ( id, name, price, vat_rate )
   )
@@ -47,14 +49,15 @@ export async function fetchAppointmentForCheckout(appointmentId: string): Promis
 }
 
 export function checkoutLineItems(appointment: CheckoutAppointment): CheckoutLineItem[] {
-  return (appointment.appointment_segment ?? [])
+  return [...(appointment.appointment_segment ?? [])]
+    .sort((a, b) => a.sequence - b.sequence)
     .filter((segment) => segment.service && segment.service_variant)
     .map((segment) => ({
       appointmentSegmentId: segment.id,
       serviceId: segment.service_id,
       serviceVariantId: segment.service_variant_id,
-      name: segment.service!.name,
-      price: Number(segment.service_variant!.price),
+      name: `${segment.service!.name} - ${segment.service_variant!.name}`,
+      price: Math.round(Number(segment.price ?? segment.service_variant!.price ?? 0) * 100) / 100,
       vatRate: segment.service_variant!.vat_rate ?? 0,
     }));
 }

@@ -1,3 +1,4 @@
+import { ScreenScrollView } from '@/components/screen-scroll-view';
 import { Pressable } from '@/components/pressable-scale';
 import { AppIcon } from '@/components/app-icon';
 import { HeaderButton } from '@/components/header-button';
@@ -72,7 +73,7 @@ export default function NewTreatmentScreen() {
         </View>
       ) : null}
 
-      <View style={styles.form}>
+      <ScreenScrollView contentContainerStyle={styles.form}>
         <TextInput style={styles.input} placeholder={t('service.name')} value={name} onChangeText={setName} />
         <TextInput
           style={[styles.input, styles.multilineInput]}
@@ -97,7 +98,7 @@ export default function NewTreatmentScreen() {
             </Pressable>
           ))}
         </View>
-      </View>
+      </ScreenScrollView>
     </SafeAreaView>
   );
 }
@@ -172,8 +173,8 @@ const createStyles = (theme: typeof Colors.light) =>
       gap: 10,
     },
     colorSwatch: {
-      width: 32,
-      height: 32,
+      width: 44,
+      minHeight: 44,
       borderRadius: 16,
       alignItems: 'center',
       justifyContent: 'center',

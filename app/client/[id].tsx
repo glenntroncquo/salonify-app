@@ -1,10 +1,10 @@
+import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
 import { Pressable } from '@/components/pressable-scale';
 import { HeaderButton } from '@/components/header-button';
 import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import React from 'react';
 import {
   ActivityIndicator,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,

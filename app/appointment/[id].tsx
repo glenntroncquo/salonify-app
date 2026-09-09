@@ -1,3 +1,4 @@
+import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
 import { Pressable } from '@/components/pressable-scale';
 import { AppIcon } from '@/components/app-icon';
 import { HeaderButton } from '@/components/header-button';
@@ -8,7 +9,6 @@ import {
   ActivityIndicator,
   Alert,
   DeviceEventEmitter,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 
 import { EmptyState } from '@/components/empty-state';
 import { Colors } from '@/constants/theme';
+import { useCheckout } from '@/contexts/checkout-context';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -35,6 +36,7 @@ import { EventItem } from '../(tabs)/calendar/types';
 export default function AppointmentDetailScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { prepareCheckout } = useCheckout();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { companyId } = useAuth();
   const { locationId, loading: locationLoading } = useLocation();
@@ -132,7 +134,7 @@ export default function AppointmentDetailScreen() {
               companyId: company,
               locationId: shopId,
             });
-            DeviceEventEmitter.emit('calendarRefreshAppointments');
+            DeviceEventEmitter.emit('calendarRefreshAppointments', { appointmentId: event.appointmentId });
             router.back();
           } catch (err) {
             setError(err instanceof Error ? err.message : t('appointment.cancelFailed'));
@@ -162,9 +164,10 @@ export default function AppointmentDetailScreen() {
             </HeaderButton>
           ),
           headerRight: () =>
-            event && !canceled ? (
+            event && appointment && !canceled ? (
               <HeaderButton
                 onPress={() => {
+                  prepareCheckout(appointment);
                   router.push({ pathname: '/checkout/[appointmentId]', params: { appointmentId: event.appointmentId } });
                 }}
                 hitSlop={8}>
@@ -363,6 +366,8 @@ const styles = StyleSheet.create({
   clientAvatar: {
     width: 44,
     height: 44,
+    flexShrink: 0,
+    aspectRatio: 1,
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',

@@ -1,7 +1,8 @@
+import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
 import { HeaderButton } from '@/components/header-button';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Switch, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -187,7 +188,7 @@ export default function StaffAvailabilityScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
+      <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
         {screenOptions}
         <View style={styles.stateContainer}>
           <ActivityIndicator size="large" color={theme.text} />
@@ -317,6 +318,7 @@ const createStyles = (theme: typeof Colors.light) =>
     },
     timeRow: {
       flexDirection: 'row',
+    flexWrap: 'wrap',
       alignItems: 'center',
       gap: 10,
     },

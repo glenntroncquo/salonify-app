@@ -1,3 +1,4 @@
+import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
 import { AppIcon } from '@/components/app-icon';
 import { HeaderButton } from '@/components/header-button';
 import {
@@ -10,9 +11,6 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -155,10 +153,7 @@ export default function PriceOptionScreen() {
           <ActivityIndicator size="large" color={theme.text} />
         </View>
       ) : (
-        <KeyboardAvoidingView
-          style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={88}>
+        <View style={styles.flex}>
           <ScrollView
             contentContainerStyle={styles.body}
             keyboardShouldPersistTaps="handled"
@@ -180,7 +175,7 @@ export default function PriceOptionScreen() {
             />
             <PhaseBlockEditor phases={phases} onChange={setPhases} serviceColor={serviceColor} theme={theme} />
           </ScrollView>
-        </KeyboardAvoidingView>
+        </View>
       )}
     </SafeAreaView>
   );

@@ -1,15 +1,17 @@
+import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
 import { Pressable } from '@/components/pressable-scale';
 import { AppIcon } from '@/components/app-icon';
 import { HeaderButton } from '@/components/header-button';
 import * as Haptics from 'expo-haptics';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { EmptyState } from '@/components/empty-state';
 import { Colors } from '@/constants/theme';
+import { useCheckout } from '@/contexts/checkout-context';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -27,20 +29,26 @@ export default function CheckoutScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { appointmentId } = useLocalSearchParams<{ appointmentId: string }>();
+  const { appointment: preparedAppointment } = useCheckout();
+  const initialAppointment = preparedAppointment?.id === appointmentId ? preparedAppointment : null;
   const { companyId } = useAuth();
   const { locationId } = useLocation();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);
 
-  const [loading, setLoading] = React.useState(true);
+  const [loading, setLoading] = React.useState(!initialAppointment);
   const [error, setError] = React.useState<string | null>(null);
-  const [clientName, setClientName] = React.useState('');
-  const [clientId, setClientId] = React.useState<string | null>(null);
-  const [lineItems, setLineItems] = React.useState<CheckoutLineItem[]>([]);
+  const [clientName, setClientName] = React.useState(() => initialAppointment
+    ? `${initialAppointment.client?.first_name ?? ''} ${initialAppointment.client?.last_name ?? ''}`.trim() || t('calendar.unknownClient')
+    : '');
+  const [clientId, setClientId] = React.useState<string | null>(initialAppointment?.client_id ?? null);
+  const [lineItems, setLineItems] = React.useState<CheckoutLineItem[]>(() => initialAppointment ? checkoutLineItems(initialAppointment) : []);
 
-  const [paymentType, setPaymentType] = React.useState<CheckoutPaymentType>('cash');
-  const [amount, setAmount] = React.useState('');
+  const [paymentType, setPaymentType] = React.useState<CheckoutPaymentType>('bank_transfer');
+  const [amount, setAmount] = React.useState(() => initialAppointment
+    ? checkoutLineItems(initialAppointment).reduce((sum, item) => sum + item.price, 0).toFixed(2)
+    : '');
   const [submitting, setSubmitting] = React.useState(false);
   const [success, setSuccess] = React.useState(false);
   const [orderNumber, setOrderNumber] = React.useState<string | null>(null);
@@ -50,8 +58,15 @@ export default function CheckoutScreen() {
       setLoading(false);
       return;
     }
-    fetchAppointmentForCheckout(appointmentId)
+    // Appointment detail supplies these services just as the website does.
+    // Fetch only for direct entry from the day sheet or a deep link.
+    const request = initialAppointment
+      ? Promise.resolve(initialAppointment)
+      : fetchAppointmentForCheckout(appointmentId);
+    let active = true;
+    request
       .then((appointment) => {
+        if (!active) return;
         if (!appointment) {
           setError(t('checkout.failedToLoad'));
           return;
@@ -67,9 +82,14 @@ export default function CheckoutScreen() {
         setAmount(total.toFixed(2));
         setError(null);
       })
-      .catch((err) => setError(err instanceof Error ? err.message : t('checkout.failedToLoad')))
-      .finally(() => setLoading(false));
-  }, [appointmentId, t]);
+      .catch((err) => {
+        if (active) setError(err instanceof Error ? err.message : t('checkout.failedToLoad'));
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => { active = false; };
+  }, [appointmentId, initialAppointment, t]);
 
   const total = lineItems.reduce((sum, item) => sum + item.price, 0);
   const amountValue = Number(amount);
@@ -100,10 +120,24 @@ export default function CheckoutScreen() {
     }
   };
 
+  const header = (
+    <Stack.Screen
+        options={{
+          headerShown: true,
+          title: t('checkout.title'),
+          headerLeft: () => (
+            <HeaderButton onPress={() => router.back()} hitSlop={8}>
+              <AppIcon name="close" size={18} color={theme.text} />
+            </HeaderButton>
+          ),
+        }}
+      />
+  );
+
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-        <Stack.Screen options={{ headerShown: false }} />
+        {header}
         <View style={styles.stateContainer}>
           <ActivityIndicator size="large" color={theme.text} />
         </View>
@@ -114,7 +148,7 @@ export default function CheckoutScreen() {
   if (success) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
-        <Stack.Screen options={{ headerShown: false }} />
+        {header}
         <View style={styles.successContainer}>
           <AppIcon name="checkCircle" size={64} color="#20b87b" />
           <Text style={styles.successTitle}>{t('checkout.success')}</Text>
@@ -129,17 +163,8 @@ export default function CheckoutScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: t('checkout.title'),
-          headerLeft: () => (
-            <HeaderButton onPress={() => router.back()} hitSlop={8}>
-              <AppIcon name="close" size={18} color={theme.text} />
-            </HeaderButton>
-          ),
-        }}
-      />
+      {header}
+
 
       {error ? (
         <View style={styles.errorBanner}>

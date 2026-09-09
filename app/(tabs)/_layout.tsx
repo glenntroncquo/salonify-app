@@ -24,22 +24,28 @@ export default function TabLayout() {
   const theme = Colors[colorScheme];
 
   return (
-    <NativeTabs tintColor={theme.tint} labelVisibilityMode="unlabeled" disableIndicator>
-      <NativeTabs.Trigger name="index">
+    <NativeTabs
+      tintColor={theme.tint}
+      backgroundColor={theme.background}
+      blurEffect={colorScheme === 'dark' ? 'systemChromeMaterialDark' : 'systemChromeMaterialLight'}
+      disableTransparentOnScrollEdge
+      labelVisibilityMode="unlabeled"
+      disableIndicator>
+      <NativeTabs.Trigger name="index" disableAutomaticContentInsets>
         <NativeTabs.Trigger.Icon
           sf="calendar"
           src={<NativeTabs.Trigger.VectorIcon family={MaterialIcons} name="calendar-today" />}
         />
         <NativeTabs.Trigger.Label hidden />
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="list">
+      <NativeTabs.Trigger name="list" disableAutomaticContentInsets>
         <NativeTabs.Trigger.Icon
           sf="person.2"
           src={<NativeTabs.Trigger.VectorIcon family={MaterialIcons} name="people-outline" />}
         />
         <NativeTabs.Trigger.Label hidden />
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="more">
+      <NativeTabs.Trigger name="more" disableAutomaticContentInsets>
         <NativeTabs.Trigger.Icon
           sf="square.grid.2x2"
           src={<NativeTabs.Trigger.VectorIcon family={MaterialIcons} name="grid-view" />}

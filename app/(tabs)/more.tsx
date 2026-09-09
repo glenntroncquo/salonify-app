@@ -1,19 +1,18 @@
+import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
 import { Pressable } from '@/components/pressable-scale';
 import { AppIcon } from '@/components/app-icon';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { AccountDeletionButton } from '@/components/account-deletion-button';
 import { LegalLinkRows, useLegalUrls } from '@/components/legal-link-rows';
-import { TabSwipeArea } from '@/components/tab-swipe-area';
+import { TabScreen } from '@/components/tab-screen';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
-import { ESTIMATED_TAB_BAR_HEIGHT } from '@/constants/layout';
 import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import i18n, { SUPPORTED_LANGUAGES, SupportedLanguage, setLanguage } from '@/lib/i18n';
@@ -30,8 +29,6 @@ const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
 export default function MoreScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const tabBarHeight = ESTIMATED_TAB_BAR_HEIGHT + insets.bottom;
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);
@@ -72,9 +69,9 @@ export default function MoreScreen() {
   const avatarUrl = getCompanyImageUrl(profile?.image_path);
 
   return (
-    <TabSwipeArea prev="/list">
+    <TabScreen>
     <ThemedView style={{ flex: 1 }}>
-      <ScrollView contentContainerStyle={[styles.container, { paddingBottom: 40 + tabBarHeight }]}>
+      <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.profileSection}>
         {profileLoading ? (
           <View style={styles.avatar}>
@@ -165,7 +162,7 @@ export default function MoreScreen() {
       </View>
       </ScrollView>
     </ThemedView>
-    </TabSwipeArea>
+    </TabScreen>
   );
 }
 
@@ -174,7 +171,8 @@ const createStyles = (theme: typeof Colors.light) =>
     container: {
       flexGrow: 1,
       alignItems: 'center',
-      paddingTop: 64,
+      paddingTop: 24,
+      paddingBottom: 24,
       paddingHorizontal: 24,
       gap: 40,
     },

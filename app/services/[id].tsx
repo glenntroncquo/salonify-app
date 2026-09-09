@@ -1,10 +1,11 @@
+import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
 import { Pressable } from '@/components/pressable-scale';
 import { AppIcon } from '@/components/app-icon';
 import { HeaderButton } from '@/components/header-button';
 import { SwipeableRow } from '@/components/swipeable-row';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
@@ -142,7 +143,7 @@ export default function TreatmentDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
+      <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
         {screenOptions}
         <View style={styles.stateContainer}>
           <ActivityIndicator size="large" color={theme.text} />
@@ -308,8 +309,8 @@ const createStyles = (theme: typeof Colors.light) =>
       marginBottom: 8,
     },
     colorSwatch: {
-      width: 32,
-      height: 32,
+      width: 44,
+      minHeight: 44,
       borderRadius: 16,
       alignItems: 'center',
       justifyContent: 'center',

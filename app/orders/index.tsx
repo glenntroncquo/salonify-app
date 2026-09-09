@@ -79,7 +79,7 @@ export default function OrdersListScreen() {
   const showNoLocationState = !loading && !locationLoading && !!companyId && !locationId;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
+    <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
       <Stack.Screen options={{ headerShown: true, title: t('order.title') }} />
 
       {error ? (

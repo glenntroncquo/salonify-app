@@ -1,8 +1,9 @@
+import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
 import { Pressable } from '@/components/pressable-scale';
 import { AppIcon } from '@/components/app-icon';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -105,7 +106,7 @@ export default function StaffScheduleScreen() {
   const todayKey = toDateKey(new Date());
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
+    <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
       <Stack.Screen options={{ headerShown: true, title: t('staff.schedule') }} />
 
       <View style={styles.weekNavRow}>

@@ -1,6 +1,6 @@
 import { Pressable } from '@/components/pressable-scale';
 import { AppIcon } from '@/components/app-icon';
-import { TabSwipeArea } from '@/components/tab-swipe-area';
+import { TabScreen } from '@/components/tab-screen';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React from 'react';
 import {
@@ -13,7 +13,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { EmptyState } from '@/components/empty-state';
@@ -93,8 +92,8 @@ export default function ClientsScreen() {
   const showNoLocationState = !loading && !locationLoading && !!companyId && !locationId;
 
   return (
-    <TabSwipeArea next="/more" prev="/">
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <TabScreen>
+    <>
       <View style={styles.header}>
         <Text style={styles.title}>{t('client.title')}</Text>
       </View>
@@ -177,8 +176,8 @@ export default function ClientsScreen() {
           <AppIcon name="add" size={26} color={theme.text} />
         </TouchableOpacity>
       ) : null}
-    </SafeAreaView>
-    </TabSwipeArea>
+    </>
+    </TabScreen>
   );
 }
 

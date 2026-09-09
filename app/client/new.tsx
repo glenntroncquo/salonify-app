@@ -1,3 +1,4 @@
+import { ScreenScrollView } from '@/components/screen-scroll-view';
 import { AppIcon } from '@/components/app-icon';
 import { HeaderButton } from '@/components/header-button';
 import { Stack, useRouter } from 'expo-router';
@@ -81,7 +82,7 @@ export default function NewClientScreen() {
         </View>
       ) : null}
 
-      <View style={styles.form}>
+      <ScreenScrollView contentContainerStyle={styles.form}>
         <TextInput
           style={styles.input}
           placeholder={t('client.firstName')}
@@ -113,7 +114,7 @@ export default function NewClientScreen() {
           onChangeText={setPhone}
           keyboardType="phone-pad"
         />
-      </View>
+      </ScreenScrollView>
     </SafeAreaView>
   );
 }

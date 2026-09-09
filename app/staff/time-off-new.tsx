@@ -1,3 +1,4 @@
+import { ScreenScrollView } from '@/components/screen-scroll-view';
 import { AppIcon } from '@/components/app-icon';
 import { HeaderButton } from '@/components/header-button';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -108,7 +109,7 @@ export default function StaffTimeOffNewScreen() {
         </View>
       ) : null}
 
-      <View style={styles.body}>
+      <ScreenScrollView contentContainerStyle={styles.body}>
         <View style={styles.row}>
           <Text style={[styles.rowLabel, { color: theme.text }]}>{t('staff.date')}</Text>
           <DateTimeField value={date} mode="date" doneLabel={t('appointment.done')} formatLabel={formatDateLabel} onChange={setDate} />
@@ -127,7 +128,7 @@ export default function StaffTimeOffNewScreen() {
           <Text style={[styles.rowLabel, { color: theme.text }]}>{t('appointment.ends')}</Text>
           <DateTimeField value={endTime} mode="time" doneLabel={t('appointment.done')} formatLabel={formatTimeLabel} onChange={setEndTime} />
         </View>
-      </View>
+      </ScreenScrollView>
     </SafeAreaView>
   );
 }
@@ -168,6 +169,7 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
   },

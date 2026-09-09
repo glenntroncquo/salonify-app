@@ -1,3 +1,4 @@
+import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
 import { Pressable } from '@/components/pressable-scale';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { AppIcon } from '@/components/app-icon';
@@ -10,7 +11,6 @@ import {
   DeviceEventEmitter,
   Modal,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -229,7 +229,7 @@ export default function NewAppointmentScreen() {
     setSubmitting(true);
     setErrorMessage(null);
     try {
-      await createAppointment({
+      const created = await createAppointment({
         start: startDate,
         companyId,
         locationId,
@@ -247,7 +247,7 @@ export default function NewAppointmentScreen() {
         email: emailValue,
         notes: notes.trim(),
       });
-      DeviceEventEmitter.emit('calendarRefreshAppointments');
+      DeviceEventEmitter.emit('calendarRefreshAppointments', { appointmentId: created.id });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.back();
     } catch (err) {

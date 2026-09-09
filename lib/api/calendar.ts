@@ -14,6 +14,7 @@ export type AppointmentSegmentPhaseRow = {
 export type AppointmentSegmentRow = {
   id: string;
   sequence: number;
+  price: number | null;
   staff_id: string;
   starts_at: string;
   ends_at: string;
@@ -25,6 +26,8 @@ export type AppointmentSegmentRow = {
   service_variant: {
     id: string;
     name: string;
+    price: number;
+    vat_rate: number | null;
   } | null;
   staff: {
     id: string;
@@ -82,9 +85,9 @@ const APPOINTMENT_SELECT = `
   client:client_id ( id, first_name, last_name, email ),
   staff:staff_id ( id, first_name, last_name, image_path ),
   appointment_segment (
-    id, sequence, staff_id, starts_at, ends_at,
+    id, sequence, price, staff_id, starts_at, ends_at,
     service: service_id ( id, name, color ),
-    service_variant: service_variant_id ( id, name ),
+    service_variant: service_variant_id ( id, name, price, vat_rate ),
     staff: staff_id ( id, first_name, last_name, image_path ),
     appointment_segment_phase ( id, sequence, phase_type, starts_at, ends_at, staff_id )
   )
@@ -215,9 +218,9 @@ export async function fetchStaffAppointments(
     .from('appointment_segment')
     .select(
       `
-      id, sequence, staff_id, starts_at, ends_at,
+      id, sequence, price, staff_id, starts_at, ends_at,
       service: service_id ( id, name, color ),
-      service_variant: service_variant_id ( id, name ),
+      service_variant: service_variant_id ( id, name, price, vat_rate ),
       staff: staff_id ( id, first_name, last_name, image_path ),
       appointment_segment_phase ( id, sequence, phase_type, starts_at, ends_at, staff_id ),
       appointment: appointment_id!inner (
@@ -248,6 +251,7 @@ export async function fetchStaffAppointments(
     const segment: AppointmentSegmentRow = {
       id: row.id,
       sequence: row.sequence,
+      price: row.price,
       staff_id: row.staff_id,
       starts_at: row.starts_at,
       ends_at: row.ends_at,

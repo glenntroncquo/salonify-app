@@ -61,7 +61,7 @@ export default function StaffListScreen() {
   const showNoCompanyState = !loading && !companyId;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
+    <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
       <Stack.Screen options={{ headerShown: true, title: t('staff.title') }} />
 
       {error ? (

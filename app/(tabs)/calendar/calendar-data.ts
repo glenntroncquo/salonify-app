@@ -123,6 +123,33 @@ export function monthCacheKey(companyId: string, locationId: string, year: numbe
   return `${companyId}:${locationId}:${year}-${String(monthIndex + 1).padStart(2, '0')}`;
 }
 
+/** Drop one appointment from every cached month. Returns keys that actually changed. */
+export function removeAppointmentFromMonthCache(
+  cache: Map<string, AppointmentRow[]>,
+  appointmentId: string
+): string[] {
+  const touched: string[] = [];
+  cache.forEach((rows, key) => {
+    const next = rows.filter((row) => row.id !== appointmentId);
+    if (next.length !== rows.length) {
+      cache.set(key, next);
+      touched.push(key);
+    }
+  });
+  return touched;
+}
+
+/** Replace or insert an appointment in a month that is already cached. */
+export function upsertAppointmentInMonthCache(
+  cache: Map<string, AppointmentRow[]>,
+  monthKey: string,
+  appointment: AppointmentRow
+): void {
+  const rows = cache.get(monthKey);
+  if (!rows) return;
+  cache.set(monthKey, [...rows.filter((row) => row.id !== appointment.id), appointment]);
+}
+
 export function groupAppointmentsByDateKey(
   appointments: AppointmentRow[],
   staffFilterId: string | null

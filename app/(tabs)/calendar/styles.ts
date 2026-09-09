@@ -33,6 +33,12 @@ export const createStyles = (theme: typeof Colors.light) =>
     // add + view-mode buttons. Was two rows with a redundant "Employee"
     // label; collapsing it reclaims height for the calendar grid, which is
     // what actually matters now that the tab bar floats over the last row.
+    employeeChipCompact: {
+      paddingHorizontal: 0,
+      width: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     headerRow: {
       marginTop: 6,
       flexDirection: 'row',
@@ -43,7 +49,9 @@ export const createStyles = (theme: typeof Colors.light) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
-      flexShrink: 0,
+      flexShrink: 1,
+      minWidth: 0,
+      minHeight: 44,
     },
     monthText: {
       fontSize: 20,
@@ -56,9 +64,11 @@ export const createStyles = (theme: typeof Colors.light) =>
       marginLeft: 'auto',
     },
     iconButton: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
+      width: 44,
+      height: 44,
+      flexShrink: 0,
+      aspectRatio: 1,
+      borderRadius: 22,
       borderWidth: 1,
       borderColor: theme.text,
       alignItems: 'center',
@@ -84,6 +94,8 @@ export const createStyles = (theme: typeof Colors.light) =>
       flexShrink: 1,
     },
     weekRow: {
+      minHeight: 0,
+      overflow: 'hidden',
       flexDirection: 'row',
       alignItems: 'flex-start',
       flex: 1,
@@ -94,6 +106,8 @@ export const createStyles = (theme: typeof Colors.light) =>
     },
     dayCell: {
       flex: 1,
+      minWidth: 0,
+      overflow: 'hidden',
       paddingHorizontal: 2,
       height: '100%',
     },
@@ -117,16 +131,6 @@ export const createStyles = (theme: typeof Colors.light) =>
     dayNumberSunday: {
       color: '#e04b4b',
     },
-    selectedDayCircle: {
-      borderRadius: 13,
-      backgroundColor: theme.tint,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    dayNumberSelected: {
-      color: theme.onTint,
-      fontWeight: '700',
-    },
     todayRingCircle: {
       borderRadius: 13,
       borderWidth: 1.5,
@@ -140,6 +144,8 @@ export const createStyles = (theme: typeof Colors.light) =>
     },
     eventStack: {
       gap: 4,
+      flex: 1,
+      overflow: 'hidden',
     },
     eventPill: {
       borderRadius: 6,
@@ -363,6 +369,73 @@ export const createStyles = (theme: typeof Colors.light) =>
       fontSize: 16,
       fontWeight: '600',
       color: theme.text,
+    },
+    skeletonDayNumber: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: theme.surface,
+    },
+    skeletonEventPill: {
+      height: 14,
+      borderRadius: 6,
+      backgroundColor: theme.surface,
+    },
+    skeletonEventPillShort: {
+      height: 14,
+      width: '70%',
+      borderRadius: 6,
+      backgroundColor: theme.surface,
+    },
+    skeletonWeekDate: {
+      width: 48,
+      height: 28,
+      borderRadius: 8,
+      backgroundColor: theme.surface,
+    },
+    skeletonWeekWeekday: {
+      width: 36,
+      height: 10,
+      borderRadius: 4,
+      marginTop: 6,
+      backgroundColor: theme.surface,
+    },
+    skeletonWeekEvent: {
+      height: 28,
+      borderRadius: 8,
+      marginBottom: 6,
+      backgroundColor: theme.surface,
+    },
+    skeletonListHeader: {
+      width: 140,
+      height: 14,
+      borderRadius: 4,
+      backgroundColor: theme.border,
+    },
+    skeletonListTime: {
+      width: 36,
+      height: 24,
+      borderRadius: 4,
+      backgroundColor: theme.surface,
+    },
+    skeletonListBar: {
+      width: 4,
+      height: 28,
+      borderRadius: 2,
+      backgroundColor: theme.surface,
+    },
+    skeletonListTitle: {
+      width: '70%',
+      height: 12,
+      borderRadius: 4,
+      backgroundColor: theme.surface,
+    },
+    skeletonListSubtitle: {
+      width: '40%',
+      height: 10,
+      borderRadius: 4,
+      marginTop: 6,
+      backgroundColor: theme.surface,
     },
     stateContainer: {
       flex: 1,

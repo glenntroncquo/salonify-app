@@ -1,16 +1,15 @@
+import { ScreenScrollView } from '@/components/screen-scroll-view';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Pressable } from '@/components/pressable-scale';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
   StyleSheet,
   TextInput,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { useAuth } from '@/contexts/auth-context';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -43,10 +42,8 @@ export default function LoginScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ThemedView style={styles.container}>
+    <SafeAreaView style={[styles.flex, { backgroundColor: theme.background }]}>
+      <ScreenScrollView contentContainerStyle={styles.container}>
         <ThemedText type="title" style={styles.title}>
           Gleami
         </ThemedText>
@@ -111,8 +108,8 @@ export default function LoginScreen() {
             </ThemedText>
           )}
         </Pressable>
-      </ThemedView>
-    </KeyboardAvoidingView>
+      </ScreenScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -121,7 +118,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   container: {
-    flex: 1,
+    flexGrow: 1,
+    paddingVertical: 24,
     justifyContent: 'center',
     paddingHorizontal: 24,
     gap: 12,
@@ -134,7 +132,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   input: {
-    height: 48,
+    minHeight: 48,
+    paddingVertical: 12,
     borderWidth: StyleSheet.hairlineWidth * 2,
     borderRadius: 10,
     paddingHorizontal: 14,
@@ -144,7 +143,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   button: {
-    height: 48,
+    minHeight: 48,
+    paddingVertical: 12,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
