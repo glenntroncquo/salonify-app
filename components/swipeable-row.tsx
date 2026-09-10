@@ -1,11 +1,12 @@
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import ReanimatedSwipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Animated, { useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
 
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { AppIcon } from '@/components/app-icon';
+import { AppIcon, type AppIconName } from '@/components/app-icon';
 
 const ACTION_WIDTH = 76;
 let openRow: SwipeableMethods | null = null;
@@ -16,7 +17,9 @@ type Props = {
   deleteLabel: string;
 };
 
-function DeleteAction({ translation, onPress, label }: {
+function RowAction({ translation, onPress, label, icon, destructive }: {
+  icon: AppIconName;
+  destructive: boolean;
   translation: SharedValue<number>;
   onPress: () => void;
   label: string;
@@ -33,9 +36,9 @@ function DeleteAction({ translation, onPress, label }: {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={label}
-        style={({ pressed }) => [styles.deleteAction, { backgroundColor: theme.destructive }, pressed && styles.pressed]}
+        style={({ pressed }) => [styles.deleteAction, { backgroundColor: destructive ? theme.destructive : theme.tint }, pressed && styles.pressed]}
         onPress={onPress}>
-        <AppIcon name="delete" size={23} color={theme.onDestructive} />
+        <AppIcon name={icon} size={23} color={destructive ? theme.onDestructive : theme.onTint} />
       </Pressable>
     </Animated.View>
   );
@@ -43,7 +46,27 @@ function DeleteAction({ translation, onPress, label }: {
 
 /** UI-thread swipe-to-reveal. Deletion requires tapping the revealed action. */
 export function SwipeableRow({ children, onDelete, deleteLabel }: Props) {
+  return <SwipeActionRow onAction={onDelete} actionLabel={deleteLabel} icon="delete" destructive>{children}</SwipeActionRow>;
+}
+
+export function SwipeActionRow({ children, onAction, actionLabel, icon, destructive = false, onPress }: {
+  children: React.ReactNode;
+  onAction: () => void;
+  actionLabel: string;
+  icon: AppIconName;
+  destructive?: boolean;
+  onPress?: () => void;
+}) {
   const swipeableRef = React.useRef<SwipeableMethods>(null);
+  // Resolve tap vs. pan in the gesture system, not competing RN responders.
+  // Even a short drag must fail the tap before the swipe activates.
+  const tapGesture = Gesture.Tap()
+    .enabled(Boolean(onPress))
+    .maxDistance(8)
+    .runOnJS(true)
+    .onEnd((_, success) => {
+      if (success) onPress?.();
+    });
 
   React.useEffect(() => {
     const row = swipeableRef.current;
@@ -58,7 +81,7 @@ export function SwipeableRow({ children, onDelete, deleteLabel }: Props) {
   };
   const handleDelete = () => {
     swipeableRef.current?.close();
-    onDelete();
+    onAction();
   };
 
   return (
@@ -77,17 +100,23 @@ export function SwipeableRow({ children, onDelete, deleteLabel }: Props) {
         if (openRow === swipeableRef.current) openRow = null;
       }}
       renderRightActions={(_, translation) => (
-        <DeleteAction translation={translation} label={deleteLabel} onPress={handleDelete} />
+        <RowAction translation={translation} label={actionLabel} icon={icon} destructive={destructive} onPress={handleDelete} />
       )}>
+      <GestureDetector gesture={tapGesture}>
       <View
+        collapsable={false}
         accessible
-        accessibilityActions={[{ name: 'delete', label: deleteLabel }]}
+        accessibilityRole={onPress ? 'button' : undefined}
+        onAccessibilityTap={onPress}
+        accessibilityActions={[...(onPress ? [{ name: 'activate' as const }] : []), { name: 'rowAction', label: actionLabel }]}
         onAccessibilityAction={(event) => {
-          if (event.nativeEvent.actionName === 'delete') handleDelete();
+          if (event.nativeEvent.actionName === 'rowAction') handleDelete();
+          if (event.nativeEvent.actionName === 'activate') onPress?.();
         }}
         style={styles.content}>
         {children}
       </View>
+      </GestureDetector>
     </ReanimatedSwipeable>
   );
 }

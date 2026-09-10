@@ -2,9 +2,10 @@ import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view'
 import { Pressable } from '@/components/pressable-scale';
 import { AppIcon } from '@/components/app-icon';
 import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { AccountDeletionButton } from '@/components/account-deletion-button';
@@ -17,7 +18,8 @@ import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import i18n, { SUPPORTED_LANGUAGES, SupportedLanguage, setLanguage } from '@/lib/i18n';
 import { fetchOwnStaffProfile, StaffProfile } from '@/lib/api/profile';
-import { getCompanyImageUrl } from '@/lib/storage';
+import { getCompanyImageUrl, uploadStaffPhoto, removeStaffPhoto } from '@/lib/storage';
+import { updateStaffImagePath } from '@/lib/api/staff';
 import { getInitialsFromLabel } from '@/lib/text';
 
 const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
@@ -37,6 +39,8 @@ export default function MoreScreen() {
   const hasLegalLinks = Boolean(privacyUrl || termsUrl);
   const [profile, setProfile] = React.useState<StaffProfile | null>(null);
   const [profileLoading, setProfileLoading] = React.useState(true);
+  const photoBusy = React.useRef(false);
+  const [uploadingPhoto, setUploadingPhoto] = React.useState(false);
   const [shouldCrash, setShouldCrash] = React.useState(false);
 
   if (__DEV__ && shouldCrash) {
@@ -64,6 +68,39 @@ export default function MoreScreen() {
     }, [loadProfile])
   );
 
+  const handleChangePhoto = async () => {
+    if (!profile || !companyId || photoBusy.current) return;
+    photoBusy.current = true;
+    setUploadingPhoto(true);
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(t('staff.photoPermissionRequired'));
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.8, base64: true,
+      });
+      if (result.canceled) return;
+      const asset = result.assets[0];
+      if (!asset?.base64) throw new Error('Missing photo data');
+      const imagePath = await uploadStaffPhoto(companyId, profile.id, asset.base64);
+      try {
+        await updateStaffImagePath(profile.id, companyId, imagePath);
+      } catch (error) {
+        await removeStaffPhoto(companyId, imagePath).catch(() => {});
+        throw error;
+      }
+      setProfile((current) => current?.id === profile.id ? { ...current, image_path: imagePath } : current);
+      await removeStaffPhoto(companyId, profile.image_path).catch(() => {});
+    } catch {
+      Alert.alert(t('staff.photoUploadFailed'));
+    } finally {
+      photoBusy.current = false;
+      setUploadingPhoto(false);
+    }
+  };
+
   const displayName =
     `${profile?.first_name ?? ''} ${profile?.last_name ?? ''}`.trim() || user?.email || '';
   const avatarUrl = getCompanyImageUrl(profile?.image_path);
@@ -73,6 +110,13 @@ export default function MoreScreen() {
     <ThemedView style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.profileSection}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('staff.changePhoto')}
+          accessibilityState={{ disabled: !profile || profileLoading || uploadingPhoto, busy: uploadingPhoto }}
+          disabled={!profile || profileLoading || uploadingPhoto}
+          onPress={handleChangePhoto}
+          style={styles.avatarButton}>
         {profileLoading ? (
           <View style={styles.avatar}>
             <ActivityIndicator color={theme.muted} />
@@ -84,6 +128,12 @@ export default function MoreScreen() {
             <ThemedText style={styles.avatarInitials}>{getInitialsFromLabel(displayName)}</ThemedText>
           </View>
         )}
+        {profile && !profileLoading ? (
+          <View style={styles.avatarEditBadge}>
+            {uploadingPhoto ? <ActivityIndicator size="small" color={theme.onTint} /> : <AppIcon name="camera" size={14} color={theme.onTint} />}
+          </View>
+        ) : null}
+        </Pressable>
         {displayName ? <ThemedText style={styles.name}>{displayName}</ThemedText> : null}
         {user?.email && user.email !== displayName ? (
           <ThemedText style={styles.email}>{user.email}</ThemedText>
@@ -187,6 +237,13 @@ const createStyles = (theme: typeof Colors.light) =>
       alignItems: 'center',
       gap: 6,
     },
+    avatarButton: { position: 'relative', marginBottom: 8 },
+    avatarEditBadge: {
+      position: 'absolute', right: -2, bottom: -2,
+      width: 26, height: 26, borderRadius: 13,
+      alignItems: 'center', justifyContent: 'center',
+      backgroundColor: theme.tint, borderWidth: 2, borderColor: theme.background,
+    },
     avatar: {
       width: 68,
       height: 68,
@@ -194,7 +251,6 @@ const createStyles = (theme: typeof Colors.light) =>
       backgroundColor: theme.surface,
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: 8,
     },
     avatarInitials: {
       fontSize: 23,

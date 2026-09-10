@@ -1,6 +1,6 @@
 import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
-import { Pressable } from '@/components/pressable-scale';
 import { AppIcon } from '@/components/app-icon';
+import { SwipeActionRow } from '@/components/swipeable-row';
 import { HeaderButton } from '@/components/header-button';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
@@ -8,7 +8,6 @@ import {
   DeviceEventEmitter,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
   useWindowDimensions,
 } from 'react-native';
@@ -165,10 +164,17 @@ export default function DayScreen() {
             <Text style={[styles.subtitle, { color: theme.muted }]}>{t('calendar.weekLabel', { number: weekNumber })}</Text>
           </View>
           {events.map((event) => (
-            <Pressable
+            <SwipeActionRow
               key={event.appointmentId}
-              style={styles.row}
-              onPress={() => router.push({ pathname: '/appointment/[id]', params: { id: event.appointmentId } })}>
+              actionLabel={t('checkout.title')}
+              icon="pointOfSale"
+              onPress={() => router.push({ pathname: '/appointment/[id]', params: { id: event.appointmentId } })}
+              onAction={() => {
+                const appointment = appointmentsById.current.get(event.appointmentId);
+                if (appointment) prepareCheckout(appointment);
+                router.push({ pathname: '/checkout/[appointmentId]', params: { appointmentId: event.appointmentId } });
+              }}>
+            <View style={styles.row}>
               <View style={[styles.colorBar, { backgroundColor: event.color }]} />
               <View style={[styles.rowTimeCol, { width: 48 * fontScale }]}>
                 <Text style={[styles.time, { color: theme.text }]}>{event.startTime}</Text>
@@ -189,19 +195,9 @@ export default function DayScreen() {
                 backgroundColor={theme.surface}
                 fontSize={9}
               />
-              <TouchableOpacity
-                accessibilityRole="button"
-                accessibilityLabel={t('checkout.title')}
-                style={[styles.checkoutButton, { borderColor: theme.border }]}
-                onPress={(pressEvent) => {
-                  pressEvent.stopPropagation();
-                  const appointment = appointmentsById.current.get(event.appointmentId);
-                  if (appointment) prepareCheckout(appointment);
-                  router.push({ pathname: '/checkout/[appointmentId]', params: { appointmentId: event.appointmentId } });
-                }}>
-                <AppIcon name="pointOfSale" size={20} color={theme.text} />
-              </TouchableOpacity>
-            </Pressable>
+
+            </View>
+            </SwipeActionRow>
           ))}
         </ScrollView>
       )}
@@ -274,14 +270,5 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontSize: 13,
   },
-  checkoutButton: {
-    width: 44,
-    height: 44,
-    flexShrink: 0,
-    aspectRatio: 1,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-  },
+
 });

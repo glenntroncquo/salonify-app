@@ -203,7 +203,10 @@
     "date": "Date",
     "schedule": "Schedule",
     "absent": "Absent",
-    "failedToLoadSchedule": "Failed to load schedule."
+    "failedToLoadSchedule": "Failed to load schedule.",
+    "changePhoto": "Change photo",
+    "photoUploadFailed": "Failed to upload photo. Please try again.",
+    "photoPermissionRequired": "Allow photo access to set a profile picture."
   },
   "checkout": {
     "title": "Checkout",

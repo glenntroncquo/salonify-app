@@ -19,6 +19,7 @@ const ICONS = {
   add: { symbol: 'plus', material: 'add' },
   back: { symbol: 'chevron.left', material: 'arrow-back' },
   calendar: { symbol: 'calendar', material: 'calendar-today' },
+  camera: { symbol: 'camera.fill', material: 'photo-camera' },
   check: { symbol: 'checkmark', material: 'check' },
   checkCircle: { symbol: 'checkmark.circle.fill', material: 'check-circle' },
   chevronLeft: { symbol: 'chevron.left', material: 'chevron-left' },

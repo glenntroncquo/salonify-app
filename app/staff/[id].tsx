@@ -3,20 +3,24 @@ import { Pressable } from '@/components/pressable-scale';
 import { AppIcon } from '@/components/app-icon';
 import { HeaderButton } from '@/components/header-button';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { StaffAvatar } from '@/components/staff-avatar';
 import { Colors, Design } from '@/constants/theme';
+import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { fetchStaffMember, Staff, updateStaff } from '@/lib/api/staff';
+import { fetchStaffMember, Staff, updateStaff, updateStaffImagePath } from '@/lib/api/staff';
+import { uploadStaffPhoto, removeStaffPhoto } from '@/lib/storage';
 
 export default function StaffDetailScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { companyId } = useAuth();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);
@@ -25,6 +29,7 @@ export default function StaffDetailScreen() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = React.useState(false);
 
   const [firstName, setFirstName] = React.useState('');
   const [lastName, setLastName] = React.useState('');
@@ -81,6 +86,41 @@ export default function StaffDetailScreen() {
     }
   };
 
+  const photoBusy = React.useRef(false);
+  const handleChangePhoto = async () => {
+    if (!id || !companyId || !staff || photoBusy.current) return;
+    photoBusy.current = true;
+    setUploadingPhoto(true);
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(t('staff.photoPermissionRequired'));
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.8, base64: true,
+      });
+      if (result.canceled) return;
+      const asset = result.assets[0];
+      if (!asset?.base64) throw new Error('Missing photo data');
+      const imagePath = await uploadStaffPhoto(companyId, id, asset.base64);
+      try {
+        await updateStaffImagePath(id, companyId, imagePath);
+      } catch (error) {
+        await removeStaffPhoto(companyId, imagePath).catch(() => {});
+        throw error;
+      }
+      setStaff((prev) => (prev ? { ...prev, image_path: imagePath } : prev));
+      setError(null);
+      await removeStaffPhoto(companyId, staff.image_path).catch(() => {});
+    } catch {
+      setError(t('staff.photoUploadFailed'));
+    } finally {
+      photoBusy.current = false;
+      setUploadingPhoto(false);
+    }
+  };
+
   const name = `${firstName} ${lastName}`.trim() || staff?.email || '';
 
   const screenOptions = (
@@ -124,7 +164,19 @@ export default function StaffDetailScreen() {
 
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.profileSection}>
-          <StaffAvatar imagePath={staff?.image_path} name={name} size={72} fontSize={24} />
+          <Pressable accessibilityRole="button" accessibilityLabel={t('staff.changePhoto')} style={styles.avatarPressable} onPress={handleChangePhoto} disabled={uploadingPhoto}>
+            <StaffAvatar imagePath={staff?.image_path} name={name} size={72} fontSize={24} />
+            <View style={styles.avatarEditBadge}>
+              {uploadingPhoto ? (
+                <ActivityIndicator size="small" color={theme.background} />
+              ) : (
+                <AppIcon name="camera" size={14} color={theme.background} />
+              )}
+            </View>
+          </Pressable>
+          <Pressable onPress={handleChangePhoto} disabled={uploadingPhoto} hitSlop={8}>
+            <Text style={styles.changePhotoText}>{t('staff.changePhoto')}</Text>
+          </Pressable>
         </View>
 
         <View style={styles.section}>
@@ -229,6 +281,28 @@ const createStyles = (theme: typeof Colors.light) =>
     },
     profileSection: {
       alignItems: 'center',
+      gap: 8,
+    },
+    avatarPressable: {
+      position: 'relative',
+    },
+    avatarEditBadge: {
+      position: 'absolute',
+      right: -2,
+      bottom: -2,
+      width: 26,
+      height: 26,
+      borderRadius: 13,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.tint,
+      borderWidth: 2,
+      borderColor: theme.background,
+    },
+    changePhotoText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: theme.tint,
     },
     section: {
       gap: 10,

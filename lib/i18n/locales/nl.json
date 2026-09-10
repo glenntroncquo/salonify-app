@@ -179,6 +179,9 @@
     "failedToDeleteOption": "Kan variant niet verwijderen. Probeer het opnieuw."
   },
   "staff": {
+    "changePhoto": "Foto wijzigen",
+    "photoUploadFailed": "Foto uploaden mislukt. Probeer het opnieuw.",
+    "photoPermissionRequired": "Geef toegang tot je foto’s om een profielfoto in te stellen.",
     "title": "Medewerkers",
     "failedToLoad": "Kan medewerkers niet laden.",
     "failedToSave": "Kan medewerker niet opslaan. Probeer het opnieuw.",

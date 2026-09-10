@@ -174,6 +174,9 @@
     "failedToDeleteOption": "Falha ao excluir variante. Tente novamente."
   },
   "staff": {
+    "changePhoto": "Alterar fotografia",
+    "photoUploadFailed": "Não foi possível carregar a fotografia. Tente novamente.",
+    "photoPermissionRequired": "Permita o acesso às fotografias para definir uma fotografia de perfil.",
     "title": "Equipe",
     "failedToLoad": "Falha ao carregar a equipe.",
     "failedToSave": "Falha ao salvar funcionário. Tente novamente.",

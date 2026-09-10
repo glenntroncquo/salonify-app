@@ -171,6 +171,11 @@ export async function updateStaff(staffId: string, fields: Partial<StaffFields>)
   if (error) throw error;
 }
 
+export async function updateStaffImagePath(staffId: string, companyId: string, imagePath: string): Promise<void> {
+  const { error } = await supabase.from('staff').update({ image_path: imagePath }).eq('id', staffId).eq('company_id', companyId).select('id').single();
+  if (error) throw error;
+}
+
 export type ScheduleRule = {
   id: string;
   day_of_week: number;
