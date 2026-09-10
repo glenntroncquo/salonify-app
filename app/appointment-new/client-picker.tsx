@@ -110,7 +110,6 @@ export default function ClientPickerScreen() {
             placeholderTextColor={theme.muted}
             value={searchTerm}
             onChangeText={handleSearchChange}
-            autoFocus
           />
         </View>
 

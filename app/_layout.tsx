@@ -92,30 +92,12 @@ function RootNavigator() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="day/[date]" options={{ presentation: 'modal' }} />
         <Stack.Screen name="appointment-new/index" options={{ presentation: 'modal' }} />
-        <Stack.Screen
-          name="appointment-new/client-picker"
-          options={{ presentation: 'formSheet', sheetAllowedDetents: [0.5, 1], sheetGrabberVisible: true, sheetCornerRadius: 20 }}
-        />
-        <Stack.Screen
-          name="appointment-new/new-client"
-          options={{ presentation: 'formSheet', sheetAllowedDetents: [0.5, 1], sheetGrabberVisible: true, sheetCornerRadius: 20 }}
-        />
-        <Stack.Screen
-          name="appointment-new/service-picker"
-          options={{ presentation: 'formSheet', sheetAllowedDetents: [0.5, 1], sheetGrabberVisible: true, sheetCornerRadius: 20 }}
-        />
-        <Stack.Screen
-          name="appointment-new/service-variants"
-          options={{ presentation: 'formSheet', sheetAllowedDetents: [0.5, 1], sheetGrabberVisible: true, sheetCornerRadius: 20 }}
-        />
-        <Stack.Screen
-          name="appointment-new/staff-picker"
-          options={{ presentation: 'formSheet', sheetAllowedDetents: 'fitToContents', sheetGrabberVisible: true, sheetCornerRadius: 20 }}
-        />
-        <Stack.Screen
-          name="date-time-picker"
-          options={{ presentation: 'formSheet', sheetAllowedDetents: 'fitToContents', sheetGrabberVisible: true, sheetCornerRadius: 20 }}
-        />
+        <Stack.Screen name="appointment-new/client-picker" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="appointment-new/new-client" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="appointment-new/service-picker" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="appointment-new/service-variants" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="appointment-new/staff-picker" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="date-time-picker" options={{ presentation: 'modal' }} />
         <Stack.Screen name="appointment/[id]" options={{ presentation: 'modal' }} />
         <Stack.Screen name="client/[id]" />
         <Stack.Screen name="client/new" options={{ presentation: 'modal' }} />
