@@ -129,7 +129,7 @@ export const createStyles = (theme: typeof Colors.light) =>
       color: theme.muted,
     },
     dayNumberSunday: {
-      color: '#e04b4b',
+      color: theme.error,
     },
     todayRingCircle: {
       borderRadius: 13,
@@ -321,7 +321,7 @@ export const createStyles = (theme: typeof Colors.light) =>
       width: 24,
       height: 24,
       borderRadius: 12,
-      backgroundColor: '#d8cfc6',
+      backgroundColor: theme.surface,
       alignItems: 'center',
       justifyContent: 'center',
       marginLeft: 6,
@@ -329,7 +329,7 @@ export const createStyles = (theme: typeof Colors.light) =>
     listEventAvatarText: {
       fontSize: 9,
       fontWeight: '700',
-      color: '#4a4a4a',
+      color: theme.muted,
     },
     menuOverlay: {
       position: 'absolute',
@@ -466,7 +466,7 @@ export const createStyles = (theme: typeof Colors.light) =>
       paddingHorizontal: 12,
       paddingVertical: 8,
       borderRadius: 10,
-      backgroundColor: '#fdecea',
+      backgroundColor: theme.errorSurface,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -474,12 +474,12 @@ export const createStyles = (theme: typeof Colors.light) =>
     errorBannerText: {
       flex: 1,
       fontSize: 13,
-      color: '#c0392b',
+      color: theme.error,
     },
     errorBannerRetry: {
       fontSize: 13,
       fontWeight: '700',
-      color: '#c0392b',
+      color: theme.error,
     },
     staffMenu: {
       position: 'absolute',
@@ -506,7 +506,7 @@ export const createStyles = (theme: typeof Colors.light) =>
       width: 22,
       height: 22,
       borderRadius: 11,
-      backgroundColor: '#d8cfc6',
+      backgroundColor: theme.surface,
       alignItems: 'center',
       justifyContent: 'center',
     },

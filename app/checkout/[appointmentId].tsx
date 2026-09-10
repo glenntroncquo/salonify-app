@@ -10,7 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { EmptyState } from '@/components/empty-state';
-import { Colors } from '@/constants/theme';
+import { Colors, Design } from '@/constants/theme';
 import { useCheckout } from '@/contexts/checkout-context';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
@@ -159,7 +159,7 @@ export default function CheckoutScreen() {
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
         {header}
         <View style={styles.successContainer}>
-          <AppIcon name="checkCircle" size={64} color="#20b87b" />
+          <AppIcon name="checkCircle" size={64} color={theme.tint} />
           <Text style={styles.successTitle}>{t('checkout.success')}</Text>
           {orderNumber ? <Text style={styles.successSubtitle}>{orderNumber}</Text> : null}
           <Pressable style={styles.doneButton} onPress={() => router.back()}>
@@ -271,11 +271,11 @@ const createStyles = (theme: typeof Colors.light) =>
       marginHorizontal: 16,
       marginTop: 12,
       padding: 12,
-      borderRadius: 10,
-      backgroundColor: '#FFE4E6',
+      borderRadius: Design.controlRadius,
+      backgroundColor: theme.errorSurface,
     },
     errorBannerText: {
-      color: '#881337',
+      color: theme.error,
       fontSize: 13,
       fontWeight: '600',
     },
@@ -346,6 +346,7 @@ const createStyles = (theme: typeof Colors.light) =>
       gap: 8,
     },
     paymentChip: {
+      minHeight: Design.touchTarget,
       paddingHorizontal: 14,
       paddingVertical: 10,
       borderRadius: 18,
@@ -365,6 +366,7 @@ const createStyles = (theme: typeof Colors.light) =>
       color: theme.onTint,
     },
     input: {
+      minHeight: Design.touchTarget,
       borderWidth: 1,
       borderColor: theme.border,
       borderRadius: 12,

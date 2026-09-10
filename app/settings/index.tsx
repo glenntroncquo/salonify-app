@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 
 import { AccountDeletionButton } from '@/components/account-deletion-button';
 import { LegalLinkRows, useLegalUrls } from '@/components/legal-link-rows';
-import { Colors } from '@/constants/theme';
+import { Colors, Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { ThemePreference, useThemePreference } from '@/contexts/theme-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -210,7 +210,7 @@ const createStyles = (theme: typeof Colors.light) =>
     saveText: {
       fontSize: 15,
       fontWeight: '700',
-      color: '#20b87b',
+      color: theme.tint,
     },
     saveTextDisabled: {
       color: theme.muted,
@@ -219,11 +219,11 @@ const createStyles = (theme: typeof Colors.light) =>
       marginHorizontal: 16,
       marginTop: 12,
       padding: 12,
-      borderRadius: 10,
-      backgroundColor: '#FFE4E6',
+      borderRadius: Design.controlRadius,
+      backgroundColor: theme.errorSurface,
     },
     errorBannerText: {
-      color: '#881337',
+      color: theme.error,
       fontSize: 13,
       fontWeight: '600',
     },
@@ -247,6 +247,7 @@ const createStyles = (theme: typeof Colors.light) =>
       textTransform: 'uppercase',
     },
     input: {
+      minHeight: Design.touchTarget,
       borderWidth: 1,
       borderColor: theme.border,
       borderRadius: 12,
@@ -265,9 +266,10 @@ const createStyles = (theme: typeof Colors.light) =>
       gap: 8,
     },
     themeChip: {
+      minHeight: Design.touchTarget,
       flex: 1,
       paddingVertical: 10,
-      borderRadius: 10,
+      borderRadius: Design.controlRadius,
       borderWidth: 1,
       borderColor: theme.border,
       alignItems: 'center',
@@ -290,7 +292,7 @@ const createStyles = (theme: typeof Colors.light) =>
       justifyContent: 'space-between',
       paddingVertical: 12,
       paddingHorizontal: 14,
-      borderRadius: 10,
+      borderRadius: Design.controlRadius,
       borderWidth: 1,
       borderColor: theme.border,
     },

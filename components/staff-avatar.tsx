@@ -17,7 +17,7 @@ type Props = {
 };
 
 /** Staff avatar: real photo when `imagePath` resolves, else a centered initials circle. */
-export function StaffAvatar({ imagePath, name, size, backgroundColor = '#d8cfc6', textColor = '#4a4a4a', fontSize }: Props) {
+export function StaffAvatar({ imagePath, name, size, backgroundColor, textColor, fontSize }: Props) {
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);
@@ -29,8 +29,8 @@ export function StaffAvatar({ imagePath, name, size, backgroundColor = '#d8cfc6'
   }
 
   return (
-    <View style={[styles.circle, circleSize, { backgroundColor }]}>
-      <Text style={{ fontSize: fontSize ?? Math.max(9, Math.round(size * 0.4)), fontWeight: '700', color: textColor }}>
+    <View style={[styles.circle, circleSize, { backgroundColor: backgroundColor ?? theme.surface }]}>
+      <Text style={{ fontSize: fontSize ?? Math.max(9, Math.round(size * 0.4)), fontWeight: '700', color: textColor ?? theme.muted }}>
         {getInitialsFromLabel(name)}
       </Text>
     </View>

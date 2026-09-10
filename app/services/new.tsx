@@ -8,7 +8,7 @@ import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
-import { Colors } from '@/constants/theme';
+import { Colors, Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { createService } from '@/lib/api/services';
@@ -135,7 +135,7 @@ const createStyles = (theme: typeof Colors.light) =>
     saveText: {
       fontSize: 16,
       fontWeight: '700',
-      color: '#20b87b',
+      color: theme.tint,
     },
     saveTextDisabled: {
       color: theme.muted,
@@ -144,11 +144,11 @@ const createStyles = (theme: typeof Colors.light) =>
       marginHorizontal: 16,
       marginTop: 12,
       padding: 12,
-      borderRadius: 10,
-      backgroundColor: '#FFE4E6',
+      borderRadius: Design.controlRadius,
+      backgroundColor: theme.errorSurface,
     },
     errorBannerText: {
-      color: '#881337',
+      color: theme.error,
       fontSize: 13,
       fontWeight: '600',
     },
@@ -163,6 +163,7 @@ const createStyles = (theme: typeof Colors.light) =>
       marginBottom: 8,
     },
     input: {
+      minHeight: Design.touchTarget,
       borderWidth: 1,
       borderColor: theme.border,
       borderRadius: 12,

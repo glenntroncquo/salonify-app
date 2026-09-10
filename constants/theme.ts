@@ -19,6 +19,9 @@ export const Colors = {
     border: '#DCDFE1',
     muted: '#687076',
     error: '#E5484D',
+    errorSurface: '#FCEDEE',
+    destructive: '#E85D58',
+    onDestructive: '#FFFFFF',
     tint: textLight,
     onTint: '#fff',
     icon: '#687076',
@@ -35,10 +38,26 @@ export const Colors = {
     border: '#262626',
     muted: '#A8A8A8',
     error: '#FF6B6B',
+    errorSurface: '#301719',
+    destructive: '#E85D58',
+    onDestructive: '#FFFFFF',
     tint: textDark,
     onTint: '#000000',
     icon: '#A8A8A8',
     tabIconDefault: '#A8A8A8',
     tabIconSelected: textDark,
+  },
+};
+
+/** Compact sizing shared by navigation, forms, and list screens. */
+export const Design = {
+  screenPadding: 16,
+  sectionGap: 20,
+  controlRadius: 12,
+  touchTarget: 44,
+  type: {
+    body: { fontSize: 15, lineHeight: 22 },
+    title: { fontSize: 20, lineHeight: 26, fontWeight: '700' as const },
+    subtitle: { fontSize: 17, lineHeight: 23, fontWeight: '600' as const },
   },
 };

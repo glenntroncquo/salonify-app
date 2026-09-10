@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { EmptyState } from '@/components/empty-state';
-import { Colors } from '@/constants/theme';
+import { Colors, Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ManagedService, fetchAllServices, reorderServices, updateService } from '@/lib/api/services';
@@ -213,11 +213,11 @@ const createStyles = (theme: typeof Colors.light) =>
       marginHorizontal: 16,
       marginTop: 12,
       padding: 12,
-      borderRadius: 10,
-      backgroundColor: '#FFE4E6',
+      borderRadius: Design.controlRadius,
+      backgroundColor: theme.errorSurface,
     },
     errorBannerText: {
-      color: '#881337',
+      color: theme.error,
       fontSize: 13,
       fontWeight: '600',
     },
@@ -285,8 +285,8 @@ const createStyles = (theme: typeof Colors.light) =>
       borderWidth: 1,
     },
     activeBadgeOn: {
-      backgroundColor: '#D1FAE5',
-      borderColor: '#D1FAE5',
+      backgroundColor: theme.surface,
+      borderColor: theme.surface,
     },
     activeBadgeOff: {
       backgroundColor: theme.background,
@@ -297,7 +297,7 @@ const createStyles = (theme: typeof Colors.light) =>
       fontWeight: '700',
     },
     activeBadgeTextOn: {
-      color: '#064E3B',
+      color: theme.text,
     },
     activeBadgeTextOff: {
       color: theme.muted,

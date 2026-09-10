@@ -16,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { EmptyState } from '@/components/empty-state';
-import { Colors } from '@/constants/theme';
+import { Colors, Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -151,6 +151,14 @@ export default function ClientDetailScreen() {
         options={{
           headerShown: true,
           title: name || t('client.title'),
+          headerTintColor: theme.text,
+          unstable_headerRightItems: () => [{
+            type: 'button',
+            label: t(isEditing ? 'client.save' : 'client.edit'),
+            tintColor: theme.text,
+            disabled: isEditing && saving,
+            onPress: isEditing ? handleSaveProfile : startEditing,
+          }],
           headerRight: () =>
             isEditing ? (
               <HeaderButton onPress={handleSaveProfile} disabled={saving} hitSlop={8}>
@@ -315,17 +323,17 @@ const createStyles = (theme: typeof Colors.light) =>
     saveText: {
       fontSize: 15,
       fontWeight: '700',
-      color: '#20b87b',
+      color: theme.tint,
     },
     errorBanner: {
       marginHorizontal: 16,
       marginTop: 12,
       padding: 12,
-      borderRadius: 10,
-      backgroundColor: '#FFE4E6',
+      borderRadius: Design.controlRadius,
+      backgroundColor: theme.errorSurface,
     },
     errorBannerText: {
-      color: '#881337',
+      color: theme.error,
       fontSize: 13,
       fontWeight: '600',
     },
@@ -347,7 +355,7 @@ const createStyles = (theme: typeof Colors.light) =>
       width: 72,
       height: 72,
       borderRadius: 36,
-      backgroundColor: '#d8cfc6',
+      backgroundColor: theme.surface,
       alignItems: 'center',
       justifyContent: 'center',
       marginBottom: 8,
@@ -355,7 +363,7 @@ const createStyles = (theme: typeof Colors.light) =>
     avatarText: {
       fontSize: 24,
       fontWeight: '700',
-      color: '#4a4a4a',
+      color: theme.muted,
     },
     profileLine: {
       fontSize: 14,
@@ -371,6 +379,7 @@ const createStyles = (theme: typeof Colors.light) =>
       textTransform: 'uppercase',
     },
     input: {
+      minHeight: Design.touchTarget,
       borderWidth: 1,
       borderColor: theme.border,
       borderRadius: 12,
@@ -386,6 +395,7 @@ const createStyles = (theme: typeof Colors.light) =>
       gap: 8,
     },
     addNoteButton: {
+      minHeight: Design.touchTarget,
       paddingHorizontal: 14,
       paddingVertical: 10,
       borderRadius: 12,

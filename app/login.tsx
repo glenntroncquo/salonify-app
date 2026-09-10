@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/contexts/auth-context';
-import { Colors } from '@/constants/theme';
+import { Colors, Design } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function LoginScreen() {
@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
     minHeight: 48,
     paddingVertical: 12,
     borderWidth: StyleSheet.hairlineWidth * 2,
-    borderRadius: 10,
+    borderRadius: Design.controlRadius,
     paddingHorizontal: 14,
     fontSize: 16,
   },
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
   button: {
     minHeight: 48,
     paddingVertical: 12,
-    borderRadius: 10,
+    borderRadius: Design.controlRadius,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 8,

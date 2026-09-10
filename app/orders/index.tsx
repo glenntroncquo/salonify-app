@@ -6,16 +6,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { EmptyState } from '@/components/empty-state';
-import { Colors } from '@/constants/theme';
+import { Colors, Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { fetchOrders, OrderListItem } from '@/lib/api/orders';
 
-function statusStyle(status: string | null) {
-  if (status === 'paid') return { backgroundColor: '#D1FAE5', color: '#064E3B' };
-  if (status === 'partial') return { backgroundColor: '#FEF3C7', color: '#78350F' };
-  return { backgroundColor: '#FFE4E6', color: '#881337' };
+function statusStyle(status: string | null, theme: typeof Colors.light) {
+  return { backgroundColor: theme.surface, color: status === 'paid' ? theme.text : theme.muted };
 }
 
 function formatDate(value: string) {
@@ -108,7 +106,7 @@ export default function OrdersListScreen() {
           renderItem={({ item }) => {
             const clientName =
               `${item.client?.first_name ?? ''} ${item.client?.last_name ?? ''}`.trim() || t('calendar.unknownClient');
-            const badge = statusStyle(item.payment_status);
+            const badge = statusStyle(item.payment_status, theme);
             return (
               <Pressable style={styles.row} onPress={() => router.push({ pathname: '/orders/[id]', params: { id: item.id } })}>
                 <View style={{ flex: 1 }}>
@@ -118,7 +116,7 @@ export default function OrdersListScreen() {
                 <Text style={styles.rowTotal}>{`€${(item.total_amount ?? 0).toFixed(2)}`}</Text>
                 <View style={[styles.badge, { backgroundColor: badge.backgroundColor }]}>
                   <Text style={[styles.badgeText, { color: badge.color }]}>
-                    {t(`order.status.${item.payment_status ?? 'unpaid'}`)}
+                    {t(`order.status.${item.payment_status === 'partially_paid' ? 'partial' : item.payment_status ?? 'unknown'}`)}
                   </Text>
                 </View>
               </Pressable>
@@ -154,11 +152,11 @@ const createStyles = (theme: typeof Colors.light) =>
       marginHorizontal: 16,
       marginTop: 12,
       padding: 12,
-      borderRadius: 10,
-      backgroundColor: '#FFE4E6',
+      borderRadius: Design.controlRadius,
+      backgroundColor: theme.errorSurface,
     },
     errorBannerText: {
-      color: '#881337',
+      color: theme.error,
       fontSize: 13,
       fontWeight: '600',
     },

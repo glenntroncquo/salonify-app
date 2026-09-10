@@ -8,7 +8,7 @@ import { ActivityIndicator, DeviceEventEmitter, StyleSheet, Text, View } from 'r
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Colors } from '@/constants/theme';
+import { Colors, Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 12,
     padding: 12,
-    borderRadius: 10,
+    borderRadius: Design.controlRadius,
   },
   errorBannerText: {
     fontSize: 13,

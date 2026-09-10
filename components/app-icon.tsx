@@ -11,6 +11,11 @@ type MaterialIconName = React.ComponentProps<typeof MaterialIcons>['name'];
  * Symbols don't exist outside Apple platforms.
  */
 const ICONS = {
+  orders: { symbol: 'bag', material: 'shopping-bag' },
+  dashboard: { symbol: 'chart.bar', material: 'bar-chart' },
+  settings: { symbol: 'gearshape', material: 'settings' },
+  privacy: { symbol: 'doc.text', material: 'description' },
+  terms: { symbol: 'checkmark.shield', material: 'verified-user' },
   add: { symbol: 'plus', material: 'add' },
   back: { symbol: 'chevron.left', material: 'arrow-back' },
   calendar: { symbol: 'calendar', material: 'calendar-today' },

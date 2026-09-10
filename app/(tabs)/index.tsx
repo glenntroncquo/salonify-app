@@ -928,7 +928,7 @@ export default function CalendarScreen() {
                   }}>
                   <AppIcon name="calendar" size={20} color={theme.text} />
                   <Text style={styles.modeText}>{t('calendar.month')}</Text>
-                  {viewMode === 'month' ? <AppIcon name="check" size={20} color="#20b87b" /> : null}
+                  {viewMode === 'month' ? <AppIcon name="check" size={20} color={theme.tint} /> : null}
                 </Pressable>
                 <Pressable
                   style={styles.modeItem}
@@ -939,7 +939,7 @@ export default function CalendarScreen() {
                   }}>
                   <AppIcon name="viewWeek" size={20} color={theme.text} />
                   <Text style={styles.modeText}>{t('calendar.week')}</Text>
-                  {viewMode === 'week' ? <AppIcon name="check" size={20} color="#20b87b" /> : null}
+                  {viewMode === 'week' ? <AppIcon name="check" size={20} color={theme.tint} /> : null}
                 </Pressable>
                 <Pressable
                   style={styles.modeItem}
@@ -950,7 +950,7 @@ export default function CalendarScreen() {
                   }}>
                   <AppIcon name="viewList" size={20} color={theme.text} />
                   <Text style={styles.modeText}>{t('calendar.list')}</Text>
-                  {viewMode === 'list' ? <AppIcon name="check" size={20} color="#20b87b" /> : null}
+                  {viewMode === 'list' ? <AppIcon name="check" size={20} color={theme.tint} /> : null}
                 </Pressable>
               </View>
             </>
@@ -969,10 +969,10 @@ export default function CalendarScreen() {
                       setShowStaffMenu(false);
                     }}>
                     <View style={styles.staffMenuAvatar}>
-                      <AppIcon name="groups" size={14} color="#4a4a4a" />
+                      <AppIcon name="groups" size={14} color={theme.muted} />
                     </View>
                     <Text style={styles.staffMenuName}>{t('calendar.allStaff')}</Text>
-                    {staffFilterId === null ? <AppIcon name="check" size={18} color="#20b87b" /> : null}
+                    {staffFilterId === null ? <AppIcon name="check" size={18} color={theme.tint} /> : null}
                   </Pressable>
                   {staffList.map((staff) => {
                     const name = `${staff.first_name ?? ''} ${staff.last_name ?? ''}`.trim() || t('calendar.employee');
@@ -987,7 +987,7 @@ export default function CalendarScreen() {
                         }}>
                         <StaffAvatar imagePath={staff.image_path} name={name} size={22} fontSize={9} />
                         <Text style={styles.staffMenuName}>{name}</Text>
-                        {staffFilterId === staff.id ? <AppIcon name="check" size={18} color="#20b87b" /> : null}
+                        {staffFilterId === staff.id ? <AppIcon name="check" size={18} color={theme.tint} /> : null}
                       </Pressable>
                     );
                   })}

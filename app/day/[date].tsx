@@ -186,7 +186,7 @@ export default function DayScreen() {
                 imagePath={staffImageById.get(event.staffId ?? '')}
                 name={event.staffName}
                 size={32}
-                backgroundColor="#e4d5c8"
+                backgroundColor={theme.surface}
                 fontSize={9}
               />
               <TouchableOpacity

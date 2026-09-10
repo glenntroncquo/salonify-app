@@ -9,6 +9,7 @@ import { getPrivacyUrl, getTermsUrl } from '@/lib/legal';
 import { openExternalUrl } from '@/lib/open-external-url';
 
 type Props = {
+  showIcons?: boolean;
   rowStyle: StyleProp<ViewStyle>;
   textStyle: StyleProp<TextStyle>;
   chevronColor: string;
@@ -21,7 +22,7 @@ export function useLegalUrls() {
   };
 }
 
-export function LegalLinkRows({ rowStyle, textStyle, chevronColor }: Props) {
+export function LegalLinkRows({ rowStyle, textStyle, chevronColor, showIcons = false }: Props) {
   const { t } = useTranslation();
   const { privacyUrl, termsUrl } = useLegalUrls();
 
@@ -37,14 +38,16 @@ export function LegalLinkRows({ rowStyle, textStyle, chevronColor }: Props) {
     <>
       {privacyUrl ? (
         <Pressable style={rowStyle} onPress={() => void open(privacyUrl)}>
+          {showIcons ? <AppIcon name="privacy" size={21} color={chevronColor} /> : null}
           <ThemedText style={textStyle}>{t('legal.privacy')}</ThemedText>
-          <AppIcon name="chevronRight" size={20} color={chevronColor} />
+          <AppIcon name="chevronRight" size={showIcons ? 15 : 20} color={chevronColor} />
         </Pressable>
       ) : null}
       {termsUrl ? (
         <Pressable style={rowStyle} onPress={() => void open(termsUrl)}>
+          {showIcons ? <AppIcon name="terms" size={21} color={chevronColor} /> : null}
           <ThemedText style={textStyle}>{t('legal.terms')}</ThemedText>
-          <AppIcon name="chevronRight" size={20} color={chevronColor} />
+          <AppIcon name="chevronRight" size={showIcons ? 15 : 20} color={chevronColor} />
         </Pressable>
       ) : null}
     </>

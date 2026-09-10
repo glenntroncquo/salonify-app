@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { EmptyState } from '@/components/empty-state';
-import { Colors } from '@/constants/theme';
+import { Colors, Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -489,7 +489,7 @@ function createStyles(theme: typeof Colors.light) {
       marginHorizontal: 16,
       marginTop: 12,
       padding: 12,
-      borderRadius: 10,
+      borderRadius: Design.controlRadius,
       backgroundColor: `${theme.error}22`,
     },
     errorBannerText: {
@@ -541,6 +541,7 @@ function createStyles(theme: typeof Colors.light) {
       marginTop: 2,
     },
     fieldInput: {
+      minHeight: Design.touchTarget,
       borderWidth: 1,
       borderColor: theme.border,
       borderRadius: 12,
@@ -581,7 +582,7 @@ function createStyles(theme: typeof Colors.light) {
     serviceSwatch: {
       width: 40,
       height: 40,
-      borderRadius: 10,
+      borderRadius: Design.controlRadius,
     },
     serviceRowTitle: {
       fontSize: 15,

@@ -12,7 +12,7 @@ import { LegalLinkRows, useLegalUrls } from '@/components/legal-link-rows';
 import { TabScreen } from '@/components/tab-screen';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Colors } from '@/constants/theme';
+import { Colors, Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import i18n, { SUPPORTED_LANGUAGES, SupportedLanguage, setLanguage } from '@/lib/i18n';
@@ -91,19 +91,21 @@ export default function MoreScreen() {
       </View>
 
       <View style={styles.section}>
-        <ThemedText style={styles.sectionLabel}>{t('profile.language')}</ThemedText>
+        <ThemedText style={styles.languageLabel}>{t('profile.language')}</ThemedText>
         <View style={styles.languageRow}>
           {SUPPORTED_LANGUAGES.map((language) => {
             const isActive = i18n.language === language;
             return (
               <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected: isActive }}
                 key={language}
                 style={[styles.languageChip, isActive && styles.languageChipActive]}
                 onPress={() => setLanguage(language)}>
                 <ThemedText
                   style={styles.languageChipText}
-                  lightColor={isActive ? '#ffffff' : undefined}
-                  darkColor={isActive ? '#ffffff' : undefined}>
+                  lightColor={isActive ? theme.onTint : undefined}
+                  darkColor={isActive ? theme.onTint : undefined}>
                   {LANGUAGE_LABELS[language]}
                 </ThemedText>
               </Pressable>
@@ -114,32 +116,37 @@ export default function MoreScreen() {
 
       <View style={styles.section}>
         <ThemedText style={styles.sectionLabel}>{t('more.manage')}</ThemedText>
-        <Pressable style={styles.manageRow} onPress={() => router.push('/staff')}>
+        <Pressable accessibilityRole="button" style={styles.manageRow} onPress={() => router.push('/staff')}>
+          <AppIcon name="groups" size={21} color={theme.text} />
           <ThemedText style={styles.manageRowText}>{t('more.staff')}</ThemedText>
-          <AppIcon name="chevronRight" size={20} color={theme.muted} />
+          <AppIcon name="chevronRight" size={15} color={theme.muted} />
         </Pressable>
-        <Pressable style={styles.manageRow} onPress={() => router.push('/services')}>
+        <Pressable accessibilityRole="button" style={styles.manageRow} onPress={() => router.push('/services')}>
+          <AppIcon name="cut" size={21} color={theme.text} />
           <ThemedText style={styles.manageRowText}>{t('more.services')}</ThemedText>
-          <AppIcon name="chevronRight" size={20} color={theme.muted} />
+          <AppIcon name="chevronRight" size={15} color={theme.muted} />
         </Pressable>
-        <Pressable style={styles.manageRow} onPress={() => router.push('/orders')}>
+        <Pressable accessibilityRole="button" style={styles.manageRow} onPress={() => router.push('/orders')}>
+          <AppIcon name="orders" size={21} color={theme.text} />
           <ThemedText style={styles.manageRowText}>{t('more.orders')}</ThemedText>
-          <AppIcon name="chevronRight" size={20} color={theme.muted} />
+          <AppIcon name="chevronRight" size={15} color={theme.muted} />
         </Pressable>
-        <Pressable style={styles.manageRow} onPress={() => router.push('/dashboard')}>
+        <Pressable accessibilityRole="button" style={styles.manageRow} onPress={() => router.push('/dashboard')}>
+          <AppIcon name="dashboard" size={21} color={theme.text} />
           <ThemedText style={styles.manageRowText}>{t('more.dashboard')}</ThemedText>
-          <AppIcon name="chevronRight" size={20} color={theme.muted} />
+          <AppIcon name="chevronRight" size={15} color={theme.muted} />
         </Pressable>
-        <Pressable style={styles.manageRow} onPress={() => router.push('/settings')}>
+        <Pressable accessibilityRole="button" style={styles.manageRow} onPress={() => router.push('/settings')}>
+          <AppIcon name="settings" size={21} color={theme.text} />
           <ThemedText style={styles.manageRowText}>{t('more.settings')}</ThemedText>
-          <AppIcon name="chevronRight" size={20} color={theme.muted} />
+          <AppIcon name="chevronRight" size={15} color={theme.muted} />
         </Pressable>
       </View>
 
       {hasLegalLinks ? (
         <View style={styles.section}>
           <ThemedText style={styles.sectionLabel}>{t('legal.section')}</ThemedText>
-          <LegalLinkRows rowStyle={styles.manageRow} textStyle={styles.manageRowText} chevronColor={theme.muted} />
+          <LegalLinkRows showIcons rowStyle={styles.manageRow} textStyle={styles.manageRowText} chevronColor={theme.muted} />
         </View>
       ) : null}
 
@@ -173,26 +180,26 @@ const createStyles = (theme: typeof Colors.light) =>
       alignItems: 'center',
       paddingTop: 24,
       paddingBottom: 24,
-      paddingHorizontal: 24,
-      gap: 40,
+      paddingHorizontal: Design.screenPadding,
+      gap: Design.sectionGap,
     },
     profileSection: {
       alignItems: 'center',
       gap: 6,
     },
     avatar: {
-      width: 88,
-      height: 88,
-      borderRadius: 44,
-      backgroundColor: '#d8cfc6',
+      width: 68,
+      height: 68,
+      borderRadius: 34,
+      backgroundColor: theme.surface,
       alignItems: 'center',
       justifyContent: 'center',
       marginBottom: 8,
     },
     avatarInitials: {
-      fontSize: 28,
+      fontSize: 23,
       fontWeight: '700',
-      color: '#4a4a4a',
+      color: theme.muted,
     },
     name: {
       fontSize: 18,
@@ -204,11 +211,13 @@ const createStyles = (theme: typeof Colors.light) =>
     },
     section: {
       width: '100%',
-      gap: 10,
+      gap: 0,
     },
+    languageLabel: { fontSize: 14, fontWeight: '600', marginBottom: 10 },
     sectionLabel: {
-      fontSize: 13,
+      fontSize: 11,
       fontWeight: '600',
+      marginBottom: 8,
       opacity: 0.6,
       textTransform: 'uppercase',
     },
@@ -217,16 +226,18 @@ const createStyles = (theme: typeof Colors.light) =>
       gap: 8,
     },
     languageChip: {
+      minHeight: Design.touchTarget,
+      justifyContent: 'center',
       flex: 1,
       paddingVertical: 10,
-      borderRadius: 10,
+      borderRadius: Design.controlRadius,
       borderWidth: 1,
       borderColor: theme.border,
       alignItems: 'center',
     },
     languageChipActive: {
-      backgroundColor: '#20b87b',
-      borderColor: '#20b87b',
+      backgroundColor: theme.tint,
+      borderColor: theme.tint,
     },
     languageChipText: {
       fontSize: 14,
@@ -235,16 +246,17 @@ const createStyles = (theme: typeof Colors.light) =>
     manageRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
+      gap: 14,
+      minHeight: 48,
       paddingVertical: 12,
-      paddingHorizontal: 14,
-      borderRadius: 10,
-      borderWidth: 1,
+      paddingHorizontal: 6,
+      borderBottomWidth: StyleSheet.hairlineWidth,
       borderColor: theme.border,
     },
     manageRowText: {
-      fontSize: 15,
-      fontWeight: '600',
+      flex: 1,
+      fontSize: 14,
+      fontWeight: '400',
     },
     accountActions: {
       marginTop: 'auto',
@@ -253,7 +265,7 @@ const createStyles = (theme: typeof Colors.light) =>
     },
     signOutButton: {
       paddingVertical: 12,
-      paddingHorizontal: 24,
+      paddingHorizontal: Design.screenPadding,
     },
     signOutText: {
       fontSize: 16,

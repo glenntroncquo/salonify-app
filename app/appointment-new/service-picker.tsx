@@ -9,7 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { EmptyState } from '@/components/empty-state';
-import { Colors } from '@/constants/theme';
+import { Colors, Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -176,7 +176,7 @@ function createStyles(theme: typeof Colors.light) {
     swatch: {
       width: 40,
       height: 40,
-      borderRadius: 10,
+      borderRadius: Design.controlRadius,
     },
     rowTitle: {
       fontSize: 15,

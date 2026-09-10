@@ -3,6 +3,8 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import ReanimatedSwipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Animated, { useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
 
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AppIcon } from '@/components/app-icon';
 
 const ACTION_WIDTH = 76;
@@ -19,6 +21,7 @@ function DeleteAction({ translation, onPress, label }: {
   onPress: () => void;
   label: string;
 }) {
+  const theme = Colors[useColorScheme() ?? 'light'];
   // Slide the action in with the row, without exposing a full-width red tray.
   const revealStyle = useAnimatedStyle(() => ({
     opacity: Math.min(1, Math.max(0, -translation.value / ACTION_WIDTH)),
@@ -30,9 +33,9 @@ function DeleteAction({ translation, onPress, label }: {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={label}
-        style={({ pressed }) => [styles.deleteAction, pressed && styles.pressed]}
+        style={({ pressed }) => [styles.deleteAction, { backgroundColor: theme.destructive }, pressed && styles.pressed]}
         onPress={onPress}>
-        <AppIcon name="delete" size={23} color="#fff" />
+        <AppIcon name="delete" size={23} color={theme.onDestructive} />
       </Pressable>
     </Animated.View>
   );
@@ -103,7 +106,6 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 18,
     borderCurve: 'continuous',
-    backgroundColor: '#E85D58',
     alignItems: 'center',
     justifyContent: 'center',
   },

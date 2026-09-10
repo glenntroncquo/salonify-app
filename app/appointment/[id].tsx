@@ -349,8 +349,8 @@ export default function AppointmentDetailScreen() {
                       {`${getListHeaderLabel(toDateKeyFromSalonClock(historyEvent.startISO))} · ${historyEvent.startTime}–${historyEvent.endTime}`}
                     </Text>
                   </View>
-                  <View style={[styles.paymentBadge, { backgroundColor: paymentStatuses[historyEvent.appointmentId] === 'paid' ? (colorScheme === 'dark' ? '#123524' : '#E9F6EE') : theme.surface }]}>
-                    <Text style={[styles.paymentBadgeText, { color: paymentStatuses[historyEvent.appointmentId] === 'paid' ? (colorScheme === 'dark' ? '#86D9A3' : '#246B40') : theme.muted }]}>
+                  <View style={[styles.paymentBadge, { backgroundColor: theme.surface }]}>
+                    <Text style={[styles.paymentBadgeText, { color: paymentStatuses[historyEvent.appointmentId] === 'paid' ? theme.text : theme.muted }]}>
                       {t(`order.status.${paymentStatuses[historyEvent.appointmentId] ?? 'unknown'}`)}
                     </Text>
                   </View>

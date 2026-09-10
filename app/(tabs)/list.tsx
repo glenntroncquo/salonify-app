@@ -16,7 +16,7 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import { EmptyState } from '@/components/empty-state';
-import { Colors } from '@/constants/theme';
+import { Colors, Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -193,7 +193,7 @@ const createStyles = (theme: typeof Colors.light) =>
       paddingBottom: 12,
     },
     title: {
-      fontSize: 28,
+      fontSize: 20,
       fontWeight: '600',
       color: theme.text,
     },
@@ -218,20 +218,20 @@ const createStyles = (theme: typeof Colors.light) =>
       marginHorizontal: 16,
       marginBottom: 12,
       padding: 12,
-      borderRadius: 10,
-      backgroundColor: '#FFE4E6',
+      borderRadius: Design.controlRadius,
+      backgroundColor: theme.errorSurface,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
     },
     errorBannerText: {
-      color: '#881337',
+      color: theme.error,
       fontSize: 13,
       fontWeight: '600',
       flex: 1,
     },
     errorBannerRetry: {
-      color: '#881337',
+      color: theme.error,
       fontSize: 13,
       fontWeight: '700',
       textDecorationLine: 'underline',

@@ -9,7 +9,7 @@ import { ActivityIndicator, DeviceEventEmitter, StyleSheet, Text, TextInput, Vie
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
-import { Colors } from '@/constants/theme';
+import { Colors, Design } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ClientSearchResult, searchClients } from '@/lib/api/clients';
 
@@ -185,6 +185,7 @@ function createStyles(theme: typeof Colors.light) {
       color: theme.muted,
     },
     fieldInput: {
+      minHeight: Design.touchTarget,
       borderWidth: 1,
       borderColor: theme.border,
       borderRadius: 12,
