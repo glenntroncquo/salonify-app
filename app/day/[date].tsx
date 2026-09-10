@@ -28,10 +28,10 @@ import { fetchAppointmentById, fetchAppointmentsForMonth, fetchStaff, type Appoi
 import {
   appointmentToEvent,
   groupAppointmentsByDateKey,
-} from '../(tabs)/calendar/calendar-data';
-import { DaySheetSkeleton } from '../(tabs)/calendar/components/CalendarSkeletons';
-import { getFullDateLabel, getISOWeekNumber, getListHeaderLabel, toDateKeyFromSalonClock } from '../(tabs)/calendar/date-utils';
-import { EventItem } from '../(tabs)/calendar/types';
+} from '@/components/calendar/calendar-data';
+import { DaySheetSkeleton } from '@/components/calendar/components/CalendarSkeletons';
+import { getFullDateLabel, getISOWeekNumber, getListHeaderLabel, toDateKeyFromSalonClock } from '@/components/calendar/date-utils';
+import { EventItem } from '@/components/calendar/types';
 
 export default function DayScreen() {
   const { t } = useTranslation();

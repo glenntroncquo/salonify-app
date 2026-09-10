@@ -39,7 +39,7 @@ import {
   PREFETCH_PAST_MONTHS,
   WEEK_CENTER_INDEX,
   WEEK_PAGE_COUNT,
-} from './calendar/constants';
+} from '@/components/calendar/constants';
 import {
   addDays,
   addMonths,
@@ -51,24 +51,24 @@ import {
   getWeekdayLong,
   parseSalonWallClock,
   toDateKey,
-} from './calendar/date-utils';
+} from '@/components/calendar/date-utils';
 import {
   buildMonthData,
   groupAppointmentsByDateKey,
   monthCacheKey,
   removeAppointmentFromMonthCache,
   upsertAppointmentInMonthCache,
-} from './calendar/calendar-data';
+} from '@/components/calendar/calendar-data';
 import {
   ListAgendaSkeleton,
   ListFooterSkeleton,
   MonthGridSkeleton,
   WeekAgendaSkeleton,
-} from './calendar/components/CalendarSkeletons';
-import { ListEventRow } from './calendar/components/ListEventRow';
-import { ListSectionHeader } from './calendar/components/ListSectionHeader';
-import { createStyles } from './calendar/styles';
-import { EventItem, ListFlatItem, MonthData, WeekDayData } from './calendar/types';
+} from '@/components/calendar/components/CalendarSkeletons';
+import { ListEventRow } from '@/components/calendar/components/ListEventRow';
+import { ListSectionHeader } from '@/components/calendar/components/ListSectionHeader';
+import { createStyles } from '@/components/calendar/styles';
+import { EventItem, ListFlatItem, MonthData, WeekDayData } from '@/components/calendar/types';
 
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';

@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import type { EventPhase } from '@/app/(tabs)/calendar/types';
+import type { EventPhase } from '@/components/calendar/types';
 
 type Props = {
   phases: EventPhase[];

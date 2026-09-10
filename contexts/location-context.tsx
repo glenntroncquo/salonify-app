@@ -32,7 +32,9 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
   const [locations, setLocations] = useState<ShopLocation[]>([]);
   const [locationId, setLocationIdState] = useState<string | null>(null);
   const [multiLocationEnabled, setMultiLocationEnabled] = useState(false);
-  const [loading, setLoading] = useState(false);
+  // Starts true so consumers never see a "no location" flash between auth
+  // resolving and this provider's fetch effect actually kicking off.
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (authLoading) return;

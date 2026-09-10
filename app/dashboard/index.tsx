@@ -13,7 +13,7 @@ import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { fetchMonthlyAppointments, fetchMonthlyClients, fetchRevenue, MonthlyCountData, RevenueData } from '@/lib/api/dashboard';
 
-import { getMonthShortLabel } from '../(tabs)/calendar/date-utils';
+import { getMonthShortLabel } from '@/components/calendar/date-utils';
 
 const RECENT_MONTHS = 6;
 

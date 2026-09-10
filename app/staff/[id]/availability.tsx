@@ -1,12 +1,12 @@
 import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
 import { HeaderButton } from '@/components/header-button';
+import { Pressable } from '@/components/pressable-scale';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, DeviceEventEmitter, StyleSheet, Switch, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { DateTimeField } from '@/components/date-time-field';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
@@ -53,6 +53,18 @@ function formatTimeLabel(date: Date) {
   return `${h}:${m}`;
 }
 
+const AVAILABILITY_EVENT = 'availabilityDraft:setTime';
+type AvailabilityField = { day: number; field: 'start' | 'end' };
+
+function encodeField({ day, field }: AvailabilityField) {
+  return `${day}:${field}`;
+}
+
+function decodeField(raw: string): AvailabilityField {
+  const [day, field] = raw.split(':');
+  return { day: Number(day), field: field as 'start' | 'end' };
+}
+
 export default function StaffAvailabilityScreen() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -73,6 +85,21 @@ export default function StaffAvailabilityScreen() {
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const sub = DeviceEventEmitter.addListener(AVAILABILITY_EVENT, ({ field, value }: { field: string; value: string }) => {
+      const { day, field: which } = decodeField(field);
+      setDays((prev) => ({ ...prev, [day]: { ...prev[day], [which]: new Date(value) } }));
+    });
+    return () => sub.remove();
+  }, []);
+
+  const openPicker = (target: AvailabilityField, value: Date, title: string) => {
+    router.push({
+      pathname: '/date-time-picker',
+      params: { mode: 'time', value: value.toISOString(), event: AVAILABILITY_EVENT, field: encodeField(target), title },
+    });
+  };
 
   const load = React.useCallback(async () => {
     if (!id || !companyId) {
@@ -227,21 +254,13 @@ export default function StaffAvailabilityScreen() {
                 <Text style={styles.multipleHint}>{t('staff.multipleSlots')}</Text>
               ) : state.working ? (
                 <View style={styles.timeRow}>
-                  <DateTimeField
-                    value={state.start}
-                    mode="time"
-                    doneLabel={t('appointment.done')}
-                    formatLabel={formatTimeLabel}
-                    onChange={(next) => setDays((prev) => ({ ...prev, [day]: { ...prev[day], start: next } }))}
-                  />
+                  <Pressable style={styles.pill} onPress={() => openPicker({ day, field: 'start' }, state.start, t('appointment.starts'))}>
+                    <Text style={styles.pillText}>{formatTimeLabel(state.start)}</Text>
+                  </Pressable>
                   <Text style={styles.timeSeparator}>–</Text>
-                  <DateTimeField
-                    value={state.end}
-                    mode="time"
-                    doneLabel={t('appointment.done')}
-                    formatLabel={formatTimeLabel}
-                    onChange={(next) => setDays((prev) => ({ ...prev, [day]: { ...prev[day], end: next } }))}
-                  />
+                  <Pressable style={styles.pill} onPress={() => openPicker({ day, field: 'end' }, state.end, t('appointment.ends'))}>
+                    <Text style={styles.pillText}>{formatTimeLabel(state.end)}</Text>
+                  </Pressable>
                 </View>
               ) : (
                 <Text style={styles.dayOffText}>{t('staff.dayOff')}</Text>
@@ -334,5 +353,18 @@ const createStyles = (theme: typeof Colors.light) =>
       fontSize: 13,
       color: theme.muted,
       fontStyle: 'italic',
+    },
+    pill: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.surface,
+    },
+    pillText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.text,
     },
   });

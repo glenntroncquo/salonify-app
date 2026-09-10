@@ -1,18 +1,20 @@
 import { ScreenScrollView } from '@/components/screen-scroll-view';
 import { AppIcon } from '@/components/app-icon';
 import { HeaderButton } from '@/components/header-button';
+import { Pressable } from '@/components/pressable-scale';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, DeviceEventEmitter, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { DateTimeField } from '@/components/date-time-field';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { createTimeOff } from '@/lib/api/staff';
+
+const TIME_OFF_EVENT = 'timeOffDraft:setDateTime';
 
 function formatDateLabel(date: Date) {
   const y = date.getFullYear();
@@ -53,6 +55,23 @@ export default function StaffTimeOffNewScreen() {
   const [endTime, setEndTime] = React.useState(defaultEnd);
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const sub = DeviceEventEmitter.addListener(TIME_OFF_EVENT, ({ field, value }: { field: 'date' | 'start' | 'end'; value: string }) => {
+      const picked = new Date(value);
+      if (field === 'date') setDate(picked);
+      else if (field === 'start') setStartTime(picked);
+      else setEndTime(picked);
+    });
+    return () => sub.remove();
+  }, []);
+
+  const openPicker = (field: 'date' | 'start' | 'end', mode: 'date' | 'time', value: Date, title: string) => {
+    router.push({
+      pathname: '/date-time-picker',
+      params: { mode, value: value.toISOString(), event: TIME_OFF_EVENT, field, title },
+    });
+  };
 
   const handleSave = async () => {
     if (!staffId || !companyId || !locationId) {
@@ -112,21 +131,27 @@ export default function StaffTimeOffNewScreen() {
       <ScreenScrollView contentContainerStyle={styles.body}>
         <View style={styles.row}>
           <Text style={[styles.rowLabel, { color: theme.text }]}>{t('staff.date')}</Text>
-          <DateTimeField value={date} mode="date" doneLabel={t('appointment.done')} formatLabel={formatDateLabel} onChange={setDate} />
+          <Pressable
+            style={[styles.pill, { borderColor: theme.border, backgroundColor: theme.surface }]}
+            onPress={() => openPicker('date', 'date', date, t('staff.date'))}>
+            <Text style={[styles.pillText, { color: theme.text }]}>{formatDateLabel(date)}</Text>
+          </Pressable>
         </View>
         <View style={styles.row}>
           <Text style={[styles.rowLabel, { color: theme.text }]}>{t('appointment.starts')}</Text>
-          <DateTimeField
-            value={startTime}
-            mode="time"
-            doneLabel={t('appointment.done')}
-            formatLabel={formatTimeLabel}
-            onChange={setStartTime}
-          />
+          <Pressable
+            style={[styles.pill, { borderColor: theme.border, backgroundColor: theme.surface }]}
+            onPress={() => openPicker('start', 'time', startTime, t('appointment.starts'))}>
+            <Text style={[styles.pillText, { color: theme.text }]}>{formatTimeLabel(startTime)}</Text>
+          </Pressable>
         </View>
         <View style={styles.row}>
           <Text style={[styles.rowLabel, { color: theme.text }]}>{t('appointment.ends')}</Text>
-          <DateTimeField value={endTime} mode="time" doneLabel={t('appointment.done')} formatLabel={formatTimeLabel} onChange={setEndTime} />
+          <Pressable
+            style={[styles.pill, { borderColor: theme.border, backgroundColor: theme.surface }]}
+            onPress={() => openPicker('end', 'time', endTime, t('appointment.ends'))}>
+            <Text style={[styles.pillText, { color: theme.text }]}>{formatTimeLabel(endTime)}</Text>
+          </Pressable>
         </View>
       </ScreenScrollView>
     </SafeAreaView>
@@ -136,18 +161,6 @@ export default function StaffTimeOffNewScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '700',
   },
   saveText: {
     fontSize: 16,
@@ -174,6 +187,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   rowLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  pill: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 18,
+    borderWidth: 1,
+  },
+  pillText: {
     fontSize: 14,
     fontWeight: '600',
   },

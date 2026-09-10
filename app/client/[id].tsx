@@ -29,9 +29,9 @@ import {
 } from '@/lib/api/clients';
 import { getInitialsFromLabel } from '@/lib/text';
 
-import { appointmentToEvent } from '../(tabs)/calendar/calendar-data';
-import { getListHeaderLabel, toDateKey, toDateKeyFromSalonClock } from '../(tabs)/calendar/date-utils';
-import { EventItem } from '../(tabs)/calendar/types';
+import { appointmentToEvent } from '@/components/calendar/calendar-data';
+import { getListHeaderLabel, toDateKey, toDateKeyFromSalonClock } from '@/components/calendar/date-utils';
+import { EventItem } from '@/components/calendar/types';
 
 export default function ClientDetailScreen() {
   const { t } = useTranslation();

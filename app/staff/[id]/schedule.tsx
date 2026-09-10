@@ -7,10 +7,10 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { groupAppointmentsByDateKey, listVisitBlockHeight } from '@/app/(tabs)/calendar/calendar-data';
+import { groupAppointmentsByDateKey, listVisitBlockHeight } from '@/components/calendar/calendar-data';
 import { VisitPhaseBar } from '@/components/visit-phase-bar';
-import { addDays, getISOWeekNumber, getMonthShortLabel, getWeekStartMonday, getWeekdayLong, toDateKey } from '@/app/(tabs)/calendar/date-utils';
-import { EventItem } from '@/app/(tabs)/calendar/types';
+import { addDays, getISOWeekNumber, getMonthShortLabel, getWeekStartMonday, getWeekdayLong, toDateKey } from '@/components/calendar/date-utils';
+import { EventItem } from '@/components/calendar/types';
 import { EmptyState } from '@/components/empty-state';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';

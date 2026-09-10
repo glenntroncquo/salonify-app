@@ -29,9 +29,9 @@ import { fetchAppointmentById, fetchClientAppointments, type AppointmentRow } fr
 import { addClientNote, Client, ClientNote, fetchClient, fetchClientNotes } from '@/lib/api/clients';
 import { getInitialsFromLabel } from '@/lib/text';
 
-import { appointmentToEvent, listVisitBlockHeight } from '../(tabs)/calendar/calendar-data';
-import { getListHeaderLabel, toDateKey, toDateKeyFromSalonClock } from '../(tabs)/calendar/date-utils';
-import { EventItem } from '../(tabs)/calendar/types';
+import { appointmentToEvent, listVisitBlockHeight } from '@/components/calendar/calendar-data';
+import { getListHeaderLabel, toDateKey, toDateKeyFromSalonClock } from '@/components/calendar/date-utils';
+import { EventItem } from '@/components/calendar/types';
 
 export default function AppointmentDetailScreen() {
   const { t } = useTranslation();
