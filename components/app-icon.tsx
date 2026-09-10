@@ -19,6 +19,7 @@ const ICONS = {
   chevronLeft: { symbol: 'chevron.left', material: 'chevron-left' },
   chevronRight: { symbol: 'chevron.right', material: 'chevron-right' },
   close: { symbol: 'xmark', material: 'close' },
+  delete: { symbol: 'trash', material: 'delete-outline' },
   cut: { symbol: 'scissors', material: 'content-cut' },
   eventBusy: { symbol: 'calendar.badge.exclamationmark', material: 'event-busy' },
   expandMore: { symbol: 'chevron.down', material: 'expand-more' },

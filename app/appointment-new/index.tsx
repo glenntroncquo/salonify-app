@@ -301,13 +301,17 @@ export default function NewAppointmentScreen() {
         options={{
           headerShown: true,
           title: t('appointment.title'),
-          headerLeft: () => (
-            <HeaderButton onPress={() => router.back()} hitSlop={8}>
-              <AppIcon name="close" size={18} color={theme.text} />
-            </HeaderButton>
-          ),
+          unstable_headerLeftItems: ({ tintColor }) => [
+            {
+              type: 'button',
+              label: t('common.close'),
+              icon: { type: 'sfSymbol', name: 'xmark' },
+              tintColor: tintColor ?? theme.text,
+              onPress: () => router.back(),
+            },
+          ],
           headerRight: () => (
-            <HeaderButton onPress={handleSave} disabled={!canSave} hitSlop={8}>
+            <HeaderButton onPress={handleSave} disabled={!canSave} hitSlop={8} style={styles.headerTextButton}>
               {submitting ? (
                 <ActivityIndicator size="small" color={theme.tint} />
               ) : (
@@ -471,6 +475,11 @@ function createStyles(theme: typeof Colors.light) {
     },
     flexFill: {
       flex: 1,
+    },
+    headerTextButton: {
+      width: 'auto',
+      minWidth: 0,
+      paddingHorizontal: 4,
     },
     headerSaveText: {
       fontSize: 16,

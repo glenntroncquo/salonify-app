@@ -1,8 +1,9 @@
+import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
 import { HeaderButton } from '@/components/header-button';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { DeviceEventEmitter, StyleSheet, Text, View } from 'react-native';
+import { DeviceEventEmitter, StyleSheet, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
@@ -46,7 +47,7 @@ export default function DateTimePickerScreen() {
           ),
         }}
       />
-      <View style={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
         <DateTimePicker
           value={current}
           mode={mode}
@@ -57,7 +58,7 @@ export default function DateTimePickerScreen() {
             DeviceEventEmitter.emit(event, { field, value: selected.toISOString() });
           }}
         />
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }

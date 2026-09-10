@@ -1,6 +1,5 @@
 import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
 import { AppIcon } from '@/components/app-icon';
-import { HeaderButton } from '@/components/header-button';
 import { Pressable } from '@/components/pressable-scale';
 import { StaffAvatar } from '@/components/staff-avatar';
 import * as Haptics from 'expo-haptics';
@@ -59,11 +58,6 @@ export default function StaffPickerScreen() {
         options={{
           headerShown: true,
           title: t('appointment.staffMember'),
-          headerLeft: () => (
-            <HeaderButton onPress={() => router.back()} hitSlop={8} style={styles.headerTextButton}>
-              <Text style={styles.headerLinkText}>{t('appointment.cancel')}</Text>
-            </HeaderButton>
-          ),
         }}
       />
       {loading ? (
@@ -71,7 +65,7 @@ export default function StaffPickerScreen() {
       ) : staffList.length === 0 ? (
         <EmptyState compact icon="groups" title={t('staff.noStaff')} subtitle={t('staff.noStaffHint')} />
       ) : (
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView contentContainerStyle={styles.scrollContent} contentInsetAdjustmentBehavior="automatic">
           {staffList.map((staff) => {
             const name = clientDisplayName(staff.first_name, staff.last_name, t('calendar.employee'));
             const isSelected = selectedStaffId === staff.id;
@@ -97,16 +91,6 @@ function createStyles(theme: typeof Colors.light) {
     },
     flexFill: {
       flex: 1,
-    },
-    headerTextButton: {
-      width: 'auto',
-      minWidth: 0,
-      paddingHorizontal: 4,
-    },
-    headerLinkText: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: theme.tint,
     },
     loading: {
       marginTop: 24,

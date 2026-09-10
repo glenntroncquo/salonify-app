@@ -1,8 +1,12 @@
 import React from 'react';
-import { StyleSheet, Text } from 'react-native';
-import { Swipeable } from 'react-native-gesture-handler';
+import { Pressable, StyleSheet, View } from 'react-native';
+import ReanimatedSwipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
+import Animated, { useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
 
-import { Pressable } from '@/components/pressable-scale';
+import { AppIcon } from '@/components/app-icon';
+
+const ACTION_WIDTH = 76;
+let openRow: SwipeableMethods | null = null;
 
 type Props = {
   children: React.ReactNode;
@@ -10,43 +14,98 @@ type Props = {
   deleteLabel: string;
 };
 
-/**
- * Standard iOS swipe-to-reveal-delete: dragging left exposes a red button
- * that must be tapped to confirm — the swipe itself never deletes anything.
- */
-export function SwipeableRow({ children, onDelete, deleteLabel }: Props) {
-  const swipeableRef = React.useRef<Swipeable>(null);
+function DeleteAction({ translation, onPress, label }: {
+  translation: SharedValue<number>;
+  onPress: () => void;
+  label: string;
+}) {
+  // Slide the action in with the row, without exposing a full-width red tray.
+  const revealStyle = useAnimatedStyle(() => ({
+    opacity: Math.min(1, Math.max(0, -translation.value / ACTION_WIDTH)),
+    transform: [{ translateX: Math.max(0, ACTION_WIDTH + translation.value) }],
+  }));
 
   return (
-    <Swipeable
+    <Animated.View style={[styles.actionContainer, revealStyle]}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        style={({ pressed }) => [styles.deleteAction, pressed && styles.pressed]}
+        onPress={onPress}>
+        <AppIcon name="delete" size={23} color="#fff" />
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+/** UI-thread swipe-to-reveal. Deletion requires tapping the revealed action. */
+export function SwipeableRow({ children, onDelete, deleteLabel }: Props) {
+  const swipeableRef = React.useRef<SwipeableMethods>(null);
+
+  React.useEffect(() => {
+    const row = swipeableRef.current;
+    return () => {
+      if (openRow === row) openRow = null;
+    };
+  }, []);
+
+  const reveal = () => {
+    if (openRow !== swipeableRef.current) openRow?.close();
+    openRow = swipeableRef.current;
+  };
+  const handleDelete = () => {
+    swipeableRef.current?.close();
+    onDelete();
+  };
+
+  return (
+    <ReanimatedSwipeable
       ref={swipeableRef}
-      overshootRight={false}
-      rightThreshold={40}
-      renderRightActions={() => (
-        <Pressable
-          style={styles.deleteAction}
-          onPress={() => {
-            swipeableRef.current?.close();
-            onDelete();
-          }}>
-          <Text style={styles.deleteText}>{deleteLabel}</Text>
-        </Pressable>
+      friction={1.25}
+      animationOptions={{ stiffness: 240, damping: 32, mass: 1, overshootClamping: true }}
+      rightThreshold={32}
+      dragOffsetFromRightEdge={16}
+      overshootLeft={false}
+      overshootRight
+      overshootFriction={10}
+      onSwipeableOpenStartDrag={reveal}
+      onSwipeableWillOpen={reveal}
+      onSwipeableClose={() => {
+        if (openRow === swipeableRef.current) openRow = null;
+      }}
+      renderRightActions={(_, translation) => (
+        <DeleteAction translation={translation} label={deleteLabel} onPress={handleDelete} />
       )}>
-      {children}
-    </Swipeable>
+      <View
+        accessible
+        accessibilityActions={[{ name: 'delete', label: deleteLabel }]}
+        onAccessibilityAction={(event) => {
+          if (event.nativeEvent.actionName === 'delete') handleDelete();
+        }}
+        style={styles.content}>
+        {children}
+      </View>
+    </ReanimatedSwipeable>
   );
 }
 
 const styles = StyleSheet.create({
+  content: { minHeight: 56 },
+  actionContainer: {
+    width: ACTION_WIDTH,
+    paddingLeft: 10,
+    paddingVertical: 5,
+    justifyContent: 'center',
+  },
   deleteAction: {
-    width: 88,
-    backgroundColor: '#e5484d',
+    minHeight: 44,
+    maxHeight: 64,
+    flex: 1,
+    borderRadius: 18,
+    borderCurve: 'continuous',
+    backgroundColor: '#E85D58',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  deleteText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
+  pressed: { opacity: 0.85 },
 });

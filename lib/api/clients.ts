@@ -185,3 +185,17 @@ export async function addClientNote(clientId: string, companyId: string, note: s
 
   if (error) throw error;
 }
+
+export async function deleteClientNote(noteId: string, clientId: string, companyId: string): Promise<void> {
+  const { data, error } = await supabase
+    .from('client_notes')
+    .delete()
+    .eq('id', noteId)
+    .eq('client_id', clientId)
+    .eq('company_id', companyId)
+    .select('id')
+    .single();
+
+  if (error) throw error;
+  if (!data) throw new Error('Note was not deleted');
+}

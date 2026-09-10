@@ -1,5 +1,7 @@
 {
   "common": {
+    "close": "Close",
+    "back": "Back",
     "delete": "Delete"
   },
   "auth": {
@@ -54,6 +56,8 @@
     "weekdaysShort": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
   },
   "appointment": {
+    "detailTitle": "Appointment",
+    "addNoteAction": "Add a note",
     "title": "New appointment",
     "cancel": "Cancel",
     "save": "Save",
@@ -106,6 +110,7 @@
     "canceled": "Canceled"
   },
   "client": {
+    "failedToDeleteNote": "Failed to delete note. Please try again.",
     "title": "Clients",
     "searchPlaceholder": "Search clients",
     "noClients": "No clients yet",
@@ -225,6 +230,7 @@
     "noOrders": "No orders yet",
     "noOrdersHint": "Completed checkouts will show up here.",
     "status": {
+      "unknown": "Unknown",
       "paid": "Paid",
       "partial": "Partial",
       "unpaid": "Unpaid"

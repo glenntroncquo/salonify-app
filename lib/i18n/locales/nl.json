@@ -1,5 +1,7 @@
 {
   "common": {
+    "close": "Sluiten",
+    "back": "Terug",
     "delete": "Verwijderen"
   },
   "auth": {
@@ -54,6 +56,8 @@
     "weekdaysShort": ["zo", "ma", "di", "wo", "do", "vr", "za"]
   },
   "appointment": {
+    "detailTitle": "Afspraak",
+    "addNoteAction": "Voeg notitie toe",
     "title": "Nieuwe afspraak",
     "cancel": "Annuleren",
     "save": "Opslaan",
@@ -106,6 +110,7 @@
     "canceled": "Geannuleerd"
   },
   "client": {
+    "failedToDeleteNote": "Notitie verwijderen mislukt. Probeer het opnieuw.",
     "title": "Klanten",
     "searchPlaceholder": "Zoek klanten",
     "noClients": "Nog geen klanten",
@@ -225,6 +230,7 @@
     "noOrders": "Nog geen bestellingen",
     "noOrdersHint": "Afgeronde afrekeningen verschijnen hier.",
     "status": {
+      "unknown": "Onbekend",
       "paid": "Betaald",
       "partial": "Gedeeltelijk",
       "unpaid": "Onbetaald"

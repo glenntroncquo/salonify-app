@@ -1,6 +1,5 @@
 import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
 import { AppIcon } from '@/components/app-icon';
-import { HeaderButton } from '@/components/header-button';
 import { Pressable } from '@/components/pressable-scale';
 import { StaffAvatar } from '@/components/staff-avatar';
 import { Stack, useRouter } from 'expo-router';
@@ -94,14 +93,12 @@ export default function ClientPickerScreen() {
         options={{
           headerShown: true,
           title: t('appointment.client'),
-          headerLeft: () => (
-            <HeaderButton onPress={() => router.back()} hitSlop={8} style={styles.headerTextButton}>
-              <Text style={styles.headerLinkText}>{t('appointment.cancel')}</Text>
-            </HeaderButton>
-          ),
         }}
       />
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        contentInsetAdjustmentBehavior="automatic">
         <View style={styles.searchInputRow}>
           <AppIcon name="search" size={18} color={theme.muted} />
           <TextInput
@@ -186,11 +183,6 @@ function createStyles(theme: typeof Colors.light) {
     },
     flexFill: {
       flex: 1,
-    },
-    headerTextButton: {
-      width: 'auto',
-      minWidth: 0,
-      paddingHorizontal: 4,
     },
     headerLinkText: {
       fontSize: 15,

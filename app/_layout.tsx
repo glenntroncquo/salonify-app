@@ -92,12 +92,50 @@ function RootNavigator() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="day/[date]" options={{ presentation: 'modal' }} />
         <Stack.Screen name="appointment-new/index" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="appointment-new/client-picker" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="appointment-new/new-client" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="appointment-new/service-picker" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="appointment-new/service-variants" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="appointment-new/staff-picker" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="date-time-picker" options={{ presentation: 'modal' }} />
+        {/*
+          Single-detent formSheet, not [0.5, 1]: with two detents, dragging
+          between them makes RN re-layout the whole subtree every frame,
+          which is what made these feel janky vs. the plain modal screens.
+          One detent means the only drag interaction left is dismiss, which
+          — like `modal` — is a native transform, not a JS-driven resize.
+
+          Accepted tradeoff: iOS's formSheet is inset from all four edges on
+          iPhone portrait (no public API to force edge-attachment there —
+          prefersEdgeAttachedInCompactHeight only affects landscape), so
+          there's a small permanent gap at the bottom. Decided that's worth
+          it for the shorter height and native drag smoothness.
+        */}
+        <Stack.Screen
+          name="appointment-new/client-picker"
+          options={{ presentation: 'formSheet', sheetAllowedDetents: [0.75], sheetGrabberVisible: true, sheetCornerRadius: 20 }}
+        />
+        <Stack.Screen
+          name="appointment-new/new-client"
+          options={{ presentation: 'formSheet', sheetAllowedDetents: [0.7], sheetGrabberVisible: true, sheetCornerRadius: 20 }}
+        />
+        <Stack.Screen
+          name="appointment-new/service-picker"
+          options={{ presentation: 'formSheet', sheetAllowedDetents: [0.75], sheetGrabberVisible: true, sheetCornerRadius: 20 }}
+        />
+        {/*
+          service-variants and staff-picker fetch their list after the sheet
+          first mounts, so `fitToContents` sized the sheet for the loading
+          spinner, not the real (taller) list — the extra rows landed past
+          the sheet's actual bottom edge, in the dimmed backdrop, where they
+          were visible but untappable. Fixed detents sidestep that.
+        */}
+        <Stack.Screen
+          name="appointment-new/service-variants"
+          options={{ presentation: 'formSheet', sheetAllowedDetents: [0.55], sheetGrabberVisible: true, sheetCornerRadius: 20 }}
+        />
+        <Stack.Screen
+          name="appointment-new/staff-picker"
+          options={{ presentation: 'formSheet', sheetAllowedDetents: [0.5], sheetGrabberVisible: true, sheetCornerRadius: 20 }}
+        />
+        <Stack.Screen
+          name="date-time-picker"
+          options={{ presentation: 'formSheet', sheetAllowedDetents: [0.38], sheetGrabberVisible: true, sheetCornerRadius: 20 }}
+        />
         <Stack.Screen name="appointment/[id]" options={{ presentation: 'modal' }} />
         <Stack.Screen name="client/[id]" />
         <Stack.Screen name="client/new" options={{ presentation: 'modal' }} />

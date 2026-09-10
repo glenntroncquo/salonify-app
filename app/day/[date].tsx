@@ -117,11 +117,29 @@ export default function DayScreen() {
         options={{
           headerShown: true,
           title: date ? getListHeaderLabel(date) : '',
+          unstable_headerLeftItems: () => [
+            {
+              type: 'button',
+              label: t('common.close'),
+              icon: { type: 'sfSymbol', name: 'xmark' },
+              tintColor: theme.text,
+              onPress: () => router.back(),
+            },
+          ],
           headerLeft: () => (
             <HeaderButton onPress={() => router.back()} hitSlop={8}>
               <AppIcon name="close" size={18} color={theme.text} />
             </HeaderButton>
           ),
+          unstable_headerRightItems: () => [
+            {
+              type: 'button',
+              label: t('appointment.title'),
+              icon: { type: 'sfSymbol', name: 'plus' },
+              tintColor: theme.text,
+              onPress: () => router.push({ pathname: '/appointment-new', params: { date } }),
+            },
+          ],
           headerRight: () => (
             <HeaderButton onPress={() => router.push({ pathname: '/appointment-new', params: { date } })} hitSlop={8}>
               <AppIcon name="add" size={24} color={theme.text} />

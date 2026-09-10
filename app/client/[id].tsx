@@ -1,3 +1,5 @@
+import { SwipeableRow } from '@/components/swipeable-row';
+import { deleteClientNote } from '@/lib/api/clients';
 import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
 import { Pressable } from '@/components/pressable-scale';
 import { HeaderButton } from '@/components/header-button';
@@ -107,6 +109,21 @@ export default function ClientDetailScreen() {
       setError(t('client.failedToSave'));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const deletingNotes = React.useRef(new Set<string>());
+  const handleDeleteNote = async (noteId: string) => {
+    const clientId = id;
+    if (!clientId || !companyId || deletingNotes.current.has(noteId)) return;
+    deletingNotes.current.add(noteId);
+    try {
+      await deleteClientNote(noteId, clientId, companyId);
+      setNotes((current) => current.filter((note) => note.id !== noteId));
+    } catch {
+      setError(t('client.failedToDeleteNote'));
+    } finally {
+      deletingNotes.current.delete(noteId);
     }
   };
 
@@ -231,12 +248,16 @@ export default function ClientDetailScreen() {
             {notes.length === 0 ? (
               <EmptyState compact title={t('client.noNotes')} subtitle={t('client.noNotesHint')} />
             ) : (
-              notes.map((note) => (
-                <View key={note.id} style={styles.noteRow}>
+              <ScrollView style={styles.notesList} nestedScrollEnabled showsVerticalScrollIndicator>
+                {notes.map((note) => (
+                <SwipeableRow key={note.id} deleteLabel={t('common.delete')} onDelete={() => handleDeleteNote(note.id)}>
+                <View style={styles.noteRow}>
                   <Text style={styles.noteText}>{note.note}</Text>
                   <Text style={styles.noteDate}>{getListHeaderLabel(toDateKey(new Date(note.created_at)))}</Text>
                 </View>
-              ))
+                </SwipeableRow>
+                ))}
+              </ScrollView>
             )}
           </View>
 
@@ -380,7 +401,8 @@ const createStyles = (theme: typeof Colors.light) =>
       fontSize: 14,
       color: theme.muted,
     },
-    noteRow: {
+    notesList: { maxHeight: 180 },
+  noteRow: {
       paddingVertical: 8,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,

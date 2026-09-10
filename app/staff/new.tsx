@@ -66,6 +66,15 @@ export default function NewStaffScreen() {
         options={{
           headerShown: true,
           title: t('staff.addNew'),
+          unstable_headerLeftItems: () => [
+            {
+              type: 'button',
+              label: t('common.close'),
+              icon: { type: 'sfSymbol', name: 'xmark' },
+              tintColor: theme.text,
+              onPress: () => router.back(),
+            },
+          ],
           headerLeft: () => (
             <HeaderButton onPress={() => router.back()} hitSlop={8}>
               <AppIcon name="close" size={18} color={theme.text} />

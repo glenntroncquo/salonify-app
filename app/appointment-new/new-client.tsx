@@ -91,11 +91,6 @@ export default function NewClientScreen() {
         options={{
           headerShown: true,
           title: t('appointment.newClientTitle'),
-          headerLeft: () => (
-            <HeaderButton onPress={() => router.back()} hitSlop={8} style={styles.headerTextButton}>
-              <Text style={styles.headerLinkText}>{t('appointment.cancel')}</Text>
-            </HeaderButton>
-          ),
           headerRight: () => (
             <HeaderButton onPress={handleSave} disabled={!canSave} hitSlop={8} style={styles.headerTextButton}>
               <Text style={[styles.headerSaveText, { color: canSave ? theme.tint : theme.muted }]}>{t('appointment.save')}</Text>
@@ -103,10 +98,13 @@ export default function NewClientScreen() {
           ),
         }}
       />
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        contentInsetAdjustmentBehavior="automatic">
         <View style={styles.formGroup}>
           <Text style={styles.fieldLabel}>{`${t('appointment.firstName')} *`}</Text>
-          <TextInput style={styles.fieldInput} value={firstName} onChangeText={setFirstName} placeholderTextColor={theme.muted} autoFocus />
+          <TextInput style={styles.fieldInput} value={firstName} onChangeText={setFirstName} placeholderTextColor={theme.muted} />
         </View>
         <View style={styles.formGroup}>
           <Text style={styles.fieldLabel}>{`${t('appointment.lastName')} *`}</Text>

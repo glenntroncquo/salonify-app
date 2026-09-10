@@ -74,6 +74,15 @@ export default function ServiceVariantsScreen() {
         options={{
           headerShown: true,
           title: service?.name ?? '',
+          unstable_headerLeftItems: () => [
+            {
+              type: 'button',
+              label: t('common.back'),
+              icon: { type: 'sfSymbol', name: 'chevron.left' },
+              tintColor: theme.text,
+              onPress: () => router.back(),
+            },
+          ],
           headerLeft: () => (
             <HeaderButton onPress={() => router.back()} hitSlop={8}>
               <AppIcon name="back" size={22} color={theme.text} />
@@ -86,7 +95,7 @@ export default function ServiceVariantsScreen() {
       ) : !service || service.service_variant.length === 0 ? (
         <EmptyState icon="gridView" title={t('service.noVariants')} subtitle={t('service.noVariantsHint')} />
       ) : (
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView contentContainerStyle={styles.scrollContent} contentInsetAdjustmentBehavior="automatic">
           {service.service_variant.map((variant) => (
             <Pressable key={variant.id} style={styles.row} onPress={() => addVariant(variant)}>
               <View style={[styles.swatch, { backgroundColor: COLOR_MAP[mapTreatmentColorToEventColor(service.color, service.name)] }]} />

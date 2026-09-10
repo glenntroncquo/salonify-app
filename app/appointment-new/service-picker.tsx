@@ -1,6 +1,5 @@
 import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
 import { AppIcon } from '@/components/app-icon';
-import { HeaderButton } from '@/components/header-button';
 import { Pressable } from '@/components/pressable-scale';
 import * as Haptics from 'expo-haptics';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -74,11 +73,6 @@ export default function ServicePickerScreen() {
         options={{
           headerShown: true,
           title: t('appointment.selectService'),
-          headerLeft: () => (
-            <HeaderButton onPress={() => router.back()} hitSlop={8} style={styles.headerTextButton}>
-              <Text style={styles.headerLinkText}>{t('appointment.cancel')}</Text>
-            </HeaderButton>
-          ),
         }}
       />
       {servicesList.length === 0 ? (
@@ -90,7 +84,10 @@ export default function ServicePickerScreen() {
           onAction={() => router.push('/services/new')}
         />
       ) : (
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          contentInsetAdjustmentBehavior="automatic">
           <View style={styles.searchInputRow}>
             <AppIcon name="search" size={18} color={theme.muted} />
             <TextInput
@@ -145,16 +142,6 @@ function createStyles(theme: typeof Colors.light) {
     },
     flexFill: {
       flex: 1,
-    },
-    headerTextButton: {
-      width: 'auto',
-      minWidth: 0,
-      paddingHorizontal: 4,
-    },
-    headerLinkText: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: theme.tint,
     },
     scrollContent: {
       padding: 16,

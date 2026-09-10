@@ -1,8 +1,9 @@
+import { SwipeableRow } from '@/components/swipeable-row';
+import { deleteClientNote } from '@/lib/api/clients';
 import { ScreenScrollView as ScrollView } from '@/components/screen-scroll-view';
 import { Pressable } from '@/components/pressable-scale';
 import { AppIcon } from '@/components/app-icon';
 import { HeaderButton } from '@/components/header-button';
-import { VisitPhaseBar } from '@/components/visit-phase-bar';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
 import {
@@ -27,9 +28,10 @@ import { cancelAppointment } from '@/lib/api/appointment-cancel';
 import { isAppointmentCanceled } from '@/lib/api/appointment-status';
 import { fetchAppointmentById, fetchClientAppointments, type AppointmentRow } from '@/lib/api/calendar';
 import { addClientNote, Client, ClientNote, fetchClient, fetchClientNotes } from '@/lib/api/clients';
+import { fetchAppointmentPaymentStatuses, type AppointmentPaymentStatus } from '@/lib/api/orders';
 import { getInitialsFromLabel } from '@/lib/text';
 
-import { appointmentToEvent, listVisitBlockHeight } from '@/components/calendar/calendar-data';
+import { appointmentToEvent, visitDurationMinutes } from '@/components/calendar/calendar-data';
 import { getListHeaderLabel, toDateKey, toDateKeyFromSalonClock } from '@/components/calendar/date-utils';
 import { EventItem } from '@/components/calendar/types';
 
@@ -48,7 +50,9 @@ export default function AppointmentDetailScreen() {
   const [client, setClient] = React.useState<Client | null>(null);
   const [notes, setNotes] = React.useState<ClientNote[]>([]);
   const [newNote, setNewNote] = React.useState('');
+  const [noteComposerOpen, setNoteComposerOpen] = React.useState(false);
   const [addingNote, setAddingNote] = React.useState(false);
+  const [paymentStatuses, setPaymentStatuses] = React.useState<Record<string, AppointmentPaymentStatus>>({});
   const [history, setHistory] = React.useState<EventItem[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [cancelling, setCancelling] = React.useState(false);
@@ -80,7 +84,10 @@ export default function AppointmentDetailScreen() {
         ]);
         setClient(clientData);
         setNotes(notesData);
-        setHistory(appointmentsData.map(appointmentToEvent).filter((item) => item.appointmentId !== nextEvent.appointmentId));
+        const historyEvents = appointmentsData.map(appointmentToEvent).filter((item) => item.appointmentId !== nextEvent.appointmentId);
+        setHistory(historyEvents);
+        // A failed payment lookup must not hide the appointment or imply unpaid.
+        setPaymentStatuses(await fetchAppointmentPaymentStatuses(companyId, historyEvents.map((item) => item.appointmentId)).catch(() => ({})));
       }
       setError(null);
     } catch (err) {
@@ -94,6 +101,21 @@ export default function AppointmentDetailScreen() {
     load();
   }, [load]);
 
+  const deletingNotes = React.useRef(new Set<string>());
+  const handleDeleteNote = async (noteId: string) => {
+    const clientId = event?.clientId;
+    if (!clientId || !companyId || deletingNotes.current.has(noteId)) return;
+    deletingNotes.current.add(noteId);
+    try {
+      await deleteClientNote(noteId, clientId, companyId);
+      setNotes((current) => current.filter((note) => note.id !== noteId));
+    } catch {
+      setError(t('client.failedToDeleteNote'));
+    } finally {
+      deletingNotes.current.delete(noteId);
+    }
+  };
+
   const handleAddNote = async () => {
     const trimmed = newNote.trim();
     const clientId = event?.clientId;
@@ -102,6 +124,7 @@ export default function AppointmentDetailScreen() {
     try {
       await addClientNote(clientId, companyId, trimmed);
       setNewNote('');
+      setNoteComposerOpen(false);
       const notesData = await fetchClientNotes(clientId, companyId);
       setNotes(notesData);
     } catch {
@@ -146,6 +169,9 @@ export default function AppointmentDetailScreen() {
     ]);
   };
 
+  const serviceNames = appointment?.appointment_segment.flatMap((segment) => segment.service?.name ? [segment.service.name] : []) ?? [];
+  const duration = event ? visitDurationMinutes(event) : 0;
+
   const canceled = event?.canceled || (appointment ? isAppointmentCanceled(appointment) : false);
   const clientDisplayName =
     client && (client.first_name || client.last_name)
@@ -157,12 +183,35 @@ export default function AppointmentDetailScreen() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: event?.label ?? '',
+          title: t('appointment.detailTitle'),
+          headerShadowVisible: false,
+          unstable_headerLeftItems: () => [
+            {
+              type: 'button',
+              label: t('common.close'),
+              icon: { type: 'sfSymbol', name: 'xmark' },
+              tintColor: theme.text,
+              onPress: () => router.back(),
+            },
+          ],
           headerLeft: () => (
             <HeaderButton onPress={() => router.back()} hitSlop={8}>
               <AppIcon name="close" size={18} color={theme.text} />
             </HeaderButton>
           ),
+          unstable_headerRightItems: () =>
+            event && appointment && !canceled ? [
+              {
+                type: 'button',
+                label: t('checkout.title'),
+                icon: { type: 'sfSymbol', name: 'creditcard' },
+                tintColor: theme.tint,
+                onPress: () => {
+                  prepareCheckout(appointment);
+                  router.push({ pathname: '/checkout/[appointmentId]', params: { appointmentId: event.appointmentId } });
+                },
+              },
+            ] : [],
           headerRight: () =>
             event && appointment && !canceled ? (
               <HeaderButton
@@ -185,37 +234,42 @@ export default function AppointmentDetailScreen() {
         <EmptyState icon="eventBusy" title={error ?? t('client.failedToLoad')} />
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          <View style={styles.section}>
-            <View style={styles.appointmentRow}>
-              <VisitPhaseBar
-                phases={event.phases}
-                color={event.color}
-                bgColor={event.bgColor}
-                height={listVisitBlockHeight(event)}
-              />
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.appointmentTitle, { color: theme.text }]}>{event.label}</Text>
-                <Text style={[styles.appointmentSubtitle, { color: theme.muted }]}>
-                  {`${getListHeaderLabel(toDateKeyFromSalonClock(event.startISO))} · ${event.startTime}–${event.endTime}`}
-                </Text>
-                <Text style={[styles.appointmentSubtitle, { color: theme.muted }]}>{event.staffName}</Text>
-                {canceled ? (
-                  <Text style={[styles.canceledBadge, { color: theme.error }]}>{t('appointment.canceled')}</Text>
-                ) : null}
-              </View>
+          <View style={[styles.section, { borderBottomColor: theme.border }]}>
+            <View style={styles.summaryHeading}>
+              <Text style={[styles.appointmentTitle, { color: theme.text }]}>{serviceNames[0] ?? event.label}</Text>
+              {serviceNames.length > 1 ? (
+                <Text style={[styles.serviceSubtitle, { color: theme.muted }]}>{serviceNames.slice(1).join(' · ')}</Text>
+              ) : null}
             </View>
+            <View style={styles.detailRow}>
+              <AppIcon name="calendar" size={21} color={theme.text} />
+              <Text style={[styles.detailText, { color: theme.muted }]}>{getListHeaderLabel(toDateKeyFromSalonClock(event.startISO))}</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <AppIcon name="schedule" size={21} color={theme.text} />
+              <Text style={[styles.detailText, { color: theme.muted }]}>
+                {`${event.startTime}–${event.endTime}${duration > 0 ? `  (${duration} ${t('appointment.minutesShort')})` : ''}`}
+              </Text>
+            </View>
+            <View style={styles.detailRow}>
+              <AppIcon name="person" size={21} color={theme.text} />
+              <Text style={[styles.detailText, { color: theme.muted }]}>{event.staffName}</Text>
+            </View>
+            {canceled ? <Text style={[styles.canceledBadge, { color: theme.error }]}>{t('appointment.canceled')}</Text> : null}
           </View>
 
           {error ? <Text style={[styles.errorText, { color: theme.error }]}>{error}</Text> : null}
 
-          <View style={styles.section}>
-            <Text style={[styles.sectionLabel, { color: theme.muted }]}>{t('client.title')}</Text>
+          <View style={[styles.section, { borderBottomColor: theme.border }]}>
+            <Text style={[styles.sectionLabel, { color: theme.muted }]}>{t('appointment.client')}</Text>
             <Pressable
+              accessibilityRole="button"
+              disabled={!event.clientId}
               style={styles.clientRow}
               onPress={() => {
                 if (event.clientId) router.push({ pathname: '/client/[id]', params: { id: event.clientId } });
               }}>
-              <View style={[styles.clientAvatar, { backgroundColor: theme.border }]}>
+              <View style={[styles.clientAvatar, { backgroundColor: theme.surface }]}>
                 <Text style={[styles.clientAvatarText, { color: theme.text }]}>{getInitialsFromLabel(clientDisplayName)}</Text>
               </View>
               <View style={{ flex: 1 }}>
@@ -227,17 +281,38 @@ export default function AppointmentDetailScreen() {
             </Pressable>
           </View>
 
-          <View style={styles.section}>
+          <View style={[styles.section, { borderBottomColor: theme.border }]}>
             <Text style={[styles.sectionLabel, { color: theme.muted }]}>{t('client.notes')}</Text>
+
+            {notes.length === 0 ? (
+              <Text style={[styles.emptyText, { color: theme.muted }]}>{t('client.noNotes')}</Text>
+            ) : (
+              <ScrollView style={styles.notesList} nestedScrollEnabled showsVerticalScrollIndicator>
+                {notes.map((note) => (
+                <SwipeableRow key={note.id} deleteLabel={t('common.delete')} onDelete={() => handleDeleteNote(note.id)}>
+                <View style={[styles.noteRow, { borderBottomColor: theme.border }]}>
+                  <Text style={[styles.noteText, { color: theme.text }]}>{note.note}</Text>
+                  <Text style={[styles.noteDate, { color: theme.muted }]}>
+                    {getListHeaderLabel(toDateKey(new Date(note.created_at)))}
+                  </Text>
+                </View>
+                </SwipeableRow>
+                ))}
+              </ScrollView>
+            )}
+            {event.clientId ? (noteComposerOpen ? (
             <View style={styles.addNoteRow}>
               <TextInput
+                autoFocus
+                multiline
+                accessibilityLabel={t('client.addNotePlaceholder')}
                 style={[styles.input, { borderColor: theme.border, color: theme.text, flex: 1, marginBottom: 0 }]}
                 placeholder={t('client.addNotePlaceholder')}
                 placeholderTextColor={theme.muted}
                 value={newNote}
                 onChangeText={setNewNote}
               />
-              <Pressable style={[styles.addNoteButton, { borderColor: theme.border }]} onPress={handleAddNote} disabled={addingNote}>
+              <Pressable style={[styles.addNoteButton, { borderColor: theme.border }]} onPress={handleAddNote} disabled={addingNote || !newNote.trim()}>
                 {addingNote ? (
                   <ActivityIndicator size="small" color={theme.text} />
                 ) : (
@@ -245,21 +320,17 @@ export default function AppointmentDetailScreen() {
                 )}
               </Pressable>
             </View>
-            {notes.length === 0 ? (
-              <EmptyState compact title={t('client.noNotes')} subtitle={t('client.noNotesHint')} />
             ) : (
-              notes.map((note) => (
-                <View key={note.id} style={[styles.noteRow, { borderBottomColor: theme.border }]}>
-                  <Text style={[styles.noteText, { color: theme.text }]}>{note.note}</Text>
-                  <Text style={[styles.noteDate, { color: theme.muted }]}>
-                    {getListHeaderLabel(toDateKey(new Date(note.created_at)))}
-                  </Text>
+              <Pressable accessibilityRole="button" style={styles.noteAction} onPress={() => setNoteComposerOpen(true)}>
+                <View style={[styles.noteActionIcon, { backgroundColor: theme.surface }]}>
+                  <AppIcon name="add" size={21} color={theme.text} />
                 </View>
-              ))
-            )}
+                <Text style={[styles.detailText, { color: theme.text }]}>{t('appointment.addNoteAction')}</Text>
+              </Pressable>
+            )) : null}
           </View>
 
-          <View style={styles.section}>
+          <View style={[styles.section, { borderBottomColor: theme.border }]}>
             <Text style={[styles.sectionLabel, { color: theme.muted }]}>{t('client.history')}</Text>
             {history.length === 0 ? (
               <EmptyState
@@ -269,23 +340,31 @@ export default function AppointmentDetailScreen() {
                 subtitle={t('client.noHistoryHint')}
               />
             ) : (
-              history.map((historyEvent) => (
-                <View key={historyEvent.id} style={[styles.historyRow, { borderBottomColor: theme.border }]}>
-                  <View style={[styles.historyColorBar, { backgroundColor: historyEvent.color }]} />
+              <ScrollView style={styles.historyList} nestedScrollEnabled showsVerticalScrollIndicator>
+              {history.map((historyEvent) => (
+                <Pressable key={historyEvent.id} accessibilityRole="button" onPress={() => router.push({ pathname: '/appointment/[id]', params: { id: historyEvent.appointmentId } })} style={[styles.historyRow, { borderBottomColor: theme.border }]}>
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.historyTitle, { color: theme.text }]}>{historyEvent.label}</Text>
+                    <Text numberOfLines={2} style={[styles.historyTitle, { color: theme.text }]}>{historyEvent.label}</Text>
                     <Text style={[styles.historySubtitle, { color: theme.muted }]}>
                       {`${getListHeaderLabel(toDateKeyFromSalonClock(historyEvent.startISO))} · ${historyEvent.startTime}–${historyEvent.endTime}`}
                     </Text>
                   </View>
-                </View>
-              ))
+                  <View style={[styles.paymentBadge, { backgroundColor: paymentStatuses[historyEvent.appointmentId] === 'paid' ? (colorScheme === 'dark' ? '#123524' : '#E9F6EE') : theme.surface }]}>
+                    <Text style={[styles.paymentBadgeText, { color: paymentStatuses[historyEvent.appointmentId] === 'paid' ? (colorScheme === 'dark' ? '#86D9A3' : '#246B40') : theme.muted }]}>
+                      {t(`order.status.${paymentStatuses[historyEvent.appointmentId] ?? 'unknown'}`)}
+                    </Text>
+                  </View>
+                  <AppIcon name="chevronRight" size={16} color={theme.muted} />
+                </Pressable>
+              ))}
+              </ScrollView>
             )}
           </View>
 
           {!canceled ? (
             <Pressable
-              style={[styles.cancelButton, { borderColor: theme.error }]}
+              accessibilityRole="button"
+              style={[styles.cancelButton, { backgroundColor: `${theme.error}12` }]}
               onPress={handleCancel}
               disabled={cancelling}>
               {cancelling ? (
@@ -326,17 +405,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   scrollContent: {
+    flexGrow: 1,
     padding: 16,
-    paddingBottom: 48,
-    gap: 24,
+    paddingBottom: 20,
+    gap: 16,
   },
+  summaryHeading: { gap: 4, marginBottom: 4 },
+  serviceSubtitle: { fontSize: 14, lineHeight: 20 },
+  detailRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  detailText: { fontSize: 14, lineHeight: 20, flexShrink: 1 },
+  noteAction: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 },
+  noteActionIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   section: {
     gap: 10,
+    paddingBottom: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   sectionLabel: {
     fontSize: 13,
     fontWeight: '700',
     textTransform: 'uppercase',
+    letterSpacing: 0.7,
   },
   errorText: {
     fontSize: 13,
@@ -351,7 +440,9 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   appointmentTitle: {
-    fontSize: 17,
+    fontSize: 20,
+    lineHeight: 25,
+    letterSpacing: -0.3,
     fontWeight: '700',
   },
   appointmentSubtitle: {
@@ -410,6 +501,7 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
   },
+  notesList: { maxHeight: 180 },
   noteRow: {
     paddingVertical: 8,
     borderBottomWidth: 1,
@@ -421,12 +513,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 2,
   },
+  historyList: { maxHeight: 180 },
+  paymentBadge: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 4, flexShrink: 0 },
+  paymentBadgeText: { fontSize: 11, fontWeight: '600' },
   historyRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
+    paddingVertical: 4,
+    minHeight: 56,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   historyColorBar: {
     width: 4,
@@ -438,7 +534,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   historySubtitle: {
-    fontSize: 12,
+    fontSize: 13,
     marginTop: 2,
   },
   canceledBadge: {
@@ -447,10 +543,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   cancelButton: {
-    marginTop: 8,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingVertical: 12,
+    marginTop: 0,
+    borderRadius: 14,
+    paddingVertical: 13,
     alignItems: 'center',
   },
   cancelButtonText: {

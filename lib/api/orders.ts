@@ -74,3 +74,33 @@ export async function fetchOrder(orderId: string): Promise<OrderDetail | null> {
   if (error) throw error;
   return data as unknown as OrderDetail | null;
 }
+
+export type AppointmentPaymentStatus = 'paid' | 'partial' | 'unpaid' | 'unknown';
+
+/** Read the actual orders linked to a visit, rather than its booking status. */
+export async function fetchAppointmentPaymentStatuses(companyId: string, appointmentIds: string[]): Promise<Record<string, AppointmentPaymentStatus>> {
+  if (!appointmentIds.length) return {};
+  const { data, error } = await supabase
+    .from('order_item')
+    .select('appointment_id, order:order_id ( id, payment_status )')
+    .eq('company_id', companyId)
+    .in('appointment_id', appointmentIds);
+  if (error) throw error;
+
+  const byAppointment = new Map<string, Map<string, string | null>>();
+  for (const item of data ?? []) {
+    if (!item.appointment_id) continue;
+    const orders = byAppointment.get(item.appointment_id) ?? new Map<string, string | null>();
+    orders.set(item.order?.id ?? 'unknown', item.order?.payment_status ?? null);
+    byAppointment.set(item.appointment_id, orders);
+  }
+  return Object.fromEntries(appointmentIds.map((id) => {
+    const statuses = [...(byAppointment.get(id)?.values() ?? [])];
+    let status: AppointmentPaymentStatus = 'unknown';
+    if (statuses.length && statuses.every((value) => value === 'paid')) status = 'paid';
+    else if (statuses.some((value) => value === 'partially_paid' || value === 'partial') ||
+      (statuses.includes('paid') && statuses.includes('unpaid'))) status = 'partial';
+    else if (statuses.length && statuses.every((value) => value === 'unpaid')) status = 'unpaid';
+    return [id, status];
+  }));
+}
