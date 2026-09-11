@@ -1,0 +1,90 @@
+{
+  "product": "Gleami",
+  "bundleId": "com.gleami.staff",
+  "primaryLocale": "nl",
+  "supportsTablet": false,
+  "captions": {
+    "nl": "captions.nl.md",
+    "en": "captions.en.md"
+  },
+  "frames": [
+    {
+      "id": "01-agenda-today",
+      "filename": "01-agenda-today.png",
+      "aliases": ["01", "agenda", "today", "day"],
+      "route": "/day/[date]",
+      "nav": "Agenda tab → week view → tap today’s date a second time to open the day timeline. Filter to the single demo staff member."
+    },
+    {
+      "id": "02-appointment-notes",
+      "filename": "02-appointment-notes.png",
+      "aliases": ["02", "appointment", "afspraak", "notes", "notities"],
+      "route": "/appointment/[id]",
+      "nav": "From today’s agenda, open a visit. Scroll so the header (start–end + phase bar) and the notes section are both readable."
+    },
+    {
+      "id": "03-pos-checkout",
+      "filename": "03-pos-checkout.png",
+      "aliases": ["03", "checkout", "pos", "kassa", "afrekenen"],
+      "route": "/checkout/[appointmentId]",
+      "nav": "On the open appointment, tap the POS icon in the header. Stay on the checkout form (cash selected). Do not tap Afrekenen voltooien."
+    },
+    {
+      "id": "04-clients-dossier",
+      "filename": "04-clients-dossier.png",
+      "aliases": ["04", "client", "klant", "dossier", "search"],
+      "route": "/client/[id]",
+      "nav": "Klanten tab → type a first name in Zoek klanten so the list filters → open that client. Capture the dossier (profile, notes, history), not the empty search state."
+    },
+    {
+      "id": "05-services-phases",
+      "filename": "05-services-phases.png",
+      "aliases": ["05", "service", "dienst", "phases", "variant"],
+      "route": "/services/price-option",
+      "nav": "Meer → Diensten → open a service → tap a variant that has Werk + Vrij + Buffer. Capture the phase editor (staff tools), not the service list alone."
+    },
+    {
+      "id": "06-staff-schedule",
+      "filename": "06-staff-schedule.png",
+      "aliases": ["06", "staff", "rooster", "schedule"],
+      "route": "/staff/[id]/schedule",
+      "nav": "Meer → Medewerkers → the demo staff member → Rooster. Keep this week visible so today’s card shows availability + visits with start–end."
+    }
+  ],
+  "slots": [
+    {
+      "id": "apple/iphone-6.7",
+      "dir": "apple/iphone-6.7",
+      "label": "iPhone 6.7\"",
+      "width": 1290,
+      "height": 2796,
+      "accepted": [[1290, 2796], [1284, 2778]],
+      "simulator": "iPhone 16 Plus or iPhone 15 Pro Max"
+    },
+    {
+      "id": "apple/iphone-6.1",
+      "dir": "apple/iphone-6.1",
+      "label": "iPhone 6.1\"",
+      "width": 1179,
+      "height": 2556,
+      "accepted": [[1179, 2556], [1170, 2532]],
+      "simulator": "iPhone 16 or iPhone 16 Pro"
+    },
+    {
+      "id": "play/phone",
+      "dir": "play/phone",
+      "label": "Play phone",
+      "width": 1080,
+      "height": 2400,
+      "accepted": [[1080, 2400], [1080, 1920], [1440, 3200]],
+      "simulator": "Pixel 8 / Pixel 9 (portrait 9:16–20:9, 320–3840 px)"
+    }
+  ],
+  "featureGraphic": {
+    "id": "play/feature-graphic",
+    "dir": "play/feature-graphic",
+    "filename": "feature-graphic-1024x500.png",
+    "width": 1024,
+    "height": 500
+  }
+}

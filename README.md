@@ -39,4 +39,8 @@ EAS builds attach to this project via `extra.eas.projectId`. The Sentry plugin u
 
 ## Brand assets
 
-Icons and splash in `assets/images/` are a **placeholder** Gleami mark (letter G on `#161616`). Replace `icon.png` (1024) and the Android adaptive / splash derivatives with the final brand artwork when it is ready.
+Icons and splash in `assets/images/` are the Gleami mark (blue G on `#0B1220`). Replace `icon.png` (1024) and the Android adaptive / splash derivatives if final brand artwork changes.
+
+## Store screenshots
+
+App Store / Play frame slots, NL+EN captions, and device-capture notes live in [`store/`](store/README.md). Capture the six-frame staff-day story on a signed-in demo salon — do not invent UI mockups. `ios.supportsTablet` is `false` (no iPad).
