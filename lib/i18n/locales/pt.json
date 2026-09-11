@@ -212,15 +212,28 @@
     "paymentMethod": "Forma de pagamento",
     "paymentTypes": {
       "cash": "Dinheiro",
-      "card": "Cartão",
+      "card": "Terminal de cartão",
+      "pay_link": "Link de pagamento",
       "invoice": "Fatura",
       "bank_transfer": "Transferência bancária"
     },
     "amount": "Valor",
     "complete": "Concluir pagamento",
+    "sendPayLink": "Enviar link de pagamento",
+    "chargeTerminal": "Cobrar no terminal",
     "failedToComplete": "Falha ao concluir pagamento. Tente novamente.",
     "success": "Pagamento registrado",
-    "done": "Concluído"
+    "payLinkSent": "Link de pagamento enviado",
+    "payLinkSentTo": "Enviado para {{email}}",
+    "terminalSuccess": "Pagamento no terminal registrado",
+    "done": "Concluído",
+    "clientEmailRequired": "Adicione um e-mail no cliente para enviar um link de pagamento.",
+    "chargesNotEnabled": "Conclua o onboarding do Stripe Connect antes de receber pagamentos com cartão ou link.",
+    "noReader": "Nenhum terminal de cartão está associado a este salão.",
+    "payLinkHint": "Um link de pagamento será enviado por e-mail ao cliente. Nenhum cartão é inserido neste app.",
+    "terminalHint": "Crédito/débito é cobrado apenas no terminal. Sem formulário de cartão neste app.",
+    "connectRequiredHint": "Terminal e link de pagamento exigem Stripe Connect com charges enabled.",
+    "clientEmail": "E-mail"
   },
   "order": {
     "title": "Pedidos",

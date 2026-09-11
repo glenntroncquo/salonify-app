@@ -101,7 +101,11 @@ export default function OrderDetailScreen() {
               order.payment.map((payment) => (
                 <View key={payment.id} style={styles.itemRow}>
                   <Text style={styles.itemName}>
-                    {payment.payment_method ? t(`checkout.paymentTypes.${payment.payment_method}`) : '—'}
+                    {payment.payment_method
+                      ? t(`checkout.paymentTypes.${payment.payment_method}`, {
+                          defaultValue: payment.payment_method,
+                        })
+                      : '—'}
                   </Text>
                   <Text style={styles.itemPrice}>{`€${(payment.amount_gross ?? 0).toFixed(2)}`}</Text>
                 </View>

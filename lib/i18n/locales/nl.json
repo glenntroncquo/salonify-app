@@ -217,15 +217,28 @@
     "paymentMethod": "Betaalmethode",
     "paymentTypes": {
       "cash": "Contant",
-      "card": "Kaart",
+      "card": "Kaartterminal",
+      "pay_link": "Betaallink",
       "invoice": "Factuur",
       "bank_transfer": "Overschrijving"
     },
     "amount": "Bedrag",
     "complete": "Afrekenen voltooien",
+    "sendPayLink": "Verstuur betaallink",
+    "chargeTerminal": "Afrekenen op terminal",
     "failedToComplete": "Kan afrekening niet voltooien. Probeer het opnieuw.",
     "success": "Betaling geregistreerd",
-    "done": "Klaar"
+    "payLinkSent": "Betaallink verstuurd",
+    "payLinkSentTo": "Verstuurd naar {{email}}",
+    "terminalSuccess": "Kaartterminalbetaling geregistreerd",
+    "done": "Klaar",
+    "clientEmailRequired": "Voeg een e-mailadres toe bij de klant om een betaallink te sturen.",
+    "chargesNotEnabled": "Rond Stripe Connect-onboarding af om kaart- of betaallinkbetalingen te ontvangen.",
+    "noReader": "Er is geen kaartterminal gekoppeld aan deze salon.",
+    "payLinkHint": "Er wordt een betaallink naar de klant gemaild. Er wordt geen kaart ingevoerd in deze app.",
+    "terminalHint": "Credit/debit wordt alleen geïnd via de kaartterminal. Geen kaartformulier in deze app.",
+    "connectRequiredHint": "Kaartterminal en betaallink vereisen dat Stripe Connect charges enabled is.",
+    "clientEmail": "E-mail"
   },
   "order": {
     "title": "Bestellingen",
