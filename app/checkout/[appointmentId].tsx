@@ -5,7 +5,7 @@ import { HeaderButton } from '@/components/header-button';
 import * as Haptics from 'expo-haptics';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
@@ -16,14 +16,22 @@ import { useAuth } from '@/contexts/auth-context';
 import { useLocation } from '@/contexts/location-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
+  CHECKOUT_PAYMENT_TYPES,
+  CheckoutApiError,
   CheckoutLineItem,
   CheckoutPaymentType,
+  PaymentReadiness,
   checkoutLineItems,
+  clientCheckoutEmail,
   createOrderWithPayment,
+  createPayLinkCheckout,
   fetchAppointmentForCheckout,
+  fetchPaymentReadiness,
+  isConnectPaymentType,
+  processTerminalPayment,
 } from '@/lib/api/checkout';
 
-const PAYMENT_TYPES: CheckoutPaymentType[] = ['cash', 'card', 'invoice', 'bank_transfer'];
+type SuccessKind = 'recorded' | 'pay_link' | 'card';
 
 export default function CheckoutScreen() {
   const { t } = useTranslation();
@@ -43,15 +51,20 @@ export default function CheckoutScreen() {
     ? `${initialAppointment.client?.first_name ?? ''} ${initialAppointment.client?.last_name ?? ''}`.trim() || t('calendar.unknownClient')
     : '');
   const [clientId, setClientId] = React.useState<string | null>(initialAppointment?.client_id ?? null);
+  const [clientEmail, setClientEmail] = React.useState<string | null>(() =>
+    clientCheckoutEmail(initialAppointment?.client)
+  );
   const [lineItems, setLineItems] = React.useState<CheckoutLineItem[]>(() => initialAppointment ? checkoutLineItems(initialAppointment) : []);
+  const [readiness, setReadiness] = React.useState<PaymentReadiness | null>(null);
 
   const [paymentType, setPaymentType] = React.useState<CheckoutPaymentType>('bank_transfer');
   const [amount, setAmount] = React.useState(() => initialAppointment
     ? checkoutLineItems(initialAppointment).reduce((sum, item) => sum + item.price, 0).toFixed(2)
     : '');
   const [submitting, setSubmitting] = React.useState(false);
-  const [success, setSuccess] = React.useState(false);
+  const [success, setSuccess] = React.useState<SuccessKind | null>(null);
   const [orderNumber, setOrderNumber] = React.useState<string | null>(null);
+  const [sentEmail, setSentEmail] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!appointmentId) {
@@ -74,6 +87,7 @@ export default function CheckoutScreen() {
         const items = checkoutLineItems(appointment);
         setLineItems(items);
         setClientId(appointment.client_id);
+        setClientEmail(clientCheckoutEmail(appointment.client));
         setClientName(
           `${appointment.client?.first_name ?? ''} ${appointment.client?.last_name ?? ''}`.trim() ||
             t('calendar.unknownClient')
@@ -91,12 +105,67 @@ export default function CheckoutScreen() {
     return () => { active = false; };
   }, [appointmentId, initialAppointment, t]);
 
+  React.useEffect(() => {
+    if (!companyId) return;
+    let active = true;
+    fetchPaymentReadiness(companyId)
+      .then((next) => {
+        if (active) setReadiness(next);
+      })
+      .catch(() => {
+        if (active) setReadiness({ chargesEnabled: false, readerId: null });
+      });
+    return () => { active = false; };
+  }, [companyId]);
+
   const total = lineItems.reduce((sum, item) => sum + item.price, 0);
   const amountValue = Number(amount);
   const canSubmit = lineItems.length > 0 && Number.isFinite(amountValue) && amountValue >= 0 && !submitting;
 
+  const checkoutErrorMessage = React.useCallback((err: unknown, fallback: string) => {
+    const code = err instanceof CheckoutApiError ? err.code : null;
+    if (code === 'CLIENT_EMAIL_REQUIRED') return t('checkout.clientEmailRequired');
+    if (code === 'CHARGES_NOT_ENABLED') return t('checkout.chargesNotEnabled');
+    if (err instanceof Error && err.message) return err.message;
+    return fallback;
+  }, [t]);
+
+  const blockWithToast = (message: string) => {
+    setError(message);
+    Alert.alert(t('checkout.title'), message);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+  };
+
+  const selectPaymentType = (type: CheckoutPaymentType) => {
+    setPaymentType(type);
+    setError(null);
+    if (type === 'pay_link' && !clientEmail) {
+      blockWithToast(t('checkout.clientEmailRequired'));
+    }
+    if (isConnectPaymentType(type) && readiness && !readiness.chargesEnabled) {
+      blockWithToast(t('checkout.chargesNotEnabled'));
+    }
+    if (type === 'card' && readiness?.chargesEnabled && !readiness.readerId) {
+      blockWithToast(t('checkout.noReader'));
+    }
+  };
+
   const handleComplete = async () => {
     if (!companyId || !appointmentId || !canSubmit) return;
+
+    if (paymentType === 'pay_link' && !clientEmail) {
+      blockWithToast(t('checkout.clientEmailRequired'));
+      return;
+    }
+    if (isConnectPaymentType(paymentType) && !readiness?.chargesEnabled) {
+      blockWithToast(t('checkout.chargesNotEnabled'));
+      return;
+    }
+    if (paymentType === 'card' && !readiness?.readerId) {
+      blockWithToast(t('checkout.noReader'));
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
     try {
@@ -109,11 +178,39 @@ export default function CheckoutScreen() {
         paymentType,
         amount: amountValue,
       });
-      setOrderNumber(result.order_number ?? null);
-      setSuccess(true);
+      setOrderNumber(result.orderNumber ?? null);
+
+      if (paymentType === 'pay_link') {
+        const payLink = await createPayLinkCheckout({
+          companyId,
+          orderId: result.orderId,
+          locationId: locationId ?? undefined,
+          amount: amountValue,
+          clientEmail: clientEmail ?? undefined,
+        });
+        setSentEmail(payLink.email ?? clientEmail);
+        setSuccess('pay_link');
+      } else if (paymentType === 'card') {
+        if (!result.paymentIntentId || !readiness?.readerId) {
+          throw new CheckoutApiError(t('checkout.noReader'), 'NO_READER');
+        }
+        await processTerminalPayment({
+          companyId,
+          readerId: readiness.readerId,
+          paymentIntentId: result.paymentIntentId,
+          locationId: locationId ?? undefined,
+        });
+        setSuccess('card');
+      } else {
+        setSuccess('recorded');
+      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('checkout.failedToComplete'));
+      const message = checkoutErrorMessage(err, t('checkout.failedToComplete'));
+      setError(message);
+      if (err instanceof CheckoutApiError && err.code === 'CLIENT_EMAIL_REQUIRED') {
+        Alert.alert(t('checkout.title'), t('checkout.clientEmailRequired'));
+      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setSubmitting(false);
@@ -155,13 +252,23 @@ export default function CheckoutScreen() {
   }
 
   if (success) {
+    const successTitle =
+      success === 'pay_link'
+        ? t('checkout.payLinkSent')
+        : success === 'card'
+          ? t('checkout.terminalSuccess')
+          : t('checkout.success');
+    const successSubtitle =
+      success === 'pay_link' && sentEmail
+        ? t('checkout.payLinkSentTo', { email: sentEmail })
+        : orderNumber;
     return (
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
         {header}
         <View style={styles.successContainer}>
           <AppIcon name="checkCircle" size={64} color={theme.tint} />
-          <Text style={styles.successTitle}>{t('checkout.success')}</Text>
-          {orderNumber ? <Text style={styles.successSubtitle}>{orderNumber}</Text> : null}
+          <Text style={styles.successTitle}>{successTitle}</Text>
+          {successSubtitle ? <Text style={styles.successSubtitle}>{successSubtitle}</Text> : null}
           <Pressable style={styles.doneButton} onPress={() => router.back()}>
             <Text style={styles.doneButtonText}>{t('checkout.done')}</Text>
           </Pressable>
@@ -169,6 +276,22 @@ export default function CheckoutScreen() {
       </SafeAreaView>
     );
   }
+
+  const connectReady = readiness?.chargesEnabled === true;
+  const methodHint =
+    paymentType === 'pay_link'
+      ? t('checkout.payLinkHint')
+      : paymentType === 'card'
+        ? t('checkout.terminalHint')
+        : !connectReady
+          ? t('checkout.connectRequiredHint')
+          : null;
+  const completeLabel =
+    paymentType === 'pay_link'
+      ? t('checkout.sendPayLink')
+      : paymentType === 'card'
+        ? t('checkout.chargeTerminal')
+        : t('checkout.complete');
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
@@ -185,6 +308,13 @@ export default function CheckoutScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>{t('client.title')}</Text>
           <Text style={styles.clientName}>{clientName}</Text>
+          {paymentType === 'pay_link' ? (
+            <Text style={styles.hintText}>
+              {clientEmail
+                ? `${t('checkout.clientEmail')}: ${clientEmail}`
+                : t('checkout.clientEmailRequired')}
+            </Text>
+          ) : null}
         </View>
 
         <View style={styles.section}>
@@ -212,20 +342,31 @@ export default function CheckoutScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>{t('checkout.paymentMethod')}</Text>
           <View style={styles.paymentRow}>
-            {PAYMENT_TYPES.map((type) => {
+            {CHECKOUT_PAYMENT_TYPES.map((type) => {
               const isSelected = paymentType === type;
+              const needsConnect = isConnectPaymentType(type);
+              const disabled = needsConnect && readiness !== null && !connectReady;
               return (
                 <Pressable
                   key={type}
-                  style={[styles.paymentChip, isSelected && styles.paymentChipActive]}
-                  onPress={() => setPaymentType(type)}>
-                  <Text style={[styles.paymentChipText, isSelected && styles.paymentChipTextActive]}>
+                  style={[
+                    styles.paymentChip,
+                    isSelected && styles.paymentChipActive,
+                    disabled && styles.paymentChipDisabled,
+                  ]}
+                  onPress={() => selectPaymentType(type)}>
+                  <Text style={[
+                    styles.paymentChipText,
+                    isSelected && styles.paymentChipTextActive,
+                    disabled && styles.paymentChipTextDisabled,
+                  ]}>
                     {t(`checkout.paymentTypes.${type}`)}
                   </Text>
                 </Pressable>
               );
             })}
           </View>
+          {methodHint ? <Text style={styles.hintText}>{methodHint}</Text> : null}
         </View>
 
         <View style={styles.section}>
@@ -239,7 +380,7 @@ export default function CheckoutScreen() {
           {submitting ? (
             <ActivityIndicator size="small" color={theme.onTint} />
           ) : (
-            <Text style={styles.completeButtonText}>{t('checkout.complete')}</Text>
+            <Text style={styles.completeButtonText}>{completeLabel}</Text>
           )}
         </Pressable>
       </View>
@@ -307,6 +448,11 @@ const createStyles = (theme: typeof Colors.light) =>
       fontSize: 14,
       color: theme.muted,
     },
+    hintText: {
+      fontSize: 13,
+      lineHeight: 18,
+      color: theme.muted,
+    },
     lineItemRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -357,6 +503,9 @@ const createStyles = (theme: typeof Colors.light) =>
       backgroundColor: theme.tint,
       borderColor: theme.tint,
     },
+    paymentChipDisabled: {
+      opacity: 0.45,
+    },
     paymentChipText: {
       fontSize: 14,
       fontWeight: '600',
@@ -364,6 +513,9 @@ const createStyles = (theme: typeof Colors.light) =>
     },
     paymentChipTextActive: {
       color: theme.onTint,
+    },
+    paymentChipTextDisabled: {
+      color: theme.muted,
     },
     input: {
       minHeight: Design.touchTarget,

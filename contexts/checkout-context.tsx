@@ -26,7 +26,14 @@ export function CheckoutProvider({ children }: { children: React.ReactNode }) {
       appointment: {
         id: appointment.id,
         client_id: appointment.client_id,
-        client: appointment.client,
+        client: appointment.client
+          ? {
+              id: appointment.client.id,
+              first_name: appointment.client.first_name,
+              last_name: appointment.client.last_name,
+              email: appointment.client.email ?? null,
+            }
+          : null,
         appointment_segment: appointment.appointment_segment
           .filter((segment) => segment.service && segment.service_variant)
           .map((segment) => ({

@@ -217,15 +217,28 @@
     "paymentMethod": "Payment method",
     "paymentTypes": {
       "cash": "Cash",
-      "card": "Card",
+      "card": "Card terminal",
+      "pay_link": "Pay link",
       "invoice": "Invoice",
       "bank_transfer": "Bank transfer"
     },
     "amount": "Amount",
     "complete": "Complete checkout",
+    "sendPayLink": "Send pay link",
+    "chargeTerminal": "Charge on terminal",
     "failedToComplete": "Failed to complete checkout. Please try again.",
     "success": "Payment recorded",
-    "done": "Done"
+    "payLinkSent": "Pay link emailed",
+    "payLinkSentTo": "Sent to {{email}}",
+    "terminalSuccess": "Card terminal payment recorded",
+    "done": "Done",
+    "clientEmailRequired": "Add an email address on the client to send a pay link.",
+    "chargesNotEnabled": "Finish Stripe Connect onboarding before taking card or pay-link payments.",
+    "noReader": "No card terminal is linked to this salon.",
+    "payLinkHint": "A payment link will be emailed to the client. No card is entered in this app.",
+    "terminalHint": "Credit/debit is collected on the card terminal only. No card form in this app.",
+    "connectRequiredHint": "Card terminal and pay link need Stripe Connect charges enabled.",
+    "clientEmail": "Email"
   },
   "order": {
     "title": "Orders",
