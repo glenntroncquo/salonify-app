@@ -1,12 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 import { useAuth } from '@/contexts/auth-context';
-import {
-  fetchCompanyMultiLocationEnabled,
-  hydrateLocationsForCompany,
-  pickLocationId,
-  type ShopLocation,
-} from '@/lib/api/memberships';
+import { hydrateLocationsForCompany, pickLocationId, type ShopLocation } from '@/lib/api/memberships';
 import { readPreferredLocationId, writePreferredLocationId } from '@/lib/preferences';
 
 interface LocationContextType {
@@ -31,7 +26,6 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
   const { companyId, loading: authLoading } = useAuth();
   const [locations, setLocations] = useState<ShopLocation[]>([]);
   const [locationId, setLocationIdState] = useState<string | null>(null);
-  const [multiLocationEnabled, setMultiLocationEnabled] = useState(false);
   // Starts true so consumers never see a "no location" flash between auth
   // resolving and this provider's fetch effect actually kicking off.
   const [loading, setLoading] = useState(true);
@@ -41,7 +35,6 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
     if (!companyId) {
       setLocations([]);
       setLocationIdState(null);
-      setMultiLocationEnabled(false);
       setLoading(false);
       return;
     }
@@ -55,15 +48,11 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
         setLocationIdState(stored);
       }
 
-      const [nextLocations, enabled] = await Promise.all([
-        hydrateLocationsForCompany(companyId),
-        fetchCompanyMultiLocationEnabled(companyId).catch(() => false),
-      ]);
+      const nextLocations = await hydrateLocationsForCompany(companyId);
       if (cancelled) return;
 
       const picked = pickLocationId(nextLocations, stored);
       setLocations(nextLocations);
-      setMultiLocationEnabled(enabled);
       setLocationIdState(picked);
       if (picked) {
         void writePreferredLocationId(companyId, picked);
@@ -96,10 +85,10 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
       locationId,
       locations,
       loading,
-      showLocationPicker: multiLocationEnabled && locations.length > 1,
+      showLocationPicker: locations.length > 1,
       setLocationId,
     }),
-    [locationId, locations, loading, multiLocationEnabled, setLocationId]
+    [locationId, locations, loading, setLocationId]
   );
 
   return <LocationContext.Provider value={value}>{children}</LocationContext.Provider>;
