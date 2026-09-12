@@ -1,3 +1,4 @@
+import { toFakeUtcISOString } from '@/components/calendar/date-utils';
 import { supabase } from '@/lib/supabase';
 
 /** Live tables/RPCs exist; generated types in this repo predate memberships. */
@@ -291,18 +292,13 @@ export async function createTimeOff(
   locationId: string
 ): Promise<void> {
   const shopId = requireLocationId(locationId);
-  const start = new Date(date);
-  start.setHours(startHours, startMinutes, 0, 0);
-  const end = new Date(date);
-  const isEndOfDay = endHours === 23 && endMinutes === 59;
-  end.setHours(endHours, endMinutes, isEndOfDay ? 59 : 0, 0);
 
   const { error } = await supabase.from('staff_schedule_exception').insert({
     staff_id: staffId,
     company_id: companyId,
     location_id: shopId,
-    starts_at: start.toISOString(),
-    ends_at: end.toISOString(),
+    starts_at: toFakeUtcISOString(date, startHours, startMinutes),
+    ends_at: toFakeUtcISOString(date, endHours, endMinutes),
     kind: 'unavailable',
   });
   if (error) throw error;

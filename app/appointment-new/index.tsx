@@ -37,8 +37,8 @@ function formatTimeForInput(date: Date) {
   return `${h}:${m}`;
 }
 
+/** Build a Date whose local Y/M/D/H/M are the intended salon wall-clock. */
 function defaultStartDate(dateParam?: string) {
-  const base = dateParam ? new Date(dateParam) : new Date();
   const now = new Date();
   let hours = now.getHours();
   let minutes = Math.ceil(now.getMinutes() / 30) * 30;
@@ -46,6 +46,15 @@ function defaultStartDate(dateParam?: string) {
     minutes = 0;
     hours += 1;
   }
+
+  // Date keys (`YYYY-MM-DD`) must be local calendar dates. `new Date('YYYY-MM-DD')`
+  // is UTC midnight and shifts the salon day west of UTC (e.g. Europe/Brussels).
+  const keyMatch = dateParam?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const base = keyMatch
+    ? new Date(Number(keyMatch[1]), Number(keyMatch[2]) - 1, Number(keyMatch[3]))
+    : dateParam
+      ? new Date(dateParam)
+      : new Date();
   base.setHours(hours, minutes, 0, 0);
   return base;
 }

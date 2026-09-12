@@ -9,7 +9,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { groupAppointmentsByDateKey, listVisitBlockHeight } from '@/components/calendar/calendar-data';
 import { VisitPhaseBar } from '@/components/visit-phase-bar';
-import { addDays, getISOWeekNumber, getMonthShortLabel, getWeekStartMonday, getWeekdayLong, toDateKey } from '@/components/calendar/date-utils';
+import {
+  addDays,
+  formatSalonWallClock,
+  getISOWeekNumber,
+  getMonthShortLabel,
+  getWeekStartMonday,
+  getWeekdayLong,
+  parseSalonWallClock,
+  toDateKey,
+} from '@/components/calendar/date-utils';
 import { EventItem } from '@/components/calendar/types';
 import { EmptyState } from '@/components/empty-state';
 import { Colors, Design } from '@/constants/theme';
@@ -35,12 +44,7 @@ function formatSlotRange(slot: ScheduleRule) {
 function exceptionOverlapsDay(block: ScheduleException, day: Date) {
   const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 0, 0, 0, 0);
   const dayEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 23, 59, 59, 999);
-  return new Date(block.starts_at) <= dayEnd && new Date(block.ends_at) >= dayStart;
-}
-
-function formatTimeOfDay(value: string) {
-  const date = new Date(value);
-  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  return parseSalonWallClock(block.starts_at) <= dayEnd && parseSalonWallClock(block.ends_at) >= dayStart;
 }
 
 export default function StaffScheduleScreen() {
@@ -169,7 +173,7 @@ export default function StaffScheduleScreen() {
                     <AppIcon name="eventBusy" size={14} color={theme.error} />
                     <Text style={styles.absentText}>
                       {block.starts_at && block.ends_at
-                        ? `${t('staff.absent')} · ${formatTimeOfDay(block.starts_at)}–${formatTimeOfDay(block.ends_at)}`
+                        ? `${t('staff.absent')} · ${formatSalonWallClock(block.starts_at)}–${formatSalonWallClock(block.ends_at)}`
                         : t('staff.absent')}
                     </Text>
                   </View>

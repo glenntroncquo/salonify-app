@@ -123,6 +123,11 @@ function excludeCanceled(appointments: AppointmentRow[]): AppointmentRow[] {
  * Called once per month rather than once for the whole company, so browsing
  * further into the calendar (month, week, or list view) fetches lazily
  * instead of loading the company's entire appointment history up front.
+ *
+ * Month bounds still use Date#toISOString() (real UTC). appointment.start is
+ * naive salon wall-clock with a literal Z, so device-TZ conversion can miss or
+ * include a few hours at month edges. Do not swap in toFakeUtcISOString here
+ * without also aligning fetchStaffAppointments / dashboard range compares.
  */
 export async function fetchAppointmentsForMonth(
   companyId: string,
