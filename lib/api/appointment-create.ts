@@ -1,5 +1,6 @@
 import { FunctionsHttpError } from '@supabase/supabase-js';
 
+import { toFakeUtcISOString } from '@/components/calendar/date-utils';
 import { supabase } from '@/lib/supabase';
 import { ServiceVariantPhase } from '@/lib/api/services';
 
@@ -53,9 +54,11 @@ export async function createAppointment(payload: CreateAppointmentPayload): Prom
   const primaryStaffId = payload.segments[0].staffId;
   const totalPrice = payload.segments.reduce((sum, segment) => sum + Number(segment.price), 0);
 
+  // Local Y/M/D/H/M on payload.start are salon wall-clock. Encode as
+  // `YYYY-MM-DDTHH:mm:00Z` (literal Z, not a real UTC conversion).
   const { data, error } = await supabase.functions.invoke('appointment-create-staff', {
     body: {
-      start: payload.start.toISOString(),
+      start: toFakeUtcISOString(payload.start, payload.start.getHours(), payload.start.getMinutes()),
       staffId: primaryStaffId,
       companyId: payload.companyId,
       locationId: payload.locationId,

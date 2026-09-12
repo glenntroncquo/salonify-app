@@ -7,6 +7,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { parseSalonWallClock } from '@/components/calendar/date-utils';
 import { EmptyState } from '@/components/empty-state';
 import { Colors, Design } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
@@ -97,8 +98,8 @@ export default function StaffTimeOffScreen() {
             />
           ) : (
             blocks.map((block) => {
-              const start = block.starts_at ? new Date(block.starts_at) : null;
-              const end = block.ends_at ? new Date(block.ends_at) : null;
+              const start = block.starts_at ? parseSalonWallClock(block.starts_at) : null;
+              const end = block.ends_at ? parseSalonWallClock(block.ends_at) : null;
               return (
                 <SwipeableRow key={block.id} onDelete={() => handleDelete(block.id)} deleteLabel={t('common.delete')}>
                   <View style={styles.blockRow}>
